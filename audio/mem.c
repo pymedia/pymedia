@@ -167,3 +167,30 @@ void av_free(void *ptr)
 
 }
 
+
+
+/**
+ * av_realloc semantics (same as glibc): if ptr is NULL and size > 0,
+ * identical to malloc(size). If size is zero, it is identical to
+ * free(ptr) and NULL is returned.  
+ */
+void *av_realloc(void *ptr, unsigned int size)
+{
+	if (!ptr)
+		return av_malloc(size);
+	else
+		return realloc(ptr, size);
+}
+ 
+/*
+void *av_fast_realloc(void *ptr, unsigned int *size, unsigned int min_size)
+{
+    if(min_size < *size) 
+        return ptr;
+    
+    *size= min_size + 10*1024;
+
+    return av_realloc(ptr, *size);
+}
+
+*/

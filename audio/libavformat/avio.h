@@ -23,15 +23,7 @@ typedef struct {
     int max_packet_size;
 } ByteIOContext;
 
-int init_put_byte(ByteIOContext *s,
-                  unsigned char *buffer,
-                  int buffer_size,
-                  int write_flag,
-                  void *opaque,
-                  int (*read_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  void (*write_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  int (*seek)(void *opaque, offset_t offset, int whence));
-
+int init_put_byte(ByteIOContext *s);
 void put_byte(ByteIOContext *s, int b);
 void put_buffer(ByteIOContext *s, const unsigned char *buf, int size);
 void put_le64(ByteIOContext *s, UINT64 val);
@@ -46,7 +38,7 @@ void put_be64_double(ByteIOContext *s, double val);
 void put_strz(ByteIOContext *s, const char *buf);
 
 offset_t url_fseek(ByteIOContext *s, offset_t offset, int whence);
-void url_fskip(ByteIOContext *s, offset_t offset);
+offset_t url_fskip(ByteIOContext *s, offset_t offset);
 offset_t url_ftell(ByteIOContext *s);
 int url_feof(ByteIOContext *s);
 

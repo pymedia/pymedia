@@ -22,6 +22,11 @@
 #include "../dsputil.h"
 #include "../simple_idct.h"
 
+void emms(void)
+{
+    __asm __volatile ("emms;":::"memory");
+}
+
 int mm_flags; /* multimedia extension flags */
 
 /* pixel operations */

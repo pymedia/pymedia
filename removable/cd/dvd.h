@@ -29,6 +29,22 @@
 #define DVD_TITLE0 "Title 0"
 #define DVD_EXT ".vob"
 
+#define LENGTH "length"
+#define SEEKS "seeks"
+#define CHAPTERS "chapters"
+#define LANGUAGES "languages"
+#define ANGLES "angles"
+#define FORMAT "format"
+#define UNSPECIFIED "unspecified"
+#define LANGUAGE "language"
+#define LANGUAGE_MODE "language_mode"
+#define SAMPLE_RATE "sample_rate"
+#define SAMPLE_FREQUENCY "sample_frequency"
+#define CHANNELS "channels"
+#define AUDIO_TYPE "type"
+#define AUDIO_STREAMS "audio_streams"
+#define VIDEO_STREAMS "video_streams"
+
 #include "cdgeneric.h"
 #include "dvdlibs/dvdcss/dvdcss.h"
 #include "dvdlibs/dvdread/ifo_types.h"
@@ -52,7 +68,17 @@ typedef struct
 	int iVobuCount;
 	int iVobuAllocated;
 	int* aiVobu;
+	int iTitle;
+	int ttnnum;
 } DVD_TRACK_INFO;
+
+
+// **********************************************************************************
+typedef struct
+{
+	int iTime;
+	int iSector;
+} DVD_SEEK_INFO;
 
 // ------------------------------------------------------------
 extern PyTypeObject PyDVDCDTrackType;
@@ -133,7 +159,7 @@ public:
 
 			if( ifo_file )
 			{
-				pgc_t* pgc= ifo_file->vts_pgcit->pgci_srp[ 0 ].pgc;
+				pgc_t* pgc= ifo_file->vts_pgcit->pgci_srp[ this->ifo_file->tt_srpt->title[ i ].vts_ttn- 1 ].pgc;
 				afLen[ i ]= (float)pgc->playback_time.hour* 3600+ 
 							 ( pgc->playback_time.minute >> 4 )* 600+ ( pgc->playback_time.minute & 7 )* 60+ 
 							 ( pgc->playback_time.second >> 4 )*10+ ( pgc->playback_time.second & 7 );
@@ -247,18 +273,21 @@ public:
       return NULL;
     }
  
+    int ttnnum = this->ifo_file->tt_srpt->title[ iTitle ].vts_ttn;
+    int chapts = this->ifo_file->tt_srpt->title[ iTitle ].nr_of_ptts;
+
 		stInfo->iVobuNo= 0;
 		stInfo->iVobuPos= 0;
 		stInfo->aiVobu= NULL;
 		stInfo->sBuf= NULL;
 		stInfo->iVobuCount= 0;
 		stInfo->iVobuAllocated= 0;
+		stInfo->iTitle= iTitle;
+		stInfo->ttnnum= ttnnum- 1;
 
 		stInfo->file = DVDOpenFile( stInfo->dvd, this->ifo_file->tt_srpt->title[ iTitle ].title_set_nr, DVD_READ_TITLE_VOBS ); 
 
 		// Create vobu list
-    int ttnnum = this->ifo_file->tt_srpt->title[ iTitle ].vts_ttn;
-    int chapts = this->ifo_file->tt_srpt->title[ iTitle ].nr_of_ptts;
     vts_ptt_srpt_t *vts_ptt_srpt= stInfo->ifo_file->vts_ptt_srpt;
     for( int j = 0; j < chapts; ++j ) 
 		{
@@ -266,15 +295,21 @@ public:
       int pgn = vts_ptt_srpt->title[ ttnnum - 1 ].ptt[ j ].pgn;
       pgc_t *cur_pgc= stInfo->ifo_file->vts_pgcit->pgci_srp[ pgcnum - 1 ].pgc;
       int start_cell = cur_pgc->program_map[ pgn - 1 ] - 1;
-			int iLastSector;
+			
+			int iLastSector= 0;
 			if( j== chapts- 1 )
 				iLastSector= cur_pgc->cell_playback[ cur_pgc->nr_of_cells- 1 ].last_sector+ 1;
-			else
+			else if( cur_pgc->program_map )
 				iLastSector= cur_pgc->cell_playback[ cur_pgc->program_map[ pgn ] - 1 ].first_sector;
 
 			this->AddVobus( stInfo,
 				cur_pgc->cell_playback[ start_cell ].first_sector,
         iLastSector );
+			/*
+			this->AddVobus( stInfo,
+				cur_pgc->cell_playback[ start_cell ].first_sector,
+				cur_pgc->cell_playback[ start_cell ].last_sector );
+			*/
     }
 
 		return stInfo;

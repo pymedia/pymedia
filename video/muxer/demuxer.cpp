@@ -32,7 +32,7 @@
 //#include "libavformat/avformat.h"
 
 #ifndef BUILD_NUM
-#define BUILD_NUM 1
+#define BUILD_NUM 1 
 #endif
 
 const int PYBUILD= BUILD_NUM;
@@ -44,11 +44,16 @@ const char* PYDOC=
 
 #define STREAMS "streams"
 #define PARSE "parse"
+#define RESET "reset"
 #define HAS_HEADER "hasHeader"
 
 #define PARSE_DOC \
 	PARSE"( fragment ) -> streams\n \
 	Parses stream and returns sub stream data in order it appear in the fragment"
+
+#define RESET_DOC \
+	RESET"() -> \n \
+	Reset demultiplexer buffers"
 
 #define STREAMS_DOC \
 	STREAMS" -> streams\n \
@@ -73,7 +78,8 @@ const char* PYDOC=
 	Returns demuxer object based on extension passed. \nIt can demux stream into separate streams based on a \
 stream type. Once demuxer is created the following methods are available:\n"\
 "\t"HAS_HEADER_DOC \
-"\t"PARSE_DOC
+"\t"PARSE_DOC \
+"\t"RESET_DOC
 
 PyObject *g_cErr;
 
@@ -206,6 +212,8 @@ PyObject* GetStreams( PyDemuxerObject* obj )
 	{
 		PyObject* cFormat= Py_None;
 		AVCodecContext *cCodec= &obj->ic.streams[ i ]->codec;
+ //printf( "Duration: %I64d\n",obj->ic.streams[ i ]->duration ); 
+
 		if( cCodec->codec_id )
 		{
 			cFormat= PyDict_New();
@@ -228,7 +236,7 @@ PyObject* GetStreams( PyDemuxerObject* obj )
 
 		PyTuple_SetItem( cFormats, i, cFormat );
 	}
-	return cFormats;
+	return cFormats; 
 }
 
 // ---------------------------------------------------------------------------------
@@ -266,6 +274,16 @@ Demuxer_HasHeader( PyDemuxerObject* obj)
 
 // ---------------------------------------------------------------------------------
 static PyObject *
+Demuxer_Reset( PyDemuxerObject* obj)
+{
+	free_mem_buffer( &obj->ic.pb );
+	Py_INCREF( Py_None );
+	return Py_None;
+}
+
+
+// ---------------------------------------------------------------------------------
+static PyObject *
 Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 {
 	unsigned char* sData;
@@ -294,7 +312,7 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 	// Create new list with possible formats
 	StartStreams( obj );
 	while( iRet>= 0 )
-	{
+	{ 
 		obj->pkt.size= 0;
 
 		// more correct than obj->ic.iformat->read_packet( &obj->ic, &obj->pkt );
@@ -341,6 +359,12 @@ static PyMethodDef demuxer_methods[] =
 		(PyCFunction)Demuxer_Parse,
 		METH_VARARGS,
 		PARSE_DOC
+	},
+	{
+		RESET,
+		(PyCFunction)Demuxer_Reset,
+		METH_NOARGS,
+		RESET_DOC
 	},
 	{
 		HAS_HEADER,
@@ -542,14 +566,15 @@ initmuxer(void)
 };
 
 /*
-
+ 
 import pymedia.video.muxer as muxer
-dm= muxer.Demuxer( 'mpg' )
-#f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
-f= open( 'c:\movies\Our video.mpg', 'rb' )
-s= f.read( 163840 )
+dm= muxer.Demuxer( 'avi' )
+f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
+#f= open( 'c:\movies\Our video.mpg', 'rb' )
+s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
 
 
 */
+ 

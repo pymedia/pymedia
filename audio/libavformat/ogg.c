@@ -32,6 +32,129 @@ typedef struct OggContext {
 #define ALBUM_STR "album"
 #define TRACK_STR "tracknum"
 #define YEAR_STR "year"
+
+static int ogg_write_header(AVFormatContext *avfcontext) 
+{
+    OggContext *context = avfcontext->priv_data;
+    AVCodecContext *avccontext ;
+    vorbis_info vi ;
+    vorbis_dsp_state vd ;
+    vorbis_comment vc ;
+    vorbis_block vb ;
+    ogg_packet header, header_comm, header_code ; 
+    int n ;
+    
+    srand(time(NULL));
+    ogg_stream_init(&context->os, rand());
+    
+    for(n = 0 ; n < avfcontext->nb_streams ; n++) {
+	avccontext = &avfcontext->streams[n]->codec ;
+
+	/* begin vorbis specific code */
+		
+	vorbis_info_init(&vi) ;
+
+	/* code copied from libavcodec/oggvorbis.c */
+
+	if(oggvorbis_init_encoder(&vi, avccontext) < 0) {
+	    fprintf(stderr, "ogg_write_header: init_encoder failed") ;
+	    return -1 ;
+	}
+
+	vorbis_analysis_init(&vd, &vi) ;
+	vorbis_block_init(&vd, &vb) ;
+	
+	vorbis_comment_init(&vc) ;
+	vorbis_comment_add_tag(&vc, "encoder", "ffmpeg") ;
+	if(*avfcontext->title)
+	    vorbis_comment_add_tag(&vc, "title", avfcontext->title) ;
+
+	vorbis_analysis_headerout(&vd, &vc, &header,
+				  &header_comm, &header_code) ;
+	ogg_stream_packetin(&context->os, &header) ;
+	ogg_stream_packetin(&context->os, &header_comm) ;
+	ogg_stream_packetin(&context->os, &header_code) ;  
+	
+	vorbis_block_clear(&vb) ;
+	vorbis_dsp_clear(&vd) ;
+	vorbis_info_clear(&vi) ;
+	vorbis_comment_clear(&vc) ;
+	
+	/* end of vorbis specific code */
+
+	context->header_handled = 0 ;
+	context->base_packet_no = 0 ;
+    }
+    
+    return 0 ;
+}
+
+
+static int ogg_write_packet(AVFormatContext *avfcontext,
+			    int stream_index,
+			    unsigned char *buf, int size, int force_pts)
+{
+    OggContext *context = avfcontext->priv_data ;
+    ogg_packet *op ;
+    ogg_page og ;
+    int l = 0 ;
+    
+printf( "Writing packet\n" );
+    /* flush header packets so audio starts on a new page */
+
+    if(!context->header_handled) {
+printf( "Trying to get ogg header\n" );
+	while(ogg_stream_flush(&context->os, &og)) {
+printf( "OGG stream header!!\n" );
+	    put_buffer(&avfcontext->pb, og.header, og.header_len) ;
+	    put_buffer(&avfcontext->pb, og.body, og.body_len) ;
+	    put_flush_packet(&avfcontext->pb);
+	}
+	context->header_handled = 1 ;
+    }
+
+    while(l < size) {
+	op = (ogg_packet*)(buf + l) ;
+	op->packet = buf + l + sizeof(ogg_packet) ; /* fix data pointer */
+
+	if(!context->base_packet_no) { /* this is the first packet */
+	    context->base_packet_no = op->packetno ; 
+	    context->base_granule_pos = op->granulepos ;
+	}
+
+	/* correct the fields in the packet -- essential for streaming */
+
+	op->packetno -= context->base_packet_no ;
+	op->granulepos -= context->base_granule_pos ;
+
+	ogg_stream_packetin(&context->os, op) ;
+	l += sizeof(ogg_packet) + op->bytes ;
+
+	while(ogg_stream_pageout(&context->os, &og)) {
+	    put_buffer(&avfcontext->pb, og.header, og.header_len) ;
+	    put_buffer(&avfcontext->pb, og.body, og.body_len) ;
+	    put_flush_packet(&avfcontext->pb);
+	}
+    }
+
+    return 0;
+}
+
+
+static int ogg_write_trailer(AVFormatContext *avfcontext) {
+    OggContext *context = avfcontext->priv_data ;
+    ogg_page og ;
+
+    while(ogg_stream_flush(&context->os, &og)) {
+	put_buffer(&avfcontext->pb, og.header, og.header_len) ;
+	put_buffer(&avfcontext->pb, og.body, og.body_len) ;
+	put_flush_packet(&avfcontext->pb);
+    }
+
+    ogg_stream_clear(&context->os) ;
+    return 0 ;
+}
+ 
 /* --------------------------------------------------------------------------------- */
 void get_ogg_tag( char* sDest, char* sFrameName, char** sBufs, int iCount, int* piLens )
 {
@@ -204,9 +327,23 @@ static AVInputFormat ogg_iformat = {
     "ogg",
 } ;
 
+static AVOutputFormat ogg_oformat = {
+    "ogg",
+    "Ogg Vorbis",
+    "audio/x-vorbis",
+    "ogg",
+    sizeof(OggContext),
+    CODEC_ID_VORBIS,
+    0,
+    ogg_write_header,
+    ogg_write_packet,
+    ogg_write_trailer,
+} ;
 
-int ogg_init(void) {
+int ogg_init(void) 
+{
     av_register_input_format(&ogg_iformat);
+    av_register_output_format(&ogg_oformat);
     return 0 ;
 }
 

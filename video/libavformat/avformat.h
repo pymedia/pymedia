@@ -10,7 +10,7 @@ extern "C" {
 #define LIBAVFORMAT_BUILD       4606
 
 #include <libavcodec/avcodec.h>
-#include <libavcodec/common.h>
+#include "common.h"
 #include "mem.h"
 #include "avio.h"
 

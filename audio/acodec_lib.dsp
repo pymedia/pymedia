@@ -40,8 +40,8 @@ RSC=rc.exe
 # PROP Output_Dir "libavcodec\Release"
 # PROP Intermediate_Dir "libavcodec\Release"
 # PROP Target_Dir ""
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
 # ADD CPP /nologo /MD /GX /O2 /I "." /I "libvorbis-1.0/include" /I "libogg-1.0/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -65,10 +65,10 @@ LIB32=link.exe -lib
 # PROP Output_Dir "libavcodec\Debug"
 # PROP Intermediate_Dir "libavcodec\Debug"
 # PROP Target_Dir ""
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /Gm /GX /ZI /Od /I "." /I "libvorbis-1.0/include" /I "libogg-1.0/include" /I "./libfaad2/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /Gm /GX /ZI /Od /I "." /I "../../libvorbis-1.0.1/include" /I "../../libogg-1.1/include" /I "../../libfaad2/include" /I "../../lame-3.95.1/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "CONFIG_VORBIS" /D "CONFIG_FAAD" /D "CONFIG_MP3LAME" /YX /FD /GZ /c
 # SUBTRACT CPP /X
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
@@ -126,6 +126,10 @@ SOURCE=.\libavcodec\common.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libavcodec\faad.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libavcodec\fft.c
 # End Source File
 # Begin Source File
@@ -135,6 +139,10 @@ SOURCE=.\libavcodec\mdct.c
 # Begin Source File
 
 SOURCE=.\mem.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\mp3lameaudio.c
 # End Source File
 # Begin Source File
 

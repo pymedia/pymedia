@@ -28,7 +28,7 @@ def aPlayer( name ):
       snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
       resampler= sound.Resampler( (r.sample_rate,r.channels), (r.sample_rate,1) )
     
-    if len( r.data ):
+    if r and len( r.data ):
       s1= resampler.resample( r.data )
       fTmp= analyzer.asBands( BANDS, s1 )
       sampleFreqs.append( ( snd.getPosition()+ snd.getLeft(), fTmp ) )

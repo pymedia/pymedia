@@ -29,9 +29,9 @@
 #include "cdgeneric.h"
 #include "cdda.h"
 #include "dvd.h"
-
+ 
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "cdcommon_win.h"
+#include "cdcommon_win.h" 
 #else
 #include "cdcommon_unix.h"
 #endif
@@ -82,18 +82,25 @@ const char* PYDOC=
 	"\n\t'"LABEL_KEY"' is always set and represent the media volume label"\
 	"\n\t'"TYPE_KEY"' is always set and can be ( { 'DVD' | 'AudioCD' | 'VCD' | 'Data' } )"\
 	"\n\tFor DVD it would be:"\
-	"\n\t\t'"TITLES_KEY"' list of dictionaries for every title on DVD. The following members can be present:"\
-	"\n\t\t\t'name' name of the title to call with open()"\
-	"\n\t\t\t'length' length of the title"\
-	"\n\t\t\t'vstreams' list of video streams( VStream )"\
-	"\n\t\t\t'astreams' list of audio streams( AStream )"\
-	"\n\t\t\t'chapters' list of absolute positions for chapters( to be used in seek )"\
-	"\n\t\t\t'seeks' list of pairs( time_sec, seek_pos )"\
+	"\n\t\t'"TITLES_KEY"' list of titles on DVD."\
+	"\n\t\tOnce title is opened through the open() call, "\
+	"\n\t\tyou may request additional propertirs by calling "CD_GETPROPERTIES_HDR \
+	"\n\t\tProperies will be returned as a dictinary with the following members:"\
+	"\n\t\t\t'"LENGTH"' length of the title"\
+	"\n\t\t\t'"VIDEO_STREAMS"' list of video streams as dictionaries"\
+	"\n\t\t\t'"AUDIO_STREAMS"' list of audio streams as dictionaries"\
+	"\n\t\t\t'"CHAPTERS"' list of absolute positions for chapters( to be used in seek )"\
+	"\n\t\t\t'"SEEKS"' list of pairs( time_sec, seek_pos )"\
+	"\n\t\t\t'"LANGUAGES"' list of languages for a title as dictionaries"\
 	"\n\tFor AudioCD it would be:"\
 	"\n\t\t'toc' TOC of a disk"\
 	"\n\t\t'"TITLES_KEY"' list of title names on a disk( matches TOC )"\
+	"\n\t\tOnce title is opened through the open() call, "\
+	"\n\t\tyou may request additional propertirs by calling "CD_GETPROPERTIES_HDR \
+	"\n\t\tProperies will be returned as a dictinary with the following members:"\
+	"\n\t\t\t'"LENGTH"' length of the title"\
 	"\n\tFor VideoCD it would be:"\
-	"\n\t'"TITLES_KEY"' -> list of file names for a movie"\
+	"\n\t'"TITLES_KEY"' -> list of file names for a movie"
 
 #define CD_GETTOC_DOC "getTOC() -> ( ( frameStart, frameEnd )* )\n" \
 											"\tReturn toc for the drive. If the drive has no audio, returns list of sessions( if any )\n"
@@ -119,6 +126,7 @@ typedef struct
 {
 	PyObject_HEAD
 	CD* cObject;
+	//GenericCD *cMediaHandle;
 } PyCDObject;
 
 // ---------------------------------------------------------------------------------
@@ -146,8 +154,12 @@ GetMediaHandle( PyCDObject *cd)
 	bReady= cd->cObject->IsReady();
   Py_END_ALLOW_THREADS
 	if( !bReady )
+	{
 		return NULL;
+	}
 
+	//if( cd->cMediaHandle )
+	//	return cd->cMediaHandle;
 	for( int i= 0; i< 3; i++ )
 	{
 		switch( i )
@@ -208,24 +220,15 @@ CD_GetProperties( PyCDObject *cd )
 		Py_DECREF( cTmp );
 
 		// Create names for tracks on the device
-		PyObject* cTitles= PyList_New( ((CDDARead*)cCD)->GetTracksCount() );
+		PyObject* cTitles= PyTuple_New( ((CDDARead*)cCD)->GetTracksCount() );
 		if( !cTitles )
 			return NULL;
 
 		for( unsigned int i= 0; i< ((CDDARead*)cCD)->GetTracksCount(); i++ )
 		{
-			PyObject* cTitle= PyDict_New();
-
 			// Get the title name
 			cTmp= PyString_FromFormat( ( i>= 9 ) ? "Track %d": "Track 0%d", i+ 1 );
-			PyDict_SetItemString( cTitle, NAME_KEY, cTmp );
-
-			// Get the length of title/track
-			cTmp= PyInt_FromLong( (int)((CDDARead*)cCD)->GetTrackLength( i ) );
-			PyDict_SetItemString( cTitle, "length", cTmp );
-			Py_DECREF( cTmp );
-
-			PyList_SetItem( cTitles, i, cTitle );
+			PyTuple_SetItem( cTitles, i, cTmp );
 		}
 		PyDict_SetItemString( cRes, TITLES_KEY, cTitles );
 		PyDict_SetItemString( cRes, LABEL_KEY, PyString_FromString( "Audio CD" ) );
@@ -234,41 +237,30 @@ CD_GetProperties( PyCDObject *cd )
 	else if( !strcmp( cCD->GetType(), DVD_CD_TYPE ))
 	{
 		// Create names for titles on the device
-		float afLen[ 100 ];
 		char sLabel[ 256 ];
-		PyObject* cTitles= PyList_New( ((DVDRead*)cCD)->GetTitlesCount() );
+		PyObject* cTitles= PyTuple_New( ((DVDRead*)cCD)->GetTitlesCount() );
 		if( !cTitles )
 			return NULL;
 
-		if( ((DVDRead*)cCD)->GetTitlesLength( &afLen[ 0 ] )== -1 )
-		{
-			PyErr_SetString(g_cErr, "Cannot read titles information" );
-			return NULL;
-		}
-
 		for( int i= 0; i< ((DVDRead*)cCD)->GetTitlesCount(); i++ )
 		{
-			PyObject* cTitle= PyDict_New();
 			// Get the title name
 			cTmp= PyString_FromFormat( ( i>= 9 ) ? DVD_TITLE"%d"DVD_EXT: DVD_TITLE0"%d"DVD_EXT, i+ 1 );
-			PyDict_SetItemString( cTitle, NAME_KEY, cTmp );
-
-			// Get the length of title
-			cTmp= PyInt_FromLong( (int)afLen[ i ] );
-			PyDict_SetItemString( cTitle, "length", cTmp );
-			Py_DECREF( cTmp );
-
-			PyList_SetItem( cTitles, i, cTitle );
+			PyTuple_SetItem( cTitles, i, cTmp );
 		}
 		PyDict_SetItemString( cRes, TITLES_KEY, cTitles );
+	  Py_BEGIN_ALLOW_THREADS
 		cd->cObject->GetLabel( &sLabel[ 0 ], sizeof( sLabel )  );
+	  Py_END_ALLOW_THREADS
 		PyDict_SetItemString( cRes, LABEL_KEY, PyString_FromString( sLabel ) );
 		Py_DECREF( cTitles );
 	}
 	else if( !strcmp( cCD->GetType(), DATA_CD_TYPE ))
 	{
 		char sLabel[ 256 ];
+	  Py_BEGIN_ALLOW_THREADS
 		cd->cObject->GetLabel( &sLabel[ 0 ], sizeof( sLabel )  );
+	  Py_END_ALLOW_THREADS
 		PyDict_SetItemString( cRes, LABEL_KEY, PyString_FromString( sLabel ) );
 	}
 	delete cCD;
@@ -319,12 +311,6 @@ CD_Open( PyCDObject *cd, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s:open", &sPath ))
 		return NULL;
 
-	if( !cd->cObject->IsReady() )
-	{
-		PyErr_Format( g_cErr, "The drive ( %s ) is not ready", cd->cObject->GetName() );
-		return NULL;
-	}
-
 	// Get media handle first
 	GenericCD* cCD= GetMediaHandle( cd );
 	if( !cCD )
@@ -332,6 +318,7 @@ CD_Open( PyCDObject *cd, PyObject *args)
 		PyErr_Format( g_cErr, "Media in %s is not DVD, AudioCD or VCD. Cannot open %s in a raw mode", cd->cObject->GetName(), sPath );
 		return NULL;
 	}
+	//cd->cMediaHandle= cCD; 
 
 	// Try to open file by its name
 	Py_BEGIN_ALLOW_THREADS
@@ -339,7 +326,7 @@ CD_Open( PyCDObject *cd, PyObject *args)
 	Py_END_ALLOW_THREADS
 	if( !pTrackData )
 	{
-		PyErr_Format( g_cErr, "The title ( %s ) cannot be found on %s drive %s", sPath, cCD->GetType(), cd->cObject->GetName() );
+		PyErr_Format( g_cErr, "Title ( %s ) cannot be found on %s drive %s", sPath, cCD->GetType(), cd->cObject->GetName() );
 		delete cCD;
 		return NULL;
 	}
@@ -396,6 +383,10 @@ static PyMethodDef cd_methods[] =
 static void
 CDClose( PyCDObject *cd )
 {
+	//if( cd->cMediaHandle )
+	//	delete cd->cMediaHandle;
+
+	//cd->cMediaHandle= NULL;
 	delete cd->cObject;
 	PyObject_Free( cd );
 }
@@ -443,6 +434,8 @@ CDNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 		return NULL;
 	}
 
+	//cd->cMediaHandle= NULL;
+
 	return (PyObject*)cd;
 }
 
@@ -452,7 +445,7 @@ static PyTypeObject PyCDType =
 	PyObject_HEAD_INIT(NULL)
 	0,
 	MODULE_NAME".CD",
-	sizeof(PyCDDAObject),
+	sizeof(PyCDObject),
 	0,
 	(destructor)CDClose,  //tp_dealloc
 	0,			  //tp_print
@@ -563,7 +556,7 @@ initcd(void)
 	PyCDType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&PyCDType);
 	PyModule_AddObject(m, "CD", (PyObject *)&PyCDType);
-}
+} 
 
 };
 
@@ -573,16 +566,17 @@ cd.init()
 c= cd.CD(0)
 c.isReady()
 c.getProperties()
-f= c.open( 'Title 01.vob' )
+f= c.open( 'Title 01' )
+p= f.getProperties()
 s= ' '
 f1= open( 'test.vob', 'wb' )
 while len( s )> 0:
   s= f.read( 2000000 )
   f1.write( s )
 
-f1.close()
+f1.close() 
 
-toc= c.getTOC()
+toc= c.getTOC() 
 tr0= c.open( "d:\\Track 01" )
 s= tr0.read( 400000 )
 

@@ -54,6 +54,8 @@ char* PYDOC=
 #define YEAR "year"
 #define ALBUM "album"
 #define TRACK "track"
+#define COPYRIGHT "copyright"
+#define COMMENT "comment"
 #define SAMPLE_RATE "sample_rate"
 #define BITRATE "bitrate"
 #define CHANNELS "channels"
@@ -63,30 +65,48 @@ char* PYDOC=
 #define OLD_SAMPLE_RATE "old_sample_rate"
 #define OLD_CHANNELS "old_channels"
 #define DATA "data"
+#define EXTENSION "ext"
 
 #define DECODE "decode"
 #define ENCODE "encode"
 #define HAS_HEADER "hasHeader"
-#define GET_HEADER "getHeader"
+#define SET_INFO "setInfo"
 #define GET_INFO "getInfo"
 #define GET_CODEC_ID "getCodecId"
 #define GET_PARAMS "getParams"
+#define RESET_NAME "reset"
+#define MUX_NAME "mux"
+#define FLUSH_NAME "flush"
+
+#define FRAME_DOC \
+	"frame is an object that stores data about audio frame in PCM format. Possible members are:\n" \
+	"\t"SAMPLE_RATE"\n"\
+	"\t"BITRATE"\n"\
+	"\t"CHANNELS"\n"\
+	"\t"DATA"\n"
 
 #define CONVERT_DOC \
 	DECODE"( fragment ) -> audio_frame\n \
 	Convert audio compressed data into pcm fragment. \n\
-	Returns list of audio frame. Frame has the following members available:\n" \
-	"\t"SAMPLE_RATE"\n" \
-	"\t"BITRATE"\n" \
-	"\t"CHANNELS"\n" \
-	"\t"DATA"\n"
+	Returns list of audio frames. "FRAME_DOC
 
 #define HAS_HEADER_DOC \
 	HAS_HEADER"() -> { true | false }\n \
 	Returns whether header presented or not\n"
 
-#define GET_HEADER_DOC \
-	GET_HEADER"() -> header_str\n Returns stream header if any\n"
+#define SET_INFO_DOC \
+	SET_INFO"( { 'album': .., 'artist',.. }) -> \n \
+	Sets the header for the compressed file. The following supported at the moment:\n \
+	album, artist, year, track, title, comment, copyright\n"
+
+#define MUX_DOC \
+	MUX_NAME"( [ strings ] ) -> header_str\nReturns stream data as string from the list of frames\n"
+
+#define FLUSH_DOC \
+	FLUSH_NAME"() -> str\nReturns last stream data\n"
+
+#define RESET_DOC \
+	RESET_NAME"() -> None\nReset current state of codec\n"
 
 #define GET_INFO_DOC \
 	  GET_INFO"() -> info\n\
@@ -104,6 +124,7 @@ Return all information known by the codec as a dictionary. Predefined dictionary
 		"The following methods available:\n" \
 		"\t"CONVERT_DOC \
 		"\t"HAS_HEADER_DOC \
+		"\t"RESET_DOC \
 		"\t"GET_INFO_DOC
 
 #define ENCODER_DOC \
@@ -124,13 +145,6 @@ Return all information known by the codec as a dictionary. Predefined dictionary
 
 #define GET_CODEC_ID_DOC \
 	GET_CODEC_ID"(name) - returns internal numerical codec id for its name"
-
-#define FRAME_DOC \
-	"frame is an object that stores data about audio frame in PCM format. Possible members are:\n" \
-	"\t"SAMPLE_RATE"\n"\
-	"\t"BITRATE"\n"\
-	"\t"CHANNELS"\n"\
-	"\t"DATA"\n"
 
 #define RETURN_NONE return (Py_INCREF(Py_None), Py_None); 
 
@@ -206,6 +220,7 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 		}
 		stBuf->buf_ptr= stBuf->buffer;
 		stBuf->buf_end= stBuf->buffer+ iSize;
+		stBuf->pos= 0;
 		memcpy( stBuf->buf_ptr, s, iSize );
 	}
 	else
@@ -223,6 +238,7 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 			memcpy( stBuf->buffer, stBuf->buf_ptr, i );
 			memcpy( stBuf->buffer+ i, s, iSize );
 			stBuf->buf_end= stBuf->buffer+ i+ iSize;
+			stBuf->pos= 0;
 			av_free( bufTmp );
 		}
 		else
@@ -230,6 +246,7 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 			memmove( stBuf->buffer, stBuf->buf_ptr, i );
 			memcpy( stBuf->buffer+ i, s, iSize );
 			stBuf->buf_end= stBuf->buffer+ i+ iSize;
+			stBuf->pos= 0;
 		}
 		stBuf->buf_ptr= stBuf->buffer;
 	}
@@ -240,10 +257,10 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 int SetStructVal( int* pVal, PyObject* cObj, char* sKey )
 {
 	PyObject* obj =PyDict_GetItemString(cObj,sKey);
-	if (obj && PyInt_Check(obj))
-		*pVal= PyInt_AsLong(obj);
-	else
+	if (!obj && PyInt_Check(obj))
 	  return 0;
+
+	*pVal= PyInt_AsLong(obj);
 	return 1;
 }
 
@@ -253,6 +270,7 @@ int SetAttribute( PyObject* cDict, char* sKey, int iVal )
 	PyObject* cVal= PyInt_FromLong( iVal );
 	if( !cVal )
 		return 0;
+
 	PyDict_SetItemString( cDict, sKey, cVal );
 	Py_DECREF( cVal );
 	return 1;
@@ -293,6 +311,7 @@ static PyObject * Codec_GetID( PyACodecObject* obj, PyObject *args)
 	AVCodec *p;
 	PyObject* cRes=NULL;
 	char *sName=NULL;
+	int i= 0;
 
 	if (!PyArg_ParseTuple(args, "s", &sName ))
 		return NULL;
@@ -302,12 +321,9 @@ static PyObject * Codec_GetID( PyACodecObject* obj, PyObject *args)
 		p = avcodec_find_decoder_by_name(sName);
 
 	if (p)
-	{
-		cRes = Py_BuildValue("i",p->id);
-		return cRes;
-	}
-	else
-		RETURN_NONE
+		i= p->id;
+
+	return PyInt_FromLong( i );
 }
 // ---------------------------------------------------------------------------------
 static PyObject *
@@ -444,11 +460,22 @@ PyTypeObject FrameType =
 
 
 // ---------------------------------------------------------------------------------
+static PyObject * Decoder_Reset( PyACodecObject* obj)
+{
+	if( obj->cCodec->codec->resync )
+		obj->cCodec->codec->resync( obj->cCodec );
+
+	free_mem_buffer( &obj->ic.pb );
+	RETURN_NONE
+}
+
+
+// ---------------------------------------------------------------------------------
 static PyObject *
 Decoder_Convert2PCM( PyACodecObject* obj, PyObject *args)
 {
 	unsigned char* sData;
-	int iLen, iRet= 0, out_size, size, len, iLeft, i= 0;
+	int iLen, iRet= 0, out_size, size, iLeft, i= 0, bitRate= 0, iFrames= 0;
 	UINT8 *inbuf_ptr;
 	if (!PyArg_ParseTuple(args, "s#:decode", &sData, &iLen ))
 		return NULL;
@@ -516,23 +543,38 @@ Decoder_Convert2PCM( PyACodecObject* obj, PyObject *args)
 				}
 				// Decode frame
 				out_size= 0;
-				len= obj->codec->decode( obj->cCodec,
+				iRet= obj->codec->decode( obj->cCodec,
 						obj->pBuf + obj->iBufLen - iLeft,
 						&out_size,
 						inbuf_ptr,
 						size );
-				if( len > 0 )
+				if( iRet > 0 )
 				{
-					size-= len;
-					inbuf_ptr+= len;
+					size-= iRet;
+					inbuf_ptr+= iRet;
 				}
-				// Hmm. If we not doing break here it could be endless loop,
+				// Hmm. If we are not doing break here it could be endless loop,
 				// from the other hand we may lose some data...
 				//else
 				//	break;
+				if( iRet< 0 )
+				{
+					if( iRet== -1 )
+					{
+						// We just need more data, rewind back to the beginning of the packet
+						url_fseek( &obj->ic.pb, -size, SEEK_CUR );
+						iRet= 0;
+					}
+					break;
+				}
 
-				if (out_size > 0)
+				// Skip one frame after reset
+				if ( out_size > 0 )
+				{
+					bitRate+= obj->cCodec->bit_rate;
+					iFrames++;
 					iLeft-= out_size;
+				}
 			}
 		}
 		// Exit loop when only one packet in the input
@@ -560,6 +602,7 @@ Decoder_Convert2PCM( PyACodecObject* obj, PyObject *args)
 	}
 
 	// Return the result
+	if( obj->iBufLen- iLeft )
 	{
 		PyObject* cRes;
 		PyAFrameObject *cFrame= (PyAFrameObject*)PyObject_New( PyAFrameObject, &FrameType );
@@ -570,19 +613,26 @@ Decoder_Convert2PCM( PyACodecObject* obj, PyObject *args)
 		if( !cRes )
 			return NULL;
 
-		cFrame->bit_rate= obj->cCodec->bit_rate;
+		cFrame->bit_rate= bitRate/ iFrames ; //obj->cCodec->bit_rate;
 		cFrame->sample_rate=	obj->cCodec->sample_rate;
 		cFrame->bits_per_sample= obj->cCodec->bits_per_sample;
 		cFrame->channels= obj->cCodec->channels;
 		cFrame->cData= cRes;
 		return (PyObject*)cFrame;
 	}
+	RETURN_NONE
 }
 
 // ---------------------------------------------------------------------------------
 // List of all methods for the wmadecoder
 static PyMethodDef decoder_methods[] =
 {
+	{
+		RESET_NAME,
+		(PyCFunction)Decoder_Reset,
+		METH_NOARGS,
+		RESET_DOC
+	},
 	{
 		DECODE,
 		(PyCFunction)Decoder_Convert2PCM,
@@ -649,6 +699,130 @@ static PyObject* ACodec_GetFrameSize( PyACodecObject* obj)
 }
 
 // ---------------------------------------------------------------------------------
+static PyObject* ACodec_Mux( PyACodecObject* obj, PyObject *args)
+{
+	PyObject* cInfo = NULL;
+	PyObject *cData; 
+	int iCount, i;
+	if (!PyArg_ParseTuple(args, "O:"MUX_NAME, &cData ))
+		return NULL;
+
+	if( !PySequence_Check( cData ))
+	{
+		PyErr_SetString(g_cErr, MUX_NAME" accepts only sequence type as parameter. " );
+		return NULL;
+	}
+
+	// Check if file format was chosen through the extension
+	if( !obj->ic.oformat )
+	{
+		PyErr_SetString(g_cErr, "The format in which muxer will work is not chosen when you created Encoder. \n"
+														"Parameters should include 'ext' which will define the output format\n"
+														"You should create the encoder with correct parameters in order to use '"MUX_NAME"()' function" );
+		return NULL;
+	}
+
+	if( !obj->iTriedHeader )
+	{
+		// Process header into the internal buffer
+		init_put_byte( &obj->ic.pb );
+		if( obj->ic.oformat->write_header )
+			obj->ic.oformat->write_header( &obj->ic );
+		obj->iTriedHeader= 1;
+	}
+	// Start muxing frames
+	iCount= PySequence_Size( cData );
+	for( i= 0; i< iCount; i++ )
+	{
+		PyObject *cS= PySequence_GetItem( cData, i );
+		if( PyString_Check( cS ) )
+		{
+			if( obj->ic.oformat->write_packet )
+				obj->ic.oformat->write_packet( &obj->ic, 0, PyString_AsString( cS ), PyString_Size( cS ), 0 );
+		}
+		else
+		{
+			PyErr_Format(g_cErr, "Element at index %d is not a string. Muxing of elementary audio streams can accept strings only.", i );
+			return NULL;
+		}
+	}
+	// Make the resulting string
+	i= (int)url_ftell( &obj->ic.pb );
+	url_fseek( &obj->ic.pb, 0, SEEK_SET );
+	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject* ACodec_SetInfo( PyACodecObject* obj, PyObject *args)
+{
+	PyObject* cInfo = NULL;
+	PyObject* cTmp; 
+	if (!PyArg_ParseTuple(args, "O!:"SET_INFO, &PyDict_Type, &cInfo ))
+		return NULL;
+
+	// Start parsing the info and feeding it to the codec
+	cTmp= PyDict_GetItemString( cInfo, AUTHOR );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.author, PyString_AsString( cTmp ), i );
+		obj->ic.author[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, TITLE );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.title, PyString_AsString( cTmp ), i );
+		obj->ic.title[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, YEAR );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.year, PyString_AsString( cTmp ), i );
+		obj->ic.year[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, ALBUM );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.album, PyString_AsString( cTmp ), i );
+		obj->ic.album[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, TRACK );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.track, PyString_AsString( cTmp ), i );
+		obj->ic.track[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, COPYRIGHT );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.copyright, PyString_AsString( cTmp ), i );
+		obj->ic.copyright[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, COMMENT );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.comment, PyString_AsString( cTmp ), i );
+		obj->ic.comment[ ++i ]= 0;
+	}
+	
+	obj->ic.has_header= 1;
+	obj->iTriedHeader= 0;
+	RETURN_NONE
+}
+
+// ---------------------------------------------------------------------------------
 static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 {
 	PyObject* cRes = NULL;
@@ -707,6 +881,19 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 }
 
 // ---------------------------------------------------------------------------------
+static PyObject* ACodec_Flush( PyACodecObject* obj)
+{
+	int i;
+	if( obj->ic.oformat->write_packet )
+		obj->ic.oformat->write_trailer( &obj->ic );
+
+	// Make the resulting string
+	i= (int)url_ftell( &obj->ic.pb );
+	url_fseek( &obj->ic.pb, 0, SEEK_SET );
+	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
+}
+
+// ---------------------------------------------------------------------------------
 // List of all methods for the wmadecoder
 static PyMethodDef encoder_methods[] =
 {
@@ -717,10 +904,28 @@ static PyMethodDef encoder_methods[] =
 		ENCODE_DOC
 	},
 	{
+		SET_INFO,
+		(PyCFunction)ACodec_SetInfo,
+		METH_VARARGS,
+		SET_INFO_DOC
+	},
+	{
 		GET_PARAMS,
 		(PyCFunction)Codec_GetParams,
 		METH_NOARGS,
 		GET_PARAM_DOC
+	},
+	{
+		MUX_NAME,
+		(PyCFunction)ACodec_Mux,
+		METH_VARARGS,
+		MUX_DOC
+	},
+	{
+		FLUSH_NAME,
+		(PyCFunction)ACodec_Flush,
+		METH_NOARGS,
+		FLUSH_DOC
 	},
 	{ NULL, NULL },
 };
@@ -755,9 +960,10 @@ static void ACodecClose( PyACodecObject *acodec )
 }
 
 // ---------------------------------------------------------------------------------
-static PyObject* CreateNewPyACodec(AVInputFormat *fmt, int bDecoder)
+static PyObject* CreateNewPyACodec(void *fmt, int bDecoder)
 {
 	// Create new decoder
+	int iSize= 0;
 	PyACodecObject* acodec= PyObject_New( PyACodecObject, ( bDecoder ) ? &DecoderType: &EncoderType );
 	if( !acodec )
 		return NULL;
@@ -767,7 +973,18 @@ static PyObject* CreateNewPyACodec(AVInputFormat *fmt, int bDecoder)
 	memset( &acodec->pkt, 0, sizeof(acodec->pkt));
 	acodec->cCodec= NULL;
 	//acodec->codec= NULL;
-	acodec->ic.iformat = fmt;
+	if( bDecoder )
+	{
+		acodec->ic.iformat = fmt;
+		if( fmt )
+			iSize= ((AVInputFormat*)fmt)->priv_data_size;
+	}
+	else
+	{
+		acodec->ic.oformat = fmt;
+		if( fmt )
+			iSize= ((AVOutputFormat*)fmt)->priv_data_size;
+	}
 	acodec->pBuf= 0;
 	acodec->iTriedHeader= 0;
 	acodec->iBufLen= 0;
@@ -775,9 +992,9 @@ static PyObject* CreateNewPyACodec(AVInputFormat *fmt, int bDecoder)
 	memset( &acodec->stInBuf,0,sizeof(ByteIOContext));
 
 	// allocate private data
-	if( fmt && fmt->priv_data_size )
+	if( fmt && iSize )
 	{
-		acodec->ic.priv_data = av_mallocz(fmt->priv_data_size);
+		acodec->ic.priv_data = av_mallocz(iSize);
 		if (!acodec->ic.priv_data)
 		{
 			PyErr_SetString(g_cErr, "Cannot allocate memory for codec parameters" );
@@ -794,7 +1011,8 @@ CodecByParamsNew( PyObject* cParams, int bDecoder )
 	// Find appropriate codec by its parameters passed as dictionary
 	AVCodec *p;
 	int iId;
-	PyObject* cId;
+	PyObject* cId, *cExt;
+	void *fmt= NULL;
 	if( !PyDict_Check( cParams ) )
 	{
 		PyErr_Format(g_cErr, "Codec(): First parameter should be dict (codec id and params)" );
@@ -808,6 +1026,32 @@ CodecByParamsNew( PyObject* cParams, int bDecoder )
 		return NULL;
 	}
 
+	cExt= PyDict_GetItemString( cParams, EXTENSION );
+	if( cExt )
+	{
+		char* s= PyString_AsString( cExt );
+		if( bDecoder )
+		{
+			AVInputFormat *fmt1;
+			for( fmt1= first_iformat; fmt1 != NULL; fmt1 = fmt1->next)
+				if ( strstr( fmt1->extensions, s ))
+				{
+					fmt= fmt1;
+					break;
+				}
+		}
+		else
+		{
+			AVOutputFormat *fmt1;
+			for( fmt1= first_oformat; fmt1 != NULL; fmt1 = fmt1->next)
+				if ( strstr( fmt1->extensions, s ))
+				{
+					fmt= fmt1;
+					break;
+				}
+		}
+	}
+
 	iId= PyInt_AsLong( cId );
 	if( bDecoder )
 		p = avcodec_find_decoder((enum CodecID)iId);
@@ -817,7 +1061,7 @@ CodecByParamsNew( PyObject* cParams, int bDecoder )
 	if( p )
 	{
 		// Create new acodec
-		PyACodecObject* acodec= (PyACodecObject*)CreateNewPyACodec(NULL, bDecoder );
+		PyACodecObject* acodec= (PyACodecObject*)CreateNewPyACodec(fmt, bDecoder );
 		// cleanup acodec data
 		memset( &acodec->stInBuf,0,sizeof(ByteIOContext));
 
@@ -988,7 +1232,7 @@ PyTypeObject EncoderType =
 static PyMethodDef pympg_methods[] =
 {
 	{
-		"getCodecID",
+		GET_CODEC_ID,
 		(PyCFunction)Codec_GetID,
 		METH_VARARGS,
 		GET_CODEC_ID_DOC
@@ -1022,8 +1266,8 @@ initacodec(void)
   ogg_init();
 #endif
 #ifdef CONFIG_FAAD
-	//register_avcodec(&mpeg4aac_decoder);
-	//register_avcodec(&aac_decoder);
+	register_avcodec(&mpeg4aac_decoder);
+	register_avcodec(&aac_decoder);
 #endif
 #if CONFIG_MP3LAME
 	register_avcodec(&mp3lame_encoder);
@@ -1031,6 +1275,7 @@ initacodec(void)
 
   asf_init();
   raw_init();
+  mov_init();
 
 	PyModule_AddStringConstant(m, "__doc__", PYDOC );
 	PyModule_AddStringConstant(m, "version", PYVERSION );
@@ -1111,26 +1356,29 @@ print dec.hasHeader()
 print dec.getInfo()
 print r.sample_rate
 
-
-	# test codec with encoder
-def encode():
+# test codec with encoder
+def encode( codec ):
+	import time
 	import pymedia.audio.acodec as acodec
-	codec= 'mp2'
-	parms= {'channels': 2, 'sample_rate': 44100, 'bitrate': 128000, 'id': acodec.getCodecID(codec)}
+	t= time.time()
+	parms= {'channels': 2, 'sample_rate': 44100, 'bitrate': 128000, 'id': acodec.getCodecId(codec), 'ext': codec}
 	enc= acodec.Encoder( parms )
 	f= open( 'c:\\music\\Roots.pcm', 'rb' )
 	f1= open( 'c:\\music\\test_enc.'+ codec, 'wb' )
 	s= f.read( 300000 )
+	enc.setInfo( { 'album': 'Test album', 'artist': 'Test artist', 'title': 'Test title', 'track': '23', 'year': '1985', 'comment': 'No words, just cool', 'copyright': 'Free for everyone' } )
 	while len( s ):
 		frames= enc.encode( s )
-		#for fr in frames:
-		#	f1.write( fr )
-		s= f.read( 300000 )
+		f1.write( enc.mux( frames ) )
+		s= f.read( 30000 )
+	
+	print 'Done in %.02f seconds' % ( time.time()- t )
+	f1.write( enc.flush() )
 	f.close()
 	f1.close()
 
-encode()
-
+encode( 'mp3' )
+ 
 def aplayer( name ):
 	import pymedia.audio.acodec as acodec
 	import pymedia.audio.sound as sound
@@ -1138,18 +1386,24 @@ def aplayer( name ):
 	dec= acodec.Decoder( str.split( name, '.' )[ -1 ].lower() )
 	f= open( name, 'rb' )
 	snd= None
-	s= f.read( 50000 )
+	s= f.read( 32000 )
 	while len( s ):
 		r= dec.decode( s )
-		if snd== None:
-			print 'Opening sound with %d channels' % r.channels
-			snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
-		snd.play( r.data )
+		if r:
+			if snd== None:
+				print 'Opening sound with %d channels' % r.channels
+				snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
+				print dec.hasHeader(), dec.getInfo()
+			
+			snd.play( r.data )
+			#f.seek( 5* r.bitrate/ 8, 1 ) 
+			#dec.reset()
+		
 		s= f.read( 512 )
 	
 	while snd.isPlaying():
 	  time.sleep( .05 )
 
-aplayer( 'c:\\music\\Test\\test.wma' )
+aplayer( "c:\\music\\Sila uma\\12-get_down_320_.OGG"  )
 
 */

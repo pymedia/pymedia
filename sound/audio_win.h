@@ -34,26 +34,25 @@ static void CALLBACK wave_callback(HWAVE hWave, UINT uMsg, DWORD dwInstance, DWO
 static void CALLBACK iwave_callback(HWAVE hWave, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2);
 
 // *****************************************************************************************************
-// Input device enumerator
+// generic error handler for all classes below
 // *****************************************************************************************************
-class InputDevices
+class DeviceHandler
 {
-private:
-	UINT iDevs;
-	char sName[ 512 ];
+protected:
 	char sErr[ 512 ];
-	WAVEINCAPS pCaps;
+	int iErr;
 
 	// ----------------------------------------------
 	void FormatError()
 	{
 		LPVOID lpMsgBuf;
+		this->iErr= GetLastError();
 		FormatMessage(
 				FORMAT_MESSAGE_ALLOCATE_BUFFER |
 				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
-				GetLastError(),
+				this->iErr,
 				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 				(LPTSTR) &lpMsgBuf,
 				0,
@@ -61,6 +60,22 @@ private:
 		);
 		strcpy( this->sErr, (char*)lpMsgBuf );
 	}
+public:
+	DeviceHandler(){ this->iErr= 0; }
+	int GetLastError(){ return this->iErr; }
+	char* GetErrorString(){ return this->sErr; }
+
+};
+
+// *****************************************************************************************************
+// Input device enumerator
+// *****************************************************************************************************
+class InputDevices : DeviceHandler
+{
+private:
+	UINT iDevs;
+	char sName[ 512 ];
+	WAVEINCAPS pCaps;
 
 	// ----------------------------------------------
 	bool RefreshDevice( int i )
@@ -232,90 +247,36 @@ public:
 };
 
 // *****************************************************************************************************
-// Mixer line
+// Mixer devices enumerator/holder
 // *****************************************************************************************************
-/*
-class MixerLine
+class Mixer : public DeviceHandler
 {
 private:
-	HMIXER mixer;
-	MIXERLINE line;
-
-public:
-	// ----------------------------------------------
-	MixerLine( HMIXER mixer, int iLine )
-	{
-		this->mixer= mixer;
-		line.cbStruct= sizeof( MIXERLINE );
-		line.dwDestination= j;
-
-		if( mixerGetLineInfo( (HMIXEROBJ)mixer, &line, MIXER_GETLINEINFOF_DESTINATION  )== MMSYSERR_NOERROR )
-		{
-			// create enough structures for line control
-			MIXERCONTROL *p= (MIXERCONTROL*)malloc( sizeof( MIXERCONTROL )* line.cControls );
-			MIXERLINECONTROLS controls;
-			controls.cbStruct= sizeof( MIXERLINECONTROLS );
-			controls.dwLineID= line.dwLineID;
-			controls.cControls= line.cControls;
-			controls.cbmxctrl= sizeof( MIXERCONTROL );
-			controls.pamxctrl= p;
-			printf("Destination #%lu = %s\n", i, line.szName);
-			int numSrc= line.cConnections;
-			for( int k= 0; k< numSrc; k++ )
-			{
-				line.cbStruct= sizeof(MIXERLINE);
-				line.dwDestination= j;
-				line.dwSource= k;
-				if( mixerGetLineInfo( (HMIXEROBJ)mixer, &line, MIXER_GETLINEINFOF_SOURCE )== MMSYSERR_NOERROR )
-				{
-	}
-
-	// ----------------------------------------------
-	GetControlsCount()
-	{
-	}
-
-};
-
-// *****************************************************************************************************
-// Mixer devices enumerator
-// *****************************************************************************************************
-class MixerDevices
-{
-private:
-	UINT iDevs;
 	char sName[ 512 ];
-	char sErr[ 512 ];
-	WAVEOUTCAPS pCaps;
+	int iDest;
+	int iConn;
+	int iControl;
+	MIXERCAPS pCaps;
+	HMIXEROBJ mixer;
+	MIXERLINE pDest;
+	MIXERLINE pConn;
+	int iMixer;
+	MIXERCONTROL astConnectionControls[ 20 ];
+	MIXERCONTROL astControls[20];
 
-	// ----------------------------------------------
-	void FormatError()
-	{
-		LPVOID lpMsgBuf;
-		FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				GetLastError(),
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-				(LPTSTR) &lpMsgBuf,
-				0,
-				NULL
-		);
-		strcpy( this->sErr, (char*)lpMsgBuf );
-	}
+	MIXERLINECONTROLS  mixerLineControls;
 
+/*
 	// ----------------------------------------------
-	bool RefreshDevice( int i )
+	void RefreshDevice( int i )
 	{
-		HMIXEROBJ tmp_mixer;
-		if( mixerOpen( &mixer, i, 0, NULL, MIXER_OBJECTF_MIXER )== MMSYSERR_NOERROR )
+		HMIXEROBJ mixer;
+		if( mixerOpen( (LPHMIXER)&mixer, i, 0, NULL, MIXER_OBJECTF_MIXER )== MMSYSERR_NOERROR )
 		{
 			MIXERCAPS  mixcaps;
 			if( mixerGetDevCaps((UINT)mixer, &mixcaps, sizeof(MIXERCAPS))== MMSYSERR_NOERROR )
 			{
-				for( int j= 0; j< mixcaps.cDestinations; j++ )
+				for( int j= 0; j< (int)mixcaps.cDestinations; j++ )
 				{
 
 					MIXERLINE line;
@@ -352,7 +313,7 @@ private:
 									mixerLineControls.cbmxctrl = sizeof(MIXERCONTROL);
 									if( mixerGetLineControls((HMIXEROBJ)mixer, &mixerLineControls, MIXER_GETLINECONTROLSF_ALL)== MMSYSERR_NOERROR )
 									{
-										for( int l= 0; l< line.cControls; l++ )
+										for( int l= 0; l< (int)line.cControls; l++ )
 										{
 											printf( "\t\t%s=", mixerControlArray[l].szName );
 											// Get the value for the control
@@ -378,63 +339,262 @@ private:
 				}
 			}
 		}
+	}
+*/
+	// ----------------------------------------------
+	bool RefreshDestination( int iDest )
+	{
+		if( iDest== this->iDest )
+			return true;
+		
+		this->pDest.cbStruct= sizeof( MIXERLINE );
+		this->pDest.dwDestination= iDest;
+		this->iDest= iDest;
 
+		if( mixerGetLineInfo( (HMIXEROBJ)this->mixer, &this->pDest, MIXER_GETLINEINFOF_DESTINATION  )!= MMSYSERR_NOERROR )
+		{
+			this->FormatError();
+			return false;
+		}
+
+		return true;
+	}
+
+	// ----------------------------------------------
+	bool RefreshConnection( int iDest, int iConn )
+	{
+		this->RefreshDestination( iDest );
+		if( iConn== this->iConn )
+			return true;
+
+		MIXERLINECONTROLS controls;
+		controls.cbStruct= sizeof( MIXERLINECONTROLS );
+		controls.dwLineID= this->pDest.dwLineID;
+		controls.cControls= ( this->pDest.cControls > sizeof( this->astConnectionControls ) ? sizeof( this->astConnectionControls ): this->pDest.cControls );
+		controls.cbmxctrl= sizeof( MIXERCONTROL );
+		controls.pamxctrl= &this->astConnectionControls[ 0 ];
+		int numSrc= this->pDest.cConnections;
+		this->iConn= iConn;
+
+		this->pConn.cbStruct= sizeof(MIXERLINE);
+		this->pConn.dwDestination= iDest;
+		this->pConn.dwSource= iConn;
+		if( mixerGetLineInfo( (HMIXEROBJ)this->mixer, &this->pConn, MIXER_GETLINEINFOF_SOURCE )!= MMSYSERR_NOERROR )
+		{
+			this->FormatError();
+			return false;
+		}
+
+		// Get controls info
+		MIXERLINECONTROLS  mixerLineControls;
+		mixerLineControls.cbStruct = sizeof(MIXERLINECONTROLS);
+		mixerLineControls.cControls = ( this->pConn.cControls > sizeof( this->astConnectionControls ) ? sizeof( this->astConnectionControls ): this->pConn.cControls );
+		mixerLineControls.dwLineID = this->pConn.dwLineID;
+		mixerLineControls.pamxctrl = &this->astControls[0];
+		mixerLineControls.cbmxctrl = sizeof(MIXERCONTROL);
+		if( mixerGetLineControls((HMIXEROBJ)this->mixer, &mixerLineControls, MIXER_GETLINECONTROLSF_ALL)!= MMSYSERR_NOERROR )
+		{
+			this->FormatError();
+			return false;
+		}
+		
+		return true;
 	}
 
 public:
 	// ----------------------------------------------
-	MixerDevices()
+	Mixer( int i ) : DeviceHandler()
 	{
-		this->iDevs= waveOutGetNumDevs();
+		this->iMixer= i;
+		this->iDest= this->iConn= this->iControl= -1;
+//RefreshDevice( 0 );
+		if( mixerOpen( (LPHMIXER)&this->mixer, i, 0, NULL, MIXER_OBJECTF_MIXER )== MMSYSERR_NOERROR )
+			if( mixerGetDevCaps((UINT)this->mixer, &this->pCaps, sizeof(MIXERCAPS))== MMSYSERR_NOERROR )
+				return;
+
+		this->FormatError();
 	}
 	// ----------------------------------------------
-	int Count(){ return this->iDevs; }
+	~Mixer()
+	{
+		mixerClose( (HMIXER)this->mixer );
+	}
 	// ----------------------------------------------
 	char* GetName( int i )
 	{
-		if( !this->RefreshDevice( i ) )
-			return NULL;
-
 		strcpy( this->sName, this->pCaps.szPname );
 		return this->sName;
 	}
 	// ----------------------------------------------
 	char* GetMID( int i )
 	{
-		if( !this->RefreshDevice( i ) )
-			return NULL;
-
 		sprintf( this->sName, "%x", this->pCaps.wMid );
 		return this->sName;
 	}
 	// ----------------------------------------------
 	char* GetPID( int i )
 	{
-		if( !this->RefreshDevice( i ) )
-			return NULL;
-
 		sprintf( this->sName, "%x", this->pCaps.wPid );
 		return this->sName;
 	}
 	// ----------------------------------------------
-	int GetLines( int i )
+	int GetDestinationsCount()
 	{
-		if( !this->RefreshDevice( i ) )
-			return -1;
-
-		return this->pCaps.wChannels;
+		return this->pCaps.cDestinations;
 	}
 	// ----------------------------------------------
-	int GetControls( int i )
+	char* GetDestinationName( int iDest )
 	{
-		if( !this->RefreshDevice( i ) )
+		this->RefreshDestination( iDest );
+		return this->pDest.szName;
+	}
+	// ----------------------------------------------
+	// Return number of sources under destination iDest
+	int GetConnectionsCount( int iDest )
+	{
+		this->RefreshDestination( iDest );
+		return this->pDest.cConnections;
+	}
+	// ----------------------------------------------
+	// Return number of sources under destination iDest
+	char* GetConnectionName( int iDest, int iConn )
+	{
+		this->RefreshConnection( iDest, iConn );
+		return this->pConn.szName;
+	}
+	// ----------------------------------------------
+	// Return number of lines attached to the connection
+	int GetControlsCount( int iDest, int iConn )
+	{
+		this->RefreshConnection( iDest, iConn );
+		return this->pConn.cControls;
+	}
+	// ----------------------------------------------
+	// Return control value
+	int GetControlValue( int iDest, int iConn, int iControl, int iChannel, int *piValues )
+	{
+		MIXERCONTROLDETAILS_UNSIGNED value[ 20 ];
+		MIXERCONTROLDETAILS          mixerControlDetails;
+		MMRESULT											res;
+		
+		this->RefreshConnection( iDest, iConn );
+		if( iControl>= this->GetControlsCount( iDest, iConn ) || iControl< 0 )
 			return -1;
 
-		return this->pCaps.dwFormats;
+		if( iChannel< -1 || iChannel>= (int)this->pConn.cChannels )
+		{
+			sprintf( this->sErr, "Control has %d channels whereas %d was specified", this->pConn.cChannels, iChannel );
+			this->iErr= 505;
+			return -1;
+		}
+
+		mixerControlDetails.cbStruct = sizeof(MIXERCONTROLDETAILS);
+		mixerControlDetails.dwControlID = this->astControls[ iControl ].dwControlID;
+		mixerControlDetails.cChannels = this->pConn.cChannels;
+		mixerControlDetails.cMultipleItems = 0;
+		mixerControlDetails.paDetails = &value;
+		mixerControlDetails.cbDetails = sizeof(MIXERCONTROLDETAILS_UNSIGNED);
+		res= mixerGetControlDetails((HMIXEROBJ)this->mixer, &mixerControlDetails, MIXER_GETCONTROLDETAILSF_VALUE);
+		if ( res!= MMSYSERR_NOERROR )
+		{
+			this->FormatError();
+			return -1;
+		}
+
+		int iRet= 0;
+		if( iChannel== -1 )
+			// loop through all channels
+			while( iRet< (int)this->pConn.cChannels )
+				piValues[ iRet ]= value[ iRet ].dwValue, iRet++;
+		else
+			piValues[ 0 ]= value[ iChannel ].dwValue, iRet++;
+
+		return iRet;
+	}
+
+		// ----------------------------------------------
+	// Return control value
+	bool SetControlValue( int iDest, int iConn, int iControl, int iChannel, int iValue )
+	{
+		MIXERCONTROLDETAILS_UNSIGNED value[ 20 ];
+		MIXERCONTROLDETAILS          mixerControlDetails;
+		
+		this->RefreshConnection( iDest, iConn );
+		if( iControl>= this->GetControlsCount( iDest, iConn ) || iControl< 0 )
+			return true;
+
+		if( iChannel< -1 || iChannel>= (int)this->pConn.cChannels )
+		{
+			sprintf( this->sErr, "Control has %d channels whereas %d was specified", this->pConn.cChannels, iChannel );
+			this->iErr= 505;
+			return false;
+		}
+
+		mixerControlDetails.cbStruct = sizeof(MIXERCONTROLDETAILS);
+		mixerControlDetails.dwControlID = this->astControls[ iControl ].dwControlID;
+		mixerControlDetails.cChannels = this->pConn.cChannels;
+		mixerControlDetails.cMultipleItems = 0;
+		mixerControlDetails.paDetails = &value;
+		mixerControlDetails.cbDetails = sizeof(MIXERCONTROLDETAILS_UNSIGNED);
+
+		if( iChannel== -1 || mixerGetControlDetails((HMIXEROBJ)this->mixer, &mixerControlDetails, MIXER_GETCONTROLDETAILSF_VALUE)== MMSYSERR_NOERROR )
+		{
+			if( iChannel== -1 )
+				for( int i= 0; i< (int)this->pConn.cChannels; i++ )
+					value[ i ].dwValue= iValue;
+			else
+				value[ iChannel ].dwValue= iValue;
+
+			if ( mixerSetControlDetails((HMIXEROBJ)this->mixer, &mixerControlDetails, MIXER_SETCONTROLDETAILSF_VALUE)== MMSYSERR_NOERROR )
+				return true;
+		}
+		this->FormatError();
+		return false;
+	}
+
+	// ----------------------------------------------
+	// Return control name
+	char* GetControlName( int iDest, int iConn, int iControl )
+	{
+		this->RefreshConnection( iDest, iConn );
+		if( iControl>= this->GetControlsCount( iDest, iConn ) || iControl< 0 )
+			return 0;
+
+		return this->astControls[ iControl ].szName;
+	}
+	// ----------------------------------------------
+	// Return control selection
+	bool IsActive( int iDest, int iConn, int iControl )
+	{
+		// How to get this value in Windows ?
+		return false;
+	}
+	// ----------------------------------------------
+	// Set control selection
+	bool SetActive( int iDest, int iConn, int iControl )
+	{
+		// How to set this value in Windows ?
+		return true;
+	}
+	// ----------------------------------------------
+	// Return min control value
+	bool GetControlValues( int iDest, int iConn, int iControl, int *piMin, int* piMax, int *piStep, int *piType, int* piChannels  )
+	{
+		this->RefreshConnection( iDest, iConn );
+		if( iControl>= this->GetControlsCount( iDest, iConn ) || iControl< 0 )
+		{
+			return false;
+		}
+
+		*piMin= this->astControls[ iControl ].Bounds.dwMinimum;
+		*piMax= this->astControls[ iControl ].Bounds.dwMaximum;
+		*piStep= this->astControls[ iControl ].Metrics.cSteps;
+		*piType= this->astControls[ iControl ].dwControlType;
+		*piChannels= this->pConn.cChannels;
+		return true;
 	}
 };
 
-*/
 
 // *****************************************************************************************************
 //	Sound stream main class
@@ -452,10 +612,11 @@ private:
 	int format;
 	int iProcessed;
 	int iChannels;
-	int iMute;
 	int iRate;
 	int iBuffers;
 	int iErr;
+	unsigned int iLastPos;
+	int iCorrection;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -506,7 +667,7 @@ public:
 
 		this->iRate= rate;
 		this->format= format;
-		this->iBuffers= this->iProcessed= this->iMute= 0;
+		this->iCorrection= this->iLastPos= this->iBuffers= this->iProcessed= 0;
 		this->bStopFlag= false;
 
 		outFormatex.wFormatTag =
@@ -520,7 +681,7 @@ public:
 		outFormatex.nSamplesPerSec  = rate;
 		outFormatex.nAvgBytesPerSec = outFormatex.nSamplesPerSec * outFormatex.nChannels * outFormatex.wBitsPerSample/8;
 		outFormatex.nBlockAlign     = outFormatex.nChannels * outFormatex.wBitsPerSample/8;
-		res = waveOutOpen( &this->dev, 0, &outFormatex, (DWORD)wave_callback, (DWORD)this, CALLBACK_FUNCTION);
+		res = waveOutOpen( &this->dev, ii, &outFormatex, (DWORD)wave_callback, (DWORD)this, CALLBACK_FUNCTION);
 		if(res != MMSYSERR_NOERROR)
 		{
 			this->iErr= res;
@@ -608,23 +769,6 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	int GetChannels(){ return this->iChannels;	}
 	// ---------------------------------------------------------------------------------------------------
-	int IsMute(){ return this->iMute;	}
-	// ---------------------------------------------------------------------------------------------------
-	void SetMute( bool bMute )
-	{
-		if( bMute )
-		{
-			this->iMute= this->GetVolume();
-			this->SetVolume( 0 );
-		}
-		else
-			if( this->IsMute() )
-			{
-				this->SetVolume( this->iMute );
-				this->iMute= 0;
-			}
-	}
-	// ---------------------------------------------------------------------------------------------------
 	void CompleteBuffer( WAVEHDR *wh )
 	{
 		LONG p;
@@ -637,19 +781,13 @@ public:
 	int Pause()	{	 return ( waveOutPause( this->dev ) ) ? -1: 0; }
 
 	// ---------------------------------------------------------------------------------------------------
-	int GetVolume()
-	{
-		 DWORD dwVolume;
-		 return ( waveOutGetVolume( this->dev, &dwVolume ) ) ? (-1): (int)dwVolume;
-	}
-
-	// ---------------------------------------------------------------------------------------------------
-	int SetVolume(int iVolume ) { return (waveOutSetVolume( this->dev, iVolume )) ? (-1): 0; }
-
-	// ---------------------------------------------------------------------------------------------------
 	int Stop()
 	{
+		EnterCriticalSection( &this->cs );
+		this->iCorrection= this->iLastPos= 0;
 		this->bStopFlag= true;
+		LeaveCriticalSection( &this->cs );
+
 		if( this->dev )
 			waveOutReset( this->dev );
 
@@ -665,15 +803,23 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	float Play(unsigned char *buf,int len)
 	{
-		double dPos= this->GetPosition();
+		MMTIME stTime;
+		stTime.wType= TIME_MS;
+		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
+		double dPos= (double)stTime.u.ms/ this->iRate;
+
 		// Try to fit chunk in remaining buffers
 		while( len> 0 )
 		{
 			WaitForSingleObject( this->hSem, INFINITE );
 			int i= this->iProcessed % MAX_HEADERS;
 			int l= ( len> BUFFER_SIZE ) ? BUFFER_SIZE: len;
+
+			EnterCriticalSection( &this->cs );
 			memcpy( this->headers[ i ].lpData, buf, l );
 			this->headers[ i ].dwBufferLength = l;
+			LeaveCriticalSection( &this->cs );
+
 			buf+= l;
 			len-= l;
 		  if( waveOutWrite( this->dev, &this->headers[ i ], sizeof (WAVEHDR) ) )
@@ -689,7 +835,14 @@ public:
 			this->iBuffers++;
 			LeaveCriticalSection( &this->cs );
 		}
-		return (float)( dPos- this->GetPosition());
+		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
+
+		EnterCriticalSection( &this->cs );
+		this->iLastPos= stTime.u.ms+ this->iCorrection;
+		LeaveCriticalSection( &this->cs );
+
+		double dPos1= (double)stTime.u.ms/ this->iRate;
+		return (float)( dPos- dPos1);
 	}
 
 	// ---------------------------------------------------------------------------------------------------
@@ -697,8 +850,17 @@ public:
 	{
 		MMTIME stTime;
 		stTime.wType= TIME_MS;
+
 		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		return ((double)stTime.u.ms)/ this->iRate;
+		if( (int)stTime.u.ms< (int)this->iLastPos- 10000 )
+		{
+			EnterCriticalSection( &this->cs );
+			this->iCorrection+= 0x7FFFFFF;
+			this->iLastPos= stTime.u.ms+ this->iCorrection;
+			LeaveCriticalSection( &this->cs );
+		}
+
+		return ((double)stTime.u.ms+ this->iCorrection )/ this->iRate;
 	}
 	// ---------------------------------------------------------------------------------------------------
 	float GetLeft()
@@ -707,6 +869,7 @@ public:
 	}
 
 };
+
 
 
 // *****************************************************************************************************
@@ -722,11 +885,11 @@ private:
 	HWAVEIN dev;
 	HANDLE hSem;
 	int format;
-	int iProcessed;
 	int iChannels;
 	int iRate;
-	int iBuffers;
 	int iErr;
+  char databuf [ MAX_HEADERS * BUFFER_SIZE ];
+  int databuf_length;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -754,10 +917,6 @@ public:
 		this->iErr= 0;
 		InitializeCriticalSection(&this->cs);
 
-		this->hSem= CreateSemaphore( NULL, MAX_HEADERS- 1, MAX_HEADERS, NULL );
-		if( !this->hSem )
-			return;
-
 		// No error is set, just do it manually
 		if(rate == -1)
 		{
@@ -774,7 +933,6 @@ public:
 
 		this->iRate= rate;
 		this->format= format;
-		this->iBuffers= this->iProcessed= 0;
 		this->bStopFlag= true;
 
 		inFormatex.wFormatTag = WAVE_FORMAT_PCM;
@@ -784,6 +942,7 @@ public:
 		inFormatex.nSamplesPerSec  = rate;
 		inFormatex.nAvgBytesPerSec = inFormatex.nSamplesPerSec * inFormatex.nChannels * inFormatex.wBitsPerSample/8;
 		inFormatex.nBlockAlign     = inFormatex.nChannels * inFormatex.wBitsPerSample/8;
+		inFormatex.cbSize       	 = 0;
 		res = waveInOpen( &this->dev, iId, &inFormatex, (DWORD)iwave_callback, (DWORD)this, CALLBACK_FUNCTION);
 		if(res != MMSYSERR_NOERROR)
 		{
@@ -799,6 +958,7 @@ public:
 			void* p= malloc( BUFFER_SIZE );
 			if( !p )
 				return;
+			memset(p,0,BUFFER_SIZE);
 			wh->dwBufferLength = BUFFER_SIZE;
 			wh->lpData = (char*)p;
 			wh->dwFlags= 0;
@@ -816,8 +976,6 @@ public:
 	~ISoundStream()
 	{
 		this->Stop();
-		if( this->hSem )
-			CloseHandle( this->hSem );
 
 		if(this->dev)
 		{
@@ -846,20 +1004,21 @@ public:
 		if( wh )
 		{
  			EnterCriticalSection( &this->cs );
-			this->iBuffers++;
-			this->iProcessed++;
+			if (databuf_length<BUFFER_SIZE*MAX_HEADERS)
+			{
+				memcpy( this->databuf+ this->databuf_length, wh->lpData,BUFFER_SIZE);
+				this->databuf_length+=BUFFER_SIZE;
+			}
 			LeaveCriticalSection( &this->cs );
 		}
 
 		if( !this->bStopFlag )
 		{
-			if( WaitForSingleObject( this->hSem, 0 )== WAIT_TIMEOUT )
-				// There is no buffers we can put data into, just bail out
-				return;
-
-			// Submit new buffer for playing if any
-			int i= this->iProcessed % MAX_HEADERS;
-			waveInAddBuffer( this->dev, &this->headers[ i ], sizeof(WAVEHDR) );
+			memset(wh->lpData,0,BUFFER_SIZE);
+			wh->dwFlags = 0;
+			wh->dwBufferLength = BUFFER_SIZE;
+			waveInPrepareHeader( this->dev, wh, sizeof (WAVEHDR));
+			waveInAddBuffer( this->dev, wh, sizeof(WAVEHDR) );
 		}
 	}
 	// ---------------------------------------------------------------------------------------------------
@@ -878,16 +1037,15 @@ public:
 		if( this->bStopFlag )
 		{
 			this->bStopFlag= false;
-			this->iBuffers= 0;
-
 			if( waveInStart( this->dev )!= MMSYSERR_NOERROR )
 			{
 				this->iErr= ::GetLastError();
 				return false;
 			}
 
-			// Submit buffer for grabbing
-			this->CompleteBuffer( NULL );
+			// Submit buffers for grabbing
+			for (int j=0;j<MAX_HEADERS;j++)
+		    waveInAddBuffer( this->dev, &this->headers[ j ], sizeof(WAVEHDR) );
 		}
 		return true;
 	}
@@ -904,31 +1062,20 @@ public:
 	// Get size of the data already in the buffers
 	int GetSize()
 	{
-		return this->iBuffers* BUFFER_SIZE;
+		return this->databuf_length;
 	}
 	// ---------------------------------------------------------------------------------------------------
 	// Return data from the buffers
 	int GetData( char* pData, int iSize )
 	{
-		// Start looping through all buffers until we get the iSize bytes.
-		// Note that we cannot get partial buffer, so iSize always mutliplies by BUFFER_SIZE
-		int iBufs= 0;
-		int i= ( this->iProcessed- this->iBuffers ) % MAX_HEADERS;
-		while( iSize>= BUFFER_SIZE && this->iBuffers )
-		{
-			LONG p;
-			memcpy( pData, this->headers[ i ].lpData, BUFFER_SIZE );
-			i= ( i+ 1 ) % MAX_HEADERS;
-			pData+= BUFFER_SIZE;
-			iSize-= BUFFER_SIZE;
-			iBufs++;
+	  memcpy( pData, databuf, iSize);
+ 		EnterCriticalSection( &this->cs );
+ 		if (databuf_length>iSize)
+ 		  memcpy(databuf,databuf+iSize,databuf_length-iSize);
 
-			ReleaseSemaphore( this->hSem, 1, &p );
- 			EnterCriticalSection( &this->cs );
-			this->iBuffers--;
-			LeaveCriticalSection( &this->cs );
-		}
-		return iBufs* BUFFER_SIZE;
+		databuf_length -= iSize;
+ 		LeaveCriticalSection( &this->cs );
+ 		return iSize;
 	}
 };
 

@@ -10,7 +10,7 @@
 	typedef signed char INT8;
 	typedef signed int INT32;
 
-#	ifdef WIN32
+#if defined( WIN32 ) && !defined( SYS_CYGWIN )
 		typedef signed __int64 INT64;
 		typedef unsigned __int64 UINT64;
 #	else
@@ -18,7 +18,7 @@
 		typedef unsigned long long UINT64;
 #	endif
 
-#    ifdef WIN32
+#if defined( WIN32 ) && !defined( SYS_CYGWIN )
 #        define int64_t_C(c)     (c ## i64)
 #        define uint64_t_C(c)    (c ## i64)
 
@@ -45,7 +45,7 @@
 	typedef signed char INT8;
 	typedef signed int INT32;
 
-#	ifdef WIN32
+#if defined( WIN32 ) && !defined( SYS_CYGWIN )
 		typedef signed __int64 INT64;
 		typedef unsigned __int64 UINT64;
 #	else
@@ -58,7 +58,7 @@
 	typedef UINT32 uint32_t;
 	typedef UINT64 uint64_t;
 
-#    ifdef WIN32
+#if defined( WIN32 ) && !defined( SYS_CYGWIN )
 #        define int64_t_C(c)     (c ## i64)
 #        define uint64_t_C(c)    (c ## i64)
 

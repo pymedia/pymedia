@@ -135,7 +135,7 @@ asm volatile(
  tlow1 = high1*low2
  tlow2 = high2*low1
  tlow1 = tlow1 + tlow2
- high3:low3 = low1*low2
+ high3:low3 = low1*low2 
  high3 += tlow1
 */
 static void dct_unquantize_mpeg1_mmx(MpegEncContext *s,

@@ -247,4 +247,9 @@ AVCodec ac3_decoder = {
     NULL,
     a52_decode_end,
     a52_decode_frame,
+    0,
+		NULL,
+		NULL,
+		NULL,
+		NULL
 };

@@ -27,12 +27,14 @@
 #define _CDDA_H
 
 #define AUDIO_CD_TYPE "AudioCD"
+#define LENGTH "length"
 
 typedef struct
 {
 	int iPos;
 	int iStartFrame;
 	int iEndFrame;
+	int iTrack;
 } CDDA_TRACK_INFO;
 
 

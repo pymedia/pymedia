@@ -47,7 +47,7 @@ void *__av_mallocz_static(void** location, unsigned int size)
 
     if (location)
     {
-	if (l > last_static)
+	if (l > (int)last_static)
 	    array_static = realloc(array_static, l);
 	array_static[last_static++] = (char**) location;
 	*location = ptr;

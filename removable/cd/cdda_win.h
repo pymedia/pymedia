@@ -83,7 +83,8 @@ public:
 	inline unsigned int GetStartSector( int iTrackNum )
 	{
 		unsigned char* pAddr= &this->stTracks.TrackData[ iTrackNum ].Address[ 0 ];
-		return pAddr[1]*60*75+pAddr[2]*75+pAddr[3];
+		// I don't know why MS returns everything 2 secs shifted( just substract 2 secs then )
+		return pAddr[1]*60*75+( pAddr[2]- 2) *75+pAddr[3];
 	}
 	// ---------------------------------------------------
 	inline unsigned int GetSectorSize()	{ return 2352;  } //this->dgCDROM.BytesPerSector; }
@@ -228,6 +229,7 @@ public:
 		stInfo->iPos= 0;
 		stInfo->iStartFrame= this->GetStartSector( iTrack- 1 );
 		stInfo->iEndFrame= this->GetStartSector( iTrack );
+		stInfo->iTrack= iTrack- 1;
 		return stInfo;
 	}
 

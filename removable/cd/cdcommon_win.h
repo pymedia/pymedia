@@ -112,7 +112,7 @@ public:
 			DISK_GEOMETRY stGeometries[ 20 ];
 			DWORD iReturned;
 			bReady= ( DeviceIoControl(
-				hCD, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &stGeometries, sizeof( stGeometries ), &iReturned, NULL )!= 0);
+				hCD, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, &stGeometries, sizeof( stGeometries ), &iReturned, NULL )!= 0);
 			CloseHandle( hCD );
 		}
 

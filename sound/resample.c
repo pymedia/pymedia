@@ -160,10 +160,15 @@ static void mchannel_to_stereo(short *output_l, short *output_r, short *input, i
 	int i= 0;
 	for(; i< n1; i++ )
 	{
-		if( channels> 4 ) 
+		if( channels== 5 ) 
 		{
-			*output_l= ( input[ 0 ] + input[ 1 ] ) >> 1;
+			*output_l= ( input[ 0 ] + input[ 2 ] ) >> 1;
 			*output_r= ( input[ 2 ] + input[ 1 ] ) >> 1;
+		}
+		else if( channels== 6 ) 
+		{
+			*output_l= ( input[ 0 ] + ( input[ 1 ] << 1 )- input[ 2 ] ) >> 1;
+			*output_r= ( input[ 2 ] + ( input[ 1 ] << 1 )- input[ 0 ] ) >> 1;
 		}
 		else
 		{

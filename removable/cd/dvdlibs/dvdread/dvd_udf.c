@@ -484,9 +484,11 @@ static int UDFMapICB( dvd_reader_t *device, struct AD ICB, uint8_t *FileType,
 
         if( TagID == 261 ) {
             UDFFileEntry( LogBlock, FileType, partition, File );
-           /*tmpmap.file = *File;
+#if UDF_CACHE
+           tmpmap.file = *File;
            tmpmap.filetype = *FileType;
-           SetUDFCache(device, MapCache, tmpmap.lbn, &tmpmap);*/
+           SetUDFCache(device, MapCache, tmpmap.lbn, &tmpmap);
+#endif
             return 1;
         };
     } while( ( lbnum <= partition->Start + ICB.Location + ( ICB.Length - 1 )

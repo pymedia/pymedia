@@ -20,6 +20,7 @@
 #include "avi.h"
 #include "libavcodec/mpegaudio.h"
 
+#define HEADER_SIZE 5000
 #define PACKET_SIZE 3200
 #define PACKET_HEADER_SIZE 12
 #define FRAME_HEADER_SIZE 17
@@ -472,8 +473,7 @@ static int asf_write_header(AVFormatContext *s)
     asf->packet_timestamp_start = -1;
     asf->packet_timestamp_end = -1;
     asf->packet_size_left = asf->packet_size - PACKET_HEADER_SIZE;
-    init_put_byte(&asf->pb, asf->packet_buf, asf->packet_size, 1,
-                  NULL, NULL, NULL, NULL);
+    init_put_byte(&asf->pb);
 
     return 0;
 }
@@ -544,8 +544,7 @@ static void flush_packet(AVFormatContext *s)
     asf->packet_timestamp_start = -1;
     asf->packet_timestamp_end = -1;
     asf->packet_size_left = asf->packet_size - PACKET_HEADER_SIZE;
-    init_put_byte(&asf->pb, asf->packet_buf, asf->packet_size, 1,
-                  NULL, NULL, NULL, NULL);
+    init_put_byte(&asf->pb);
 }
 
 static void put_frame_header(AVFormatContext *s, ASFStream *stream, int timestamp,
@@ -750,6 +749,9 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     av_set_pts_info(s, 32, 1, 1000); /* 32 bit pts in ms */
 
+		if( get_mem_buffer_size( pb )< HEADER_SIZE )
+			return AVILIB_NEED_DATA;
+
     get_guid(pb, &g);
     if (memcmp(&g, &asf_header, sizeof(GUID)))
         goto fail;
@@ -788,17 +790,19 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
             unsigned int tag1;
             INT64 pos1, pos2;
 
-            pos1 = url_ftell(pb);
+						if( get_mem_buffer_size( pb )< 40 )
+							return AVILIB_NEED_DATA;
+            pos1 = url_ftell(pb); 
 
             st = av_mallocz(sizeof(AVStream));
-            if (!st)
-                goto fail;
+            if (!st) 
+                goto fail; 
             avcodec_get_context_defaults(&st->codec);
             s->streams[s->nb_streams] = st;
             asf_st = av_mallocz(sizeof(ASFStream));
             if (!asf_st)
                 goto fail;
-            st->priv_data = asf_st;
+            st->priv_data = asf_st;  
 	    st->time_length = (asf->hdr.send_time - asf->hdr.preroll) / 10; // us
             get_guid(pb, &g);
             if (!memcmp(&g, &audio_stream, sizeof(GUID))) {
@@ -858,6 +862,9 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
                     break;
                 }
             } else {
+							if( get_mem_buffer_size( pb )< 31 )
+								return AVILIB_NEED_DATA;
+
 		get_le32(pb);
                 get_le32(pb);
                 get_byte(pb);
@@ -869,6 +876,10 @@ static int asf_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 get_le16(pb); /* panes */
                 get_le16(pb); /* depth */
                 tag1 = get_le32(pb);
+
+		if( get_mem_buffer_size( pb )< st->codec.extradata_size+ 20 )
+			return AVILIB_NEED_DATA;
+
 		url_fskip(pb, 20);
 		if (size > 40) {
 		    st->codec.extradata_size = size - 40;
@@ -975,22 +986,20 @@ static int asf_get_packet(AVFormatContext *s)
 		if( get_mem_buffer_size( pb )< FRAME_HEADER_SIZE )
 			return AVILIB_NEED_DATA;
 
-		c = get_byte(pb);
-    if (c != 0x82)
+		while(1)
 		{
-			if( get_mem_buffer_size( pb )> 0 )
-			return AVILIB_BAD_HEADER;
-    }
-    if ((c & 0x0f) == 2)
-		{ // always true for now
-			if (get_le16(pb) != 0)
+			c = get_byte(pb);
+			if( c == 0x82)
 			{
-				if (!url_feof(pb))
-					printf("ff asf bad non zero\n");
-				return -EIO;
+				if( get_mem_buffer_size( pb )< FRAME_HEADER_SIZE )
+					return AVILIB_NEED_DATA;
+				if (get_le16(pb) == 0)
+					break;
 			}
-    }
 
+			if( get_mem_buffer_size( pb )< FRAME_HEADER_SIZE )
+				return AVILIB_NEED_DATA;
+    }
     asf->packet_flags = get_byte(pb);
     asf->packet_property = get_byte(pb);
 
@@ -1035,15 +1044,17 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 				//asf->packet_size_left <= asf->packet_padsize) {
 				int ret;
 				int res = asf->packet_size_left + asf->packet_padsize;
+				int iPos= url_ftell( pb );
 				//printf("PacketLeftSize:%d  Pad:%d Pos:%Ld\n", asf->packet_size_left, asf->packet_padsize, url_ftell(pb));
 				/* fail safe */
+
 				url_fskip(pb, res);
 				ret = asf_get_packet(s);
 				//printf("READ ASF PACKET  %d   r:%d\n", ret, asf->packet_size_left);
 				if (ret < 0 )
 				{
-					if( !asf->packet_size_left )
-						url_fskip(pb, -res);
+					asf->packet_size_left= 0;
+					url_fseek(pb, iPos, SEEK_SET );
 					return ret;
 				}
 
@@ -1104,7 +1115,7 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 		/* unhandled packet (should not happen) */
 				url_fskip(pb, asf->packet_frag_size);
 				asf->packet_size_left -= asf->packet_frag_size;
-				printf("ff asf skip %d  %d\n", asf->packet_frag_size, num & 0x7f);
+				//printf("ff asf skip %d  %d\n", asf->packet_frag_size, num & 0x7f);
         continue;
 	    }
 	    asf->asf_st = s->streams[asf->stream_index]->priv_data;
@@ -1117,17 +1128,17 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 	   ) {
 	    /* cannot continue current packet: free it */
 	    // FIXME better check if packet was already allocated
-	    printf("ff asf parser skips: %d - %d     o:%d - %d    %d %d   fl:%d\n",
-		   asf_st->pkt.size,
-		   asf->packet_obj_size,
-		   asf->packet_frag_offset, asf_st->frag_offset,
-		   asf->packet_seq, asf_st->seq, asf->packet_frag_size);
+	    //printf("ff asf parser skips: %d - %d     o:%d - %d    %d %d   fl:%d\n",
+		   //asf_st->pkt.size,
+		   //asf->packet_obj_size,
+		   //asf->packet_frag_offset, asf_st->frag_offset,
+		   //asf->packet_seq, asf_st->seq, asf->packet_frag_size);
 	    if (asf_st->pkt.size)
 				av_free_packet(&asf_st->pkt);
 	    asf_st->frag_offset = 0;
 	    if (asf->packet_frag_offset != 0) {
 				url_fskip(pb, asf->packet_frag_size);
-				printf("ff asf parser skiping %db\n", asf->packet_frag_size);
+				//printf("ff asf parser skiping %db\n", asf->packet_frag_size);
 				asf->packet_size_left -= asf->packet_frag_size;
 				continue;
 	    }
@@ -1151,7 +1162,7 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 	}
 	if (asf_st->frag_offset == 0) {
 	    /* new packet */
-	    av_new_packet(&asf_st->pkt, asf->packet_obj_size);
+	    av_new_packet(&asf_st->pkt, asf->packet_frag_size);
 	    asf_st->seq = asf->packet_seq;
 	    asf_st->pkt.pts = asf->packet_frag_timestamp - asf->hdr.preroll;
 	    asf_st->pkt.stream_index = asf->stream_index;
@@ -1166,6 +1177,8 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 	asf->packet_size_left -= asf->packet_frag_size;
 	if (asf->packet_size_left < 0)
             continue;
+	if( get_mem_buffer_size( pb )< asf->packet_frag_size )
+		return AVILIB_NEED_DATA;
 	get_buffer(pb, asf_st->pkt.data + asf->packet_frag_offset,
 		   asf->packet_frag_size);
 	asf_st->frag_offset += asf->packet_frag_size;

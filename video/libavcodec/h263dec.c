@@ -392,7 +392,7 @@ int ff_h263_decode_frame(AVCodecContext *avctx,
     int ret;
     AVFrame *pict = data; 
     float new_aspect;
-    
+
 #ifdef PRINT_FRAME_TIME
 uint64_t time= rdtsc();
 #endif
@@ -443,7 +443,10 @@ retry:
 
     if (!s->context_initialized) {
         if (MPV_common_init(s) < 0) //we need the idct permutaton for reading a custom matrix
+				{
+						fprintf(stderr, "MPV_common_init returns error\n");
             return -1;
+				}
     }
       
     /* let's go :-) */
@@ -621,17 +624,25 @@ retry:
 
     if((s->codec_id==CODEC_ID_H263 || s->codec_id==CODEC_ID_H263P))
         s->gob_index = ff_h263_get_gob_height(s);
-    
+ 
     // for hurry_up==5
     s->current_picture.pict_type= s->pict_type;
     s->current_picture.key_frame= s->pict_type == I_TYPE;
 
     /* skip b frames if we dont have reference frames */
-    if(s->last_picture_ptr==NULL && s->pict_type==B_TYPE) return get_consumed_bytes(s, buf_size);
+    if( ( s->last_picture_ptr==NULL && s->pict_type==B_TYPE ) ||
     /* skip b frames if we are in a hurry */
-    if(avctx->hurry_up && s->pict_type==B_TYPE) return get_consumed_bytes(s, buf_size);
+			  ( avctx->hurry_up && s->pict_type==B_TYPE ) ||
     /* skip everything if we are in a hurry>=5 */
-    if(avctx->hurry_up>=5) return get_consumed_bytes(s, buf_size);
+			  avctx->hurry_up>=5 ||
+		/* Resync is in progress, continue to look for a key frame */
+				( avctx->resync && s->pict_type!=I_TYPE ) )
+		{
+      *data_size = sizeof(AVFrame);
+			//pict->data[ 0 ]= NULL;
+			return get_consumed_bytes(s, buf_size);
+		}
+		avctx->resync= 0;
     
     if(s->next_p_frame_damaged){
         if(s->pict_type==B_TYPE)
@@ -730,6 +741,11 @@ printf("%Ld\n", rdtsc()-time);
     return get_consumed_bytes(s, buf_size);
 }
 
+int mpeg4_reset(AVCodecContext *avctx)
+{
+  avctx->resync= 1;
+}
+
 static const AVOption mpeg4_decoptions[] =
 {
     AVOPTION_SUB(avoptions_workaround_bug),
@@ -749,6 +765,7 @@ AVCodec mpeg4_decoder = {
     mpeg4_decoptions,
 		NULL,
     ff_mpeg_flush,
+		mpeg4_reset
 };
 
 AVCodec h263_decoder = {
@@ -764,6 +781,7 @@ AVCodec h263_decoder = {
 		NULL,
 		NULL,
     ff_mpeg_flush,
+		mpeg4_reset
 };
 
 AVCodec msmpeg4v1_decoder = {
@@ -777,6 +795,9 @@ AVCodec msmpeg4v1_decoder = {
     ff_h263_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
     mpeg4_decoptions,
+		NULL,
+		NULL,
+		mpeg4_reset
 };
 
 AVCodec msmpeg4v2_decoder = {
@@ -790,6 +811,9 @@ AVCodec msmpeg4v2_decoder = {
     ff_h263_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
     mpeg4_decoptions,
+		NULL,
+		NULL,
+		mpeg4_reset
 };
 
 AVCodec msmpeg4v3_decoder = {
@@ -803,6 +827,9 @@ AVCodec msmpeg4v3_decoder = {
     ff_h263_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
     mpeg4_decoptions,
+		NULL,
+		NULL,
+		mpeg4_reset
 };
 
 AVCodec wmv1_decoder = {
@@ -816,6 +843,9 @@ AVCodec wmv1_decoder = {
     ff_h263_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
     mpeg4_decoptions,
+		NULL,
+		NULL,
+		mpeg4_reset
 };
 
 AVCodec h263i_decoder = {
@@ -829,6 +859,9 @@ AVCodec h263i_decoder = {
     ff_h263_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
     mpeg4_decoptions,
+		NULL,
+		NULL,
+		mpeg4_reset
 };
 
 AVCodec flv_decoder = {
@@ -840,5 +873,9 @@ AVCodec flv_decoder = {
     NULL,
     ff_h263_decode_end,
     ff_h263_decode_frame,
-    CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1
+    CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+		NULL,
+		NULL,
+		NULL,
+		mpeg4_reset
 };

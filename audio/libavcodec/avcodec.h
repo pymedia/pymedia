@@ -1283,6 +1283,7 @@ typedef struct AVCodec {
     const AVOption *options;
     struct AVCodec *next;
     void (*flush)(AVCodecContext *);
+    void (*resync)(AVCodecContext *);
 } AVCodec;
 
 /**

@@ -26,7 +26,7 @@
  */
 
 #include "avcodec.h"
-#include "faad.h"
+#include <faad.h>
 
 /*
  * when CONFIG_FAADBIN is defined the libfaad will be opened at runtime
@@ -47,6 +47,7 @@ typedef struct {
     void* faac_handle;		/* FAAD library handle */
     int frame_size;
     int sample_size;
+    int channels;
     int flags;
 
     /* faad calls */
@@ -81,6 +82,7 @@ static int faac_init_mp4(AVCodecContext *avctx)
     unsigned char channels;
     int r = 0;
 
+		s->channels= 0;
     if (avctx->extradata)
 	r = s->faacDecInit2(s->faac_handle, (uint8_t*) avctx->extradata,
 			    avctx->extradata_size,
@@ -94,27 +96,41 @@ static int faac_init_mp4(AVCodecContext *avctx)
     return r;
 }
 
-static int faac_init_aac(AVCodecContext *avctx)
-{
-    FAACContext *s = (FAACContext *) avctx->priv_data;
-    return 0;
-}
-
 static int faac_decode_frame(AVCodecContext *avctx,
                              void *data, int *data_size,
                              uint8_t *buf, int buf_size)
 {
     FAACContext *s = (FAACContext *) avctx->priv_data;
     faacDecFrameInfo frame_info;
-    void* out = s->faacDecDecode(s->faac_handle, &frame_info, (unsigned char*)buf);
+    void* out;
+		int offs= 0;
+		
+		if( !avctx->channels )
+		{
+			int samplerate;
+			offs= s->faacDecInit(s->faac_handle, buf, buf_size, &avctx->sample_rate, &avctx->channels);
+			if( offs< 0 )
+				return offs;
+		}
+
+		if( buf_size- offs < 0x400 )
+			frame_info.error= 14;
+		else
+			out= s->faacDecDecode(s->faac_handle, &frame_info, (unsigned char*)buf+ offs, buf_size- offs);
     //printf("DECODE FRAME %d, %d, %d - %p\n", buf_size, frame_info.samples, frame_info.bytesconsumed, out);
 
     if (frame_info.error > 0) {
-	fprintf(stderr, "faac: frame decodinf failed: %s\n",
-		s->faacDecGetErrorMessage(frame_info.error));
-        return 0;
+			//fprintf(stderr, "faac: frame decodinf failed: %s\n",
+			//s->faacDecGetErrorMessage(frame_info.error));
+
+			// Need more data, just return to the caller
+			if( frame_info.error== 14 )
+				return -1;
+			
+      return -frame_info.error;
     }
 
+		avctx->bit_rate= ( frame_info.bytesconsumed* 8* frame_info.samplerate )/ (double)frame_info.samples;
     frame_info.samples *= s->sample_size;
     memcpy(data, out, frame_info.samples); // CHECKME - can we cheat this one
 

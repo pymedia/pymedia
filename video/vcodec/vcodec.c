@@ -49,16 +49,18 @@ const char* PYDOC=
 
 #define ENCODER_NAME "Encoder"
 #define DECODER_NAME "Decoder"
+#define VFRAME_NAME "VFrame"
 
 #define GET_CODEC_ID_NAME "getCodecID"
-#define FRAME_CONVERT_NAME "frameConvert"
+#define FRAME_CONVERT_NAME "convert"
 #define CONVERT_NAME "decode"
-#define GET_PARAM_NAME "getParams"
+#define GET_PARAM_NAME "getParams" 
 #define ENCODE_NAME "encode"
+#define RESET_NAME "reset"
 
 #define CONVERT_DOC \
-	  CONVERT_NAME"( frameStr ) -> frame\n \
-		Convert video frame of compressed data into decompressed VFrame of the same formt as source.\n"
+	  FRAME_CONVERT_NAME"( format {, size } ) -> frame\n \
+		Convert existing video frame into another format with all needed color conversions and scaling.\n"
 
 #define GET_PARAM_DOC \
 	GET_PARAM_NAME"() -> params\n\
@@ -74,6 +76,14 @@ const char* PYDOC=
 #define FRAME_CONVERT_DOC \
 	FRAME_CONVERT_NAME"( frame, format ) -> VFrame\nconverts existing VFrame into the new one with desired format"
 
+#define RESET_DOC \
+	RESET_NAME"() -> None\nReset current state of codec\n"
+
+#define VFRAME_DOC \
+	VFRAME_NAME"( format, size, data ) -> "VFRAME_NAME"\nCreate a new VFrame with the parameters passed.\n" \
+					"The 'format' should be one from vcodec.formats and the 'size' should represent the actual size of the frame( w, h )\n" \
+					"If you create RGB picture, make sure that 'data' contains 3 strings as below: ( RGB, None, None )"
+
 // Frame attributes
 #define FORMAT "format"
 #define DATA "data"
@@ -81,11 +91,12 @@ const char* PYDOC=
 #define FRAME_RATE_ATTR "rate"
 #define FRAME_RATE_B_ATTR "rate_base"
 #define ASPECT_RATIO "aspect_ratio"
+#define BITRATE "bitrate"
+#define RESYNC "resync"
 
 //char* FOURCC= "fourcc";
 char* TYPE= "type";
 char* ID= "id";
-char* BITRATE= "bitrate";
 char* WIDTH= "width";
 char* HEIGHT= "height";
 char* FRAME_RATE= "frame_rate";
@@ -132,6 +143,7 @@ PyObject *g_cErr;
 
 // ---------------------------------------------------------------------------------
 static PyTypeObject PyFormatsType;
+static PyTypeObject VFrameType;
 
 // ---------------------------------------------------------------------------------
 typedef struct
@@ -159,6 +171,8 @@ typedef struct
 	int frame_rate;
 	int frame_rate_base;
 	int pix_fmt;
+	int bit_rate;
+	int resync;
 } PyVFrameObject;
 
 
@@ -391,19 +405,6 @@ FrameClose( PyVFrameObject *frame )
 	PyObject_Free( (PyObject*)frame );
 }
 
-// ---------------------------------------------------------------------------------
-// List of all methods for the vcodec.decoder
-static PyMethodDef frame_methods[] =
-{
-/*	{
-		"convert",
-		(PyCFunction)Frame_AsFormat,
-		METH_VARARGS,
-		CONVERT_DOC
-	},*/
-	{ NULL, NULL },
-};
-
 // ----------------------------------------------------------------
 
 static int frame_get_width(PyVFrameObject *frame)
@@ -427,6 +428,13 @@ frame_get_size(PyVFrameObject *frame, void *closure)
 static PyObject *
 frame_get_data(PyVFrameObject *frame, void *closure)
 {
+	// return None when frame still in resync
+	if( !frame->cData[ 0 ] )
+	{
+		Py_INCREF( Py_None );
+		return Py_None;
+	}
+
 	switch( frame->pix_fmt )
 	{
 		// Three planes
@@ -444,13 +452,160 @@ frame_get_data(PyVFrameObject *frame, void *closure)
 	};
 }
 
+// -------------------------
+int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame) 
+{
+	int iPlanes= 3, i;
+  switch( cFrame->pix_fmt )
+	{
+		case PIX_FMT_RGB24:
+		case PIX_FMT_BGR24:
+		case PIX_FMT_RGBA32:
+		case PIX_FMT_RGB565:
+		case PIX_FMT_RGB555:
+		case PIX_FMT_GRAY8:
+		case PIX_FMT_MONOWHITE:
+		case PIX_FMT_MONOBLACK:
+		case PIX_FMT_PAL8:
+			// 1 plane
+			iPlanes= 1;
+			break;
+	}
+
+	for( i= 0; i< iPlanes; i++) 
+	{
+		if (!cFrame->cData[i]) 
+		{
+			PyErr_Format(g_cErr,	"Frame plane structure incomplete. Plane %d is not found. At least %d planes should exists.", i, iPlanes );
+			return -1;
+		}
+
+		frame->data[i] = (uint8_t*)PyString_AsString(cFrame->cData[i] );
+		if (!i)
+			frame->linesize[i] =  PyString_GET_SIZE( cFrame->cData[0] ) / frame_get_height(cFrame); //cFrame->cDec->cCodec->width;
+		else
+			frame->linesize[i] = PyString_GET_SIZE( cFrame->cData[0] ) / (2*frame_get_height(cFrame)); // cFrame->cDec->cCodec->width/2;
+//		printf ("linesize:%d\n",frame->linesize[i]);
+	}
+	return 0;
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
+{
+	PyVFrameObject *cSrc= obj;
+	int iFormat, iWidth, iHeight, iDepth= 1, iPlanes= 3, i;
+	PyObject *acPlanes[ 3 ]= { NULL, NULL, NULL };
+	PyVFrameObject* cRes;
+
+	// Create new AVPicture in a new format
+	AVPicture cSrcPict;
+	AVPicture cDstPict;
+
+	if (!PyArg_ParseTuple(args, "i|(ii)", &iFormat, &iWidth, &iHeight ))
+		return NULL;
+
+	// Well, not very safe, but works
+	PyVFrame2AVFrame( obj, (AVFrame*)&cSrcPict );
+	memset( &cDstPict.data[ 0 ], 0, sizeof( cDstPict.data ) );
+
+	// Create new VFrame
+	cRes= (PyVFrameObject*)PyObject_New( PyVFrameObject, &VFrameType );
+	if( !cRes )
+		return NULL;
+	// Start assembling result into frame
+	memset( &cRes->cData[ 0 ], 0, sizeof( cRes->cData ) );
+
+	// Find format by its id
+	switch( iFormat )
+	{
+		case PIX_FMT_YUV420P:
+		case PIX_FMT_YUV422:
+		case PIX_FMT_YUV422P:
+		case PIX_FMT_YUV444P:
+		case PIX_FMT_YUV410P:
+		case PIX_FMT_YUV411P:
+		case PIX_FMT_YUVJ420P:
+		case PIX_FMT_YUVJ422P:
+		case PIX_FMT_YUVJ444P:
+			// 3 planes
+			acPlanes[ 1 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
+			acPlanes[ 2 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
+			cDstPict.data[ 1 ]= PyString_AsString( acPlanes[ 1 ] );
+			cDstPict.data[ 2 ]= PyString_AsString( acPlanes[ 2 ] );
+			cDstPict.linesize[ 1 ]= cDstPict.linesize[ 2 ]= cSrc->width/ 2;
+			break;
+		case PIX_FMT_RGBA32:
+			iDepth++;
+		case PIX_FMT_RGB24:
+		case PIX_FMT_BGR24:
+			iDepth++;
+		case PIX_FMT_RGB565:
+		case PIX_FMT_RGB555:
+			iDepth++;
+		case PIX_FMT_GRAY8:
+		case PIX_FMT_MONOWHITE:
+		case PIX_FMT_MONOBLACK:
+		case PIX_FMT_PAL8:
+			iPlanes= 1;
+			break;
+		default:
+			// Raise an error if the format is not supported
+			PyErr_Format( g_cErr, "Video frame with format %d cannot be created", iFormat );
+			return NULL;
+	}
+	// 1 plane
+	acPlanes[ 0 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height* iDepth );
+	cDstPict.linesize[ 0 ]= cSrc->width* iDepth;
+	cDstPict.data[ 0 ]= PyString_AsString( acPlanes[ 0 ] );
+
+	// Convert images
+	if( img_convert( &cDstPict, iFormat, &cSrcPict, cSrc->pix_fmt, cSrc->width, cSrc->height )== -1 )
+	{
+		PyErr_Format( g_cErr, "Video frame with format %d cannot be converted to %d", cSrc->pix_fmt, iFormat );
+		if( acPlanes[ 0 ] ) Py_DECREF( acPlanes[ 0 ] );
+		if( acPlanes[ 1 ] ) Py_DECREF( acPlanes[ 1 ] );
+		if( acPlanes[ 2 ] ) Py_DECREF( acPlanes[ 2 ] );
+		return NULL;
+	}
+
+	//Preprocess_Frame(obj, picture,&buffer_to_free);
+	cRes->aspect_ratio= cSrc->aspect_ratio;
+	cRes->frame_rate= cSrc->frame_rate;
+	cRes->frame_rate_base= cSrc->frame_rate_base;
+	cRes->height= cSrc->height;
+	cRes->width= cSrc->width;
+	cRes->pix_fmt= iFormat;
+
+	// Copy string(s)
+	for( i= 0; i< iPlanes; i++ )
+		cRes->cData[ i ]= acPlanes[ i ];
+
+	return (PyObject*)cRes;
+}
+
+// ---------------------------------------------------------------------------------
+// List of all methods for the vcodec.decoder
+static PyMethodDef frame_methods[] =
+{
+	{
+		"convert",
+		(PyCFunction)Frame_Convert,
+		METH_VARARGS,
+		CONVERT_DOC
+	},
+	{ NULL, NULL },
+};
+
 // ----------------------------------------------------------------
 static PyMemberDef frame_members[] = 
 {
+	{BITRATE, T_INT, offsetof(PyVFrameObject,bit_rate), 0, "Bitrate of the stream. May change from frame to frame."},
 	{FORMAT, T_INT, offsetof(PyVFrameObject,pix_fmt), 0, "Frame format as integer. See list of formats in vcodec.codecs"},
 	{FRAME_RATE_ATTR, T_INT, offsetof(PyVFrameObject,frame_rate), 0, "Frame rate in units relative to the frame_base"},
 	{FRAME_RATE_B_ATTR, T_INT, offsetof(PyVFrameObject,frame_rate_base), 0, "Frame rate base"},
 	{ASPECT_RATIO, T_FLOAT, offsetof(PyVFrameObject,aspect_ratio), 0, "Picture default aspect ratio."},
+	{RESYNC, T_INT, offsetof(PyVFrameObject,resync), 0, "Flag is set if resync still in place"},
 	{NULL},
 };
  
@@ -458,17 +613,48 @@ static PyMemberDef frame_members[] =
 // ----------------------------------------------------------------
 static PyGetSetDef frame_getsetlist[] =
 {
-	{DATA, (getter)frame_get_data, NULL, "Data of the frame as a tuple of strings. Numbers of strings depend on frame type."},
+	{DATA, (getter)frame_get_data, NULL, "Data of the frame as a tuple of strings. Numbers of strings depend on frame type( 1 for RGB, 3 for component )"},
 	{SIZE, (getter)frame_get_size, NULL, "Size of the frame in pixels( w, h )"},
 	{0}
 };
+
+// ---------------------------------------------------------------------------------
+static PyObject* PyNewVFrame( PyTypeObject *type, PyObject *args, PyObject *kwds )
+{
+	PyVFrameObject* cFrame;
+	int iWidth, iHeight, iPixFmt;
+	PyObject *y, *u, *v;
+
+	if (!PyArg_ParseTuple(args, "i(ii)(OOO):", &iPixFmt, &iWidth, &iHeight, &y, &u, &v ))
+		return NULL;
+
+	// Create new VFrame object
+	cFrame= (PyVFrameObject*)PyObject_New( PyVFrameObject, &VFrameType );
+	if( !cFrame )
+		return NULL;
+
+	// Zeroing out frame
+	memset( &cFrame->cData[ 0 ], 0, sizeof( cFrame->cData ) );
+
+	// Store
+	cFrame->cData[ 0 ]= y;
+	Py_INCREF( y );
+	cFrame->cData[ 1 ]= u;
+	Py_INCREF( u );
+	cFrame->cData[ 2 ]= v;
+	Py_INCREF( v );
+	cFrame->width= iWidth;
+	cFrame->height= iHeight;
+	cFrame->pix_fmt= iPixFmt;
+	return (PyObject*)cFrame;
+}
 
 // ----------------------------------------------------------------
 static PyTypeObject VFrameType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
-	"VFrame",
+	MODULE_NAME"."VFRAME_NAME,
 	sizeof(PyVFrameObject),
 	0,
 	(destructor)FrameClose,  //tp_dealloc
@@ -487,7 +673,7 @@ static PyTypeObject VFrameType =
 	0,		/* tp_setattro */
 	0,					/* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
-	"",				/* tp_doc */
+	VFRAME_DOC,				/* tp_doc */
 	0,					/* tp_traverse */
 	0,					/* tp_clear */
 	0,					/* tp_richcompare */
@@ -504,7 +690,7 @@ static PyTypeObject VFrameType =
 	0,					/* tp_dictoffset */
 	0,			/* tp_init */
 	PyType_GenericAlloc,			/* tp_alloc */
-	0,				/* tp_new */
+	PyNewVFrame,				/* tp_new */
 	PyObject_Del,                           /* tp_free */ };
 
 // ---------------------------------------------------------------------------------
@@ -566,7 +752,7 @@ static void Preprocess_Frame(PyCodecObject* cObj, AVPicture *picture, void **buf
 
 
 // ---------------------------------------------------------------------------------
-static PyVFrameObject* Create_New_PyVFrame( int pix_fmt, int h, AVPicture* picture) 
+static PyVFrameObject* Create_New_PyVFrame( int pix_fmt, int h, AVPicture* picture, int resync) 
 {
 	PyVFrameObject* cFrame= (PyVFrameObject*)PyObject_New( PyVFrameObject, &VFrameType );
 	if( !cFrame )
@@ -578,36 +764,37 @@ static PyVFrameObject* Create_New_PyVFrame( int pix_fmt, int h, AVPicture* pictu
 	memset( &cFrame->cData[ 0 ], 0, sizeof( cFrame->cData ) );
 
 	// Store
-	switch( pix_fmt )
-	{
-		// Three planes
-		case PIX_FMT_YUV420P:
-		case PIX_FMT_YUV422P:
-		case PIX_FMT_YUV444P:
-		case PIX_FMT_YUV422:
-		case PIX_FMT_YUV410P:
-		case PIX_FMT_YUV411P:
-			// Create three planes and copy data into it./
-			if(!(cFrame->cData[0] = PyString_FromStringAndSize(
+	if( !resync && picture->data[0] )
+		switch( pix_fmt )
+		{
+			// Three planes
+			case PIX_FMT_YUV420P:
+			case PIX_FMT_YUV422P:
+			case PIX_FMT_YUV444P:
+			case PIX_FMT_YUV422:
+			case PIX_FMT_YUV410P:
+			case PIX_FMT_YUV411P:
+				// Create three planes and copy data into it./
+				if(!(cFrame->cData[0] = PyString_FromStringAndSize(
+							(const char*)picture->data[0],
+								picture->linesize[ 0 ]* h )) ||
+					 !(cFrame->cData[1] = PyString_FromStringAndSize(
+					   		(const char*)picture->data[1],
+								picture->linesize[1]* h/2 )) ||
+					 !(cFrame->cData[2] = PyString_FromStringAndSize(
+					   		(const char*)picture->data[2],
+								picture->linesize[2]* h/2 )))
+				{
+					return NULL;
+				}
+				break;
+			// One plane
+			default:
+				cFrame->cData[0] = PyString_FromStringAndSize(
 						(const char*)picture->data[0],
-							picture->linesize[ 0 ]* h )) ||
-			   !(cFrame->cData[1] = PyString_FromStringAndSize(
-					   	(const char*)picture->data[1],
-							picture->linesize[1]* h/2 )) ||
-			   !(cFrame->cData[2] = PyString_FromStringAndSize(
-					   	(const char*)picture->data[2],
-							picture->linesize[2]* h/2 )))
-			{
-				return NULL;
-			}
-			break;
-		// One plane
-		default:
-			cFrame->cData[0] = PyString_FromStringAndSize(
-					(const char*)picture->data[0],
-					picture->linesize[0]* h );
-			break;
-	}
+						picture->linesize[0]* h );
+				break;
+		}
 
 	return cFrame; 
 }
@@ -615,9 +802,10 @@ static PyVFrameObject* Create_New_PyVFrame( int pix_fmt, int h, AVPicture* pictu
 // ---------------------------------------------------------------------------------
 // New frame for libavcodec codecs
 //
-static PyObject* Frame_New_LAVC( PyCodecObject* obj) 
+static PyObject* Frame_New_LAVC( PyCodecObject* obj ) 
 {
-	PyVFrameObject* cRes= (PyVFrameObject*)Create_New_PyVFrame(obj->cCodec->pix_fmt,obj->cCodec->height, (AVPicture*)&obj->frame);
+	PyVFrameObject* cRes= (PyVFrameObject*)Create_New_PyVFrame(
+		obj->cCodec->pix_fmt,obj->cCodec->height, (AVPicture*)&obj->frame, obj->cCodec->resync);
 	if( !cRes )
 		return (PyObject*)cRes;
 
@@ -627,6 +815,8 @@ static PyObject* Frame_New_LAVC( PyCodecObject* obj)
 	cRes->pix_fmt= obj->cCodec->pix_fmt;
 	cRes->width= obj->cCodec->width;
 	cRes->height= obj->cCodec->height;
+	cRes->bit_rate= obj->cCodec->bit_rate;
+	cRes->resync= obj->cCodec->resync;
 	return (PyObject*)cRes;
 }
 
@@ -652,14 +842,23 @@ Codec_GetParams( PyCodecObject* obj, PyObject *args)
 }
 
 // ---------------------------------------------------------------------------------
+static PyObject * Codec_Reset( PyCodecObject* obj)
+{
+	if( obj->cCodec->codec->resync )
+		obj->cCodec->codec->resync( obj->cCodec );
+
+	RETURN_NONE
+}
+
+// ---------------------------------------------------------------------------------
 static PyObject *
 Codec_Decode( PyCodecObject* obj, PyObject *args)
 {
 	PyObject* cRes= NULL;
 	uint8_t *sData=NULL,*sBuf=NULL,*sData_ptr=NULL;
-	int iLen=0, out_size=0, i=0, len=0;
+	int iLen=0, out_size=0, i=0, len=0, hurry= 0; 
 
-	if (!PyArg_ParseTuple(args, "s#:decode", &sBuf, &iLen ))
+	if (!PyArg_ParseTuple(args, "s#|i:decode", &sBuf, &iLen, &hurry ))
 		return NULL;
  
 	//need to add padding to buffer for libavcodec
@@ -671,6 +870,7 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
 	while( iLen> 0 )
 	{
 		out_size= 0;
+		obj->cCodec->hurry_up= hurry;
 		len= obj->cCodec->codec->decode( obj->cCodec, &obj->frame, &out_size, sData, iLen );
 		if( len < 0 )
 		{
@@ -682,7 +882,7 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
 					av_free(sData_ptr);
 					return NULL;
 				}
-				else
+				else 
 					i++;
 
 			PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", len );
@@ -693,14 +893,14 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
 		{
 			iLen-= len;
 			sData+= len;
-		}
-
-		if (out_size > 0)
-			if( !cRes )
+			if( !cRes && out_size> 0 )  
 				cRes= Frame_New_LAVC( obj );
+		}
 	}
-
-	av_free(sData_ptr);
+#ifdef HAVE_MMX
+    emms();
+#endif 
+		av_free(sData_ptr);
 
 	if( cRes )
 		return cRes;
@@ -712,45 +912,7 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
 	Py_INCREF( Py_None );
 	return Py_None;
 }
-
-// -------------------------
-int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame) 
-{
-	int iPlanes= 3, i;
-  switch( cFrame->pix_fmt )
-	{
-		case PIX_FMT_RGB24:
-		case PIX_FMT_BGR24:
-		case PIX_FMT_RGBA32:
-		case PIX_FMT_RGB565:
-		case PIX_FMT_RGB555:
-		case PIX_FMT_GRAY8:
-		case PIX_FMT_MONOWHITE:
-		case PIX_FMT_MONOBLACK:
-		case PIX_FMT_PAL8:
-			// 1 plane
-			iPlanes= 1;
-			break;
-	}
-
-	for( i= 0; i< iPlanes; i++) 
-	{
-		if (!cFrame->cData[i]) 
-		{
-			PyErr_Format(g_cErr,	"Frame plane structure incomplete. Plane %d is not found. At least %d planes should exists.", i, iPlanes );
-			return -1;
-		}
-
-		frame->data[i] = (uint8_t*)PyString_AsString(cFrame->cData[i] );
-		if (!i)
-			frame->linesize[i] =  PyString_GET_SIZE( cFrame->cData[0] ) / frame_get_height(cFrame); //cFrame->cDec->cCodec->width;
-		else
-			frame->linesize[i] = PyString_GET_SIZE( cFrame->cData[0] ) / (2*frame_get_height(cFrame)); // cFrame->cDec->cCodec->width/2;
-//		printf ("linesize:%d\n",frame->linesize[i]);
-	}
-	return 0;
-}
-
+ 
 // ---------------------------------------------------------------------------------
 
 static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
@@ -795,13 +957,22 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	else
 		PyErr_Format(g_cErr, "Failed to encode frame( error code is %d )", iLen );
 
-	return cRes;
+#ifdef HAVE_MMX
+    emms();
+#endif 
+ 	return cRes;
 }
 
 // ---------------------------------------------------------------------------------
 // List of all methods for the vcodec.decoder
 static PyMethodDef decoder_methods[] =
 {
+	{
+		RESET_NAME,
+		(PyCFunction)Codec_Reset,
+		METH_NOARGS,
+		RESET_DOC
+	},
 	{
 		GET_PARAM_NAME,
 		(PyCFunction)Codec_GetParams,
@@ -1015,97 +1186,6 @@ static PyTypeObject encoder_type = {
 };
 
 // ---------------------------------------------------------------------------------
-static PyObject * FrameConvert( PyObject* obj, PyObject *args)
-{
-	PyVFrameObject *cSrc;
-	int iFormat, iWidth, iHeight, iDepth= 1, iPlanes= 3, i;
-	PyObject *acPlanes[ 3 ]= { NULL, NULL, NULL };
-	PyVFrameObject* cRes;
-
-	// Create new AVPicture in a new format
-	AVPicture cSrcPict;
-	AVPicture cDstPict;
-
-	if (!PyArg_ParseTuple(args, "Oi|(ii)", &cSrc, &iFormat, &iWidth, &iHeight ))
-		return NULL;
-
-	// Well, not very safe, but works
-	PyVFrame2AVFrame(cSrc, (AVFrame*)&cSrcPict );
-	memset( &cDstPict.data[ 0 ], 0, sizeof( cDstPict.data ) );
-
-	// Find format by its id
-	switch( iFormat )
-	{
-		case PIX_FMT_YUV420P:
-		case PIX_FMT_YUV422:
-		case PIX_FMT_YUV422P:
-		case PIX_FMT_YUV444P:
-		case PIX_FMT_YUV410P:
-		case PIX_FMT_YUV411P:
-		case PIX_FMT_YUVJ420P:
-		case PIX_FMT_YUVJ422P:
-		case PIX_FMT_YUVJ444P:
-			// 3 planes
-			acPlanes[ 1 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
-			acPlanes[ 2 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
-			cDstPict.data[ 1 ]= PyString_AsString( acPlanes[ 1 ] );
-			cDstPict.data[ 2 ]= PyString_AsString( acPlanes[ 2 ] );
-			cDstPict.linesize[ 1 ]= cDstPict.linesize[ 2 ]= cSrc->width/ 2;
-			break;
-		case PIX_FMT_RGBA32:
-			iDepth++;
-		case PIX_FMT_RGB24:
-		case PIX_FMT_BGR24:
-			iDepth++;
-		case PIX_FMT_RGB565:
-		case PIX_FMT_RGB555:
-			iDepth++;
-		case PIX_FMT_GRAY8:
-		case PIX_FMT_MONOWHITE:
-		case PIX_FMT_MONOBLACK:
-		case PIX_FMT_PAL8:
-			iPlanes= 1;
-			break;
-		default:
-			// Raise an error if the format is not supported
-			PyErr_Format( g_cErr, "Video frame with format %d cannot be created", iFormat );
-			return NULL;
-	}
-	// 1 plane
-	acPlanes[ 0 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height* iDepth );
-	cDstPict.linesize[ 0 ]= cSrc->width* iDepth;
-	cDstPict.data[ 0 ]= PyString_AsString( acPlanes[ 0 ] );
-
-	// Convert images
-	if( img_convert( &cDstPict, iFormat, &cSrcPict, cSrc->pix_fmt, cSrc->width, cSrc->height )== -1 )
-	{
-		PyErr_Format( g_cErr, "Video frame with format %d cannot be converted to %d", cSrc->pix_fmt, iFormat );
-		if( acPlanes[ 0 ] ) Py_DECREF( acPlanes[ 0 ] );
-		if( acPlanes[ 1 ] ) Py_DECREF( acPlanes[ 1 ] );
-		if( acPlanes[ 2 ] ) Py_DECREF( acPlanes[ 2 ] );
-		return NULL;
-	}
-
-	// Create new VFrame
-	cRes= (PyVFrameObject*)Create_New_PyVFrame(iFormat,cSrc->height,&cDstPict);
-	if( !cRes )
-		return (PyObject*)cRes;
-	
-	cRes->aspect_ratio= cSrc->aspect_ratio;
-	cRes->frame_rate= cSrc->frame_rate;
-	cRes->frame_rate_base= cSrc->frame_rate_base;
-	cRes->height= cSrc->height;
-	cRes->width= cSrc->width;
-	cRes->pix_fmt= iFormat;
-
-	// Copy string(s)
-	for( i= 0; i< iPlanes; i++ )
-		cRes->cData[ i ]= acPlanes[ i ];
-
-	return (PyObject*)cRes;
-}
-
-// ---------------------------------------------------------------------------------
 static PyObject * GetCodecID( PyObject* obj, PyObject *args)
 {
 	AVCodec *p;
@@ -1141,12 +1221,6 @@ static PyMethodDef pyvcodec_methods[] =
 		METH_VARARGS,
 		GET_CODEC_ID_DOC
 	},
-	{
-		FRAME_CONVERT_NAME,
-		(PyCFunction)FrameConvert,
-		METH_VARARGS,
-		FRAME_CONVERT_DOC
-	},
 	{ NULL, NULL },
 };
 
@@ -1174,7 +1248,9 @@ initvcodec(void)
 	register_avcodec(&mpeg1video_decoder);
 	register_avcodec(&h264_decoder);
 	register_avcodec(&mdec_decoder);
-
+	register_avcodec(&svq1_decoder);
+	register_avcodec(&svq3_decoder);
+	
 	register_avcodec(&mpeg4_encoder);
 	register_avcodec(&mpeg1video_encoder);
 	register_avcodec(&mpeg2video_encoder);
@@ -1184,17 +1260,19 @@ initvcodec(void)
 
 	decoder_type.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&decoder_type);
-	if (PyModule_AddObject(cModule, "Decoder", (PyObject *)&decoder_type) != 0)
+	if (PyModule_AddObject(cModule, DECODER_NAME, (PyObject *)&decoder_type) != 0)
 		return;
 
 	encoder_type.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&encoder_type);
-	if (PyModule_AddObject(cModule, "Encoder", (PyObject *)&encoder_type) != 0)
+	if (PyModule_AddObject(cModule, ENCODER_NAME, (PyObject *)&encoder_type) != 0)
 		return;
 
-	// Do not make it visible from the module level
+	// Do make it visible from the module level
 	VFrameType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&VFrameType);
+	if (PyModule_AddObject(cModule, VFRAME_NAME, (PyObject *)&VFrameType) != 0)
+		return;
 
  	PyModule_AddStringConstant( cModule, "__doc__", (char*)PYDOC );
 	PyModule_AddStringConstant( cModule, "version", (char*)PYVERSION );
@@ -1210,19 +1288,17 @@ initvcodec(void)
 	PyModule_AddObject( cModule, "formats", Formats_New() );
 }
 
- 
+  
 /*
 
 #! /bin/env python
-import sys, os
+import sys, os, time
 import pymedia.video.muxer as muxer
 import pymedia.video.vcodec as vcodec
-#if os.environ.has_key( 'PYCAR_DISPLAY' ) and os.environ[ 'PYCAR_DISPLAY' ]== 'directfb':
-#  import pydfb as pygame
-#else:
-#  import pygame
 
-def dumpVideo( inFile, outFilePattern, fmt ):
+def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
+	if not dummy:
+		import pygame
 	dm= muxer.Demuxer( inFile.split( '.' )[ -1 ] )
 	i= 1
 	f= open( inFile, 'rb' )
@@ -1233,24 +1309,41 @@ def dumpVideo( inFile, outFilePattern, fmt ):
 		raise 'There is no video stream in a file %s' % inFile
 	
 	v_id= v[ 0 ][ 'index' ]
-	print 'Assume video stream at %d index: ' % v_id
+	print 'Assume video stream at %d index( %d ): ' % ( v_id, dm.streams[ v_id ][ 'id' ] )
 	c= vcodec.Decoder( dm.streams[ v_id ] )
+	frames= 0
 	while len( s )> 0:
 		for fr in r:
 			if fr[ 0 ]== v_id:
 				d= c.decode( fr[ 1 ] )
 				# Save file as RGB24
 				if d:
-				  print type( d )
-					dd= vcodec.frameConvert( d, fmt )
-				#img= pygame.image.fromstring( dd.data[ 0 ], dd.size, "RGB" )
-				#pygame.image.save( img, outFilePattern % i )
+					if d.data:
+						frames+= 1
+						if dummy== 0:
+							dd= d.convert( fmt )
+							print len( dd.data[ 0 ] ), dd.size
+							if not dummy:
+								img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
+								pygame.image.save( img, outFilePattern % i )
+					else:
+						print 'Empty frame'
+					
+					i+= 1
 		
 		s= f.read( 400000 )
 		r= dm.parse( s )
+	
+	f.close()
+	return frames
 
+frames= dumpVideo( 'c:\\movies\\AVSEQ01.DAT', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
 
-dumpVideo( 'c:\\movies\\AVSEQ01.dat', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
+t= time.time()
+try: t= time.time()- t
+except: t= time.time()- t
+
+print 'Decoded %d frames in %.2f secs( %.2f fps )' % ( frames, t, float( frames )/ t )
 
 */
 

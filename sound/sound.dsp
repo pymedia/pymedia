@@ -121,7 +121,7 @@ SOURCE=.\sound.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=audio.h
+SOURCE=.\audio_win.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

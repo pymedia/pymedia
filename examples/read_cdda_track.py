@@ -1,7 +1,9 @@
 #!/bin/env python
 
 import pymedia.removable.cd as cd
-import sys
+import sys, wave
+
+CHUNK_SIZE= 2352* 10
 
 def readTrack( track, offset, bytes ):
   cd.init()
@@ -15,18 +17,29 @@ def readTrack( track, offset, bytes ):
     print 'Media in %s has type %s, not AudioCD. Cannot read audio data.' % ( c.getName(), props[ 'type' ] )
     return 0
   
-  tr0= c.open( props[ 'titles' ][ track- 1 ][ 'name' ] )
+  tr0= c.open( props[ 'titles' ][ track- 1 ] )
   tr0.seek( offset, cd.SEEK_SET )
-  return tr0.read( bytes )
+  f= wave.open( props[ 'titles' ][ track- 1 ]+ '.wav', 'wb' )
+  f.setparams( (2, 2, 44100, 0, 'NONE','') )
+  s= ' '
+  while len( s ) and bytes:
+    if bytes> CHUNK_SIZE:
+      s= tr0.read( CHUNK_SIZE )
+    else:
+      s= tr0.read( bytes )
+    
+    f.writeframes( s )
+    bytes-= len( s )
 
-# Test media module 
+# ----------------------------------------------------------------------------------
+# Read track or its part from the Audio CD and save it a raw file containing the data
+# The file will be PCM 44100 Hz 2 channels 16 unsigned
+# http://pymedia.org/
 if __name__== '__main__':
-  if len( sys.argv )!= 5:
-    print "Usage: read_track <file_name> <track> <offset> <bytes>"
+  if len( sys.argv )!= 4:
+    print "Usage: read_track <track> <offset> <bytes>"
   else:
-    track= int( sys.argv[ 2 ] )
-    s= readTrack( track, int( sys.argv[ 3 ] ), int( sys.argv[ 4 ] ) )
-    f= open( sys.argv[ 1 ], 'wb' )
-    f.write( s )
-    f.close()
-    print 'Read of %d bytes from track %d completed successfully' % ( len( s ), track )
+    track= int( sys.argv[ 1 ] )
+    s= readTrack( track, int( sys.argv[ 2 ] ), int( sys.argv[ 3 ] ) )
+    print 'Read of %d bytes from track %d completed successfully' % ( int( sys.argv[ 3 ] ), track )
+

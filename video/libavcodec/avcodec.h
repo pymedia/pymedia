@@ -1250,6 +1250,8 @@ typedef struct AVCodecContext {
      * - decoding: unused
      */
     int scenechange_threshold;
+		// Whether codec should resync itself
+		int resync;
 } AVCodecContext;
 
 
@@ -1285,6 +1287,7 @@ typedef struct AVOption {
      * defval might select other then first argument as default
      */
     const char *defstr;
+
 #define FF_OPT_MAX_DEPTH 10
 } AVOption;
 
@@ -1314,6 +1317,7 @@ typedef struct AVCodec {
     const AVOption *options;
     struct AVCodec *next;
     void (*flush)(AVCodecContext *);
+    void (*resync)(AVCodecContext *);
 } AVCodec;
 
 /**

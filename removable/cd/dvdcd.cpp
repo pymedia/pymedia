@@ -65,10 +65,162 @@ bool TrackOpened( PyTrackObject *track, char* action )
 	return ( stTrack->iVobuNo!= -1 );
 }
 
+// ---------------------------------------------------
+int GetChapterData( DVD_TRACK_INFO* stTrack, int* aiChapter )	
+{ 
+	// Scan all chapters and place them into the array
+	pgc_t* pgc= stTrack->ifo_file->vts_pgcit->pgci_srp[ stTrack->ttnnum ].pgc;
+	for( int i= 0; i< pgc->nr_of_cells; i++ )
+		aiChapter[ i ]= pgc->cell_playback[ i ].first_sector;
+
+	return pgc->nr_of_cells;
+}
+
+// ---------------------------------------------------
+int GetSeekCount( DVD_TRACK_INFO* stTrack )	
+{ 
+	// Get some shortcuts
+	vts_tmapt_t *vts_tmapt= stTrack->ifo_file->vts_tmapt;
+	return ( vts_tmapt ) ? vts_tmapt->tmap[ stTrack->ttnnum ].nr_of_entries: 0;
+}
+
+// ---------------------------------------------------
+PyObject* GetLanguagesData( DVD_TRACK_INFO* stTrack )	
+{ 
+	// Get some shortcuts
+	char ss[ 255 ];
+	vtsi_mat_t *vtsi_mat= stTrack->ifo_file->vtsi_mat;
+	PyObject *cRes= PyTuple_New( vtsi_mat->nr_of_vts_audio_streams );
+	if( !cRes )
+		return NULL;
+
+	for( int i= 0; i< vtsi_mat->nr_of_vts_audio_streams; i++ )
+	{
+		audio_attr_t *attr= &vtsi_mat->vts_audio_attr[ i ];
+		char *s= NULL;
+		PyObject* cFormat= PyDict_New();
+		if( !cFormat )
+			return NULL;
+
+		// Assign sound format to a tuple
+		PyTuple_SetItem( cRes, i, cFormat );
+
+		// Sanity check
+		if(attr->audio_format == 0
+			 && attr->multichannel_extension == 0
+			 && attr->lang_type == 0
+			 && attr->application_mode == 0
+			 && attr->quantization == 0
+			 && attr->sample_frequency == 0
+			 && attr->channels == 0
+			 && attr->lang_code == 0
+			 && attr->lang_extension == 0
+			 && attr->code_extension == 0
+			 && attr->unknown3 == 0
+			 && attr->unknown1 == 0)
+		{
+			// Unspecified format. Bug or something...
+			PyDict_SetItemString( cFormat, FORMAT, PyString_FromString( UNSPECIFIED ) );
+			continue;
+		}
+
+		switch(attr->audio_format) 
+		{
+			case 0: s= "ac3"; break;
+			case 2: s= "mpeg1"; break;
+			case 3: s= "mpeg2ext"; break;
+			case 4: s= "lpcm"; break;
+			case 6: s= "dts"; break;
+			default:  s= UNSPECIFIED;
+		}
+		// Set audio format
+		PyDict_SetItemString( cFormat, FORMAT, PyString_FromString( s ) );
+  
+		if( attr->lang_type== 1 )
+		{
+			if( attr->lang_extension )
+				sprintf( ss, "%c%c (%c)", 
+					attr->lang_code>>8, attr->lang_code & 0xff,attr->lang_extension);
+			else
+				sprintf( ss, "%c%c", attr->lang_code>>8, attr->lang_code & 0xff);
+
+			s= &ss[ 0 ];
+		}
+		else
+			s= UNSPECIFIED;
+
+		// Set language
+		PyDict_SetItemString( cFormat, LANGUAGE, PyString_FromString( s ) );
+
+		switch(attr->application_mode) 
+		{
+			case 1: s= "karaoke mode"; break;
+			case 2: s= "surround sound mode"; break;
+			/*if(attr->app_info.surround.dolby_encoded) {
+				printf("dolby surround ");*/
+			default:s= UNSPECIFIED;
+		}
+		// Set language mode
+		PyDict_SetItemString( cFormat, LANGUAGE_MODE, PyString_FromString( s ) );
+  
+		switch(attr->quantization) 
+		{
+			case 0: s= "16"; break;
+			case 1: s= "20"; break;
+			case 2: s= "24"; break;
+			case 3: s= "drc"; break;
+			default:s= UNSPECIFIED;
+		}
+		// Set sample rate
+		PyDict_SetItemString( cFormat, SAMPLE_RATE, PyString_FromString( s ) );
+  
+		switch(attr->sample_frequency) 
+		{
+			case 0: s= "48000"; break;
+			case 1: s= "44000"; break;
+			default:s= UNSPECIFIED;
+		}
+		// Set sample frequency and channels count
+		PyDict_SetItemString( cFormat, SAMPLE_FREQUENCY, PyString_FromString( s ) );
+  	PyDict_SetItemString( cFormat, CHANNELS, PyLong_FromLong( attr->channels + 1 ) );
+  
+		switch(attr->code_extension) 
+		{
+			case 1: s= "Normal Caption"; break;
+			case 2: s= "Audio for visually impaired"; break;
+			case 3: s= "Director's comments 1"; break;
+			case 4: s= "Director's comments 2"; break;
+			default:s= UNSPECIFIED;
+		}
+  	PyDict_SetItemString( cFormat, AUDIO_TYPE, PyString_FromString( s ) );
+	}
+	return cRes;
+}
+
+// ---------------------------------------------------
+int GetSeekData( DVD_TRACK_INFO* stTrack, DVD_SEEK_INFO* asSeek )	
+{ 
+	// Get some shortcuts
+	vts_tmapt_t *vts_tmapt= stTrack->ifo_file->vts_tmapt;
+	int iSeeks= GetSeekCount( stTrack );
+	//if( iSeeks )
+	{
+		int tmu= vts_tmapt->tmap[ stTrack->ttnnum ].tmu;
+
+		// Scan all time seeks and place them into the array
+		for( int i= 0; i< iSeeks; i++ )
+		{
+			asSeek[ i ].iTime= tmu * (i + 1); 
+			asSeek[ i ].iSector= vts_tmapt->tmap[ stTrack->ttnnum ].map_ent[ i ] & 0x7fffffff;
+		}
+	}
+	return iSeeks;
+}
+
 /* ---------------------------------------------------------------------------------*/
 float TitleLength( DVD_TRACK_INFO* stTrack )
 {
-	pgc_t* pgc= stTrack->ifo_file->vts_pgcit->pgci_srp[ 0 ].pgc;
+	pgc_t* pgc= stTrack->ifo_file->vts_pgcit->pgci_srp[ stTrack->ttnnum ].pgc;
 	return (float)pgc->playback_time.hour* 3600+ 
 				 pgc->playback_time.minute* 60+ 
 				 pgc->playback_time.second;
@@ -309,6 +461,60 @@ DVDCD_Track_Tell( PyTrackObject *track )
 }
 
 /* ---------------------------------------------------------------------------------*/
+static PyObject *
+DVDCD_Track_Properties( PyTrackObject *track )
+{
+	DVD_TRACK_INFO* stTrack= (DVD_TRACK_INFO*)track->pData;
+	int aiChapter[ 2000 ];
+	PyObject *cRes= PyDict_New();
+	if( !cRes )
+		return NULL;
+	// Get seeks
+	int iSeeks= GetSeekCount( stTrack );
+	if( iSeeks )
+	{
+		DVD_SEEK_INFO *asSeek= (DVD_SEEK_INFO *)malloc( sizeof( DVD_SEEK_INFO )* iSeeks );
+		if( !asSeek )
+			return PyErr_NoMemory();
+		
+		PyObject *cSeeks= PyTuple_New( iSeeks );
+		if( !cSeeks )
+			return NULL;
+
+		GetSeekData( stTrack, asSeek );
+		for( int i= 0; i< iSeeks; i++ )
+		{
+			PyObject *cSeek= PyTuple_New( 2 );
+			if( !cSeek )
+				return NULL;
+			PyTuple_SetItem( cSeek, 0, PyLong_FromLong( ( asSeek+ i )->iTime ) );
+			PyTuple_SetItem( cSeek, 1, PyLong_FromLongLong( (INT64)DVD_VIDEO_LB_LEN* (INT64)( asSeek+ i )->iSector ));
+			PyTuple_SetItem( cSeeks, i, cSeek );
+		}
+		PyDict_SetItemString( cRes, SEEKS, cSeeks );
+		free( asSeek );
+	}
+	// Get chapters
+	int iChapters= GetChapterData( stTrack, aiChapter );
+	PyObject *cChapters= PyTuple_New( iChapters );
+	if( !cChapters )
+		return NULL;
+
+	for( int i= 0; i< iChapters; i++ )
+		PyTuple_SetItem( cChapters, i, PyLong_FromLongLong( (INT64)DVD_VIDEO_LB_LEN* (INT64)aiChapter[ i ] ));
+
+	PyDict_SetItemString( cRes, CHAPTERS, cChapters );
+	PyDict_SetItemString( cRes, LENGTH, PyLong_FromLong( (int)TitleLength( stTrack )) );
+
+	PyObject *cLang= GetLanguagesData( stTrack );
+	if( !cLang )
+		return NULL;
+
+	PyDict_SetItemString( cRes, AUDIO_STREAMS, cLang );
+	return cRes;
+}
+
+/* ---------------------------------------------------------------------------------*/
 // File like object to support contiques read from a track
 static PyMethodDef dvdcd_track_methods[] = 
 {
@@ -339,6 +545,19 @@ static PyMethodDef dvdcd_track_methods[] =
 		METH_NOARGS,
 	  "tell() -> pos\n"
 		"Returns current position in a file"
+	},
+	{ 
+		"getProperties", 
+		(PyCFunction)DVDCD_Track_Properties, 
+		METH_NOARGS,
+	  "getProperties() -> { properties }\n"
+		"Returns properties for the title as dictionary.\n"
+		"The following available for DVD:\n"
+		"\t'"SEEKS"' list of tuples (sec,pos)\n"
+		"\t'"CHAPTERS "' list of chapters as list of positions, first represents chapter 1, second chapter 2 etc.\n"
+		"\t'"LANGUAGES " list of languages as distinary. Every dictionary has members to describe a language.\n"
+		"\t'"AUDIO_STREAMS " list of audio streams as a dictionaries.\n"
+		"\t'"VIDEO_STREAMS " list of video streams as a dictionaries.\n"
 	},
 	{ NULL, NULL },
 };

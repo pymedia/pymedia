@@ -21,6 +21,6 @@ extern PyTypeObject MuxerType ;
 #define PM_CHANNELS  "channels"
 #define PM_GOP_SIZE "gop_size"
 #define PM_MAX_B_FRAMES "max_b_frames"
-#define PM_DURATION "duration"
+#define PM_DURATION "length"
 
 #endif

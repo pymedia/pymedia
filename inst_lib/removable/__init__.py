@@ -21,4 +21,4 @@ Set of modules to deal with the removable medias
 
 __all__= [ 'cd' ]
 import cd
-__version__= "1.2.2"
+__version__= "1.2.3.0"

@@ -1664,6 +1664,7 @@ static int mpeg_decode_init(AVCodecContext *avctx)
     s->mpeg_enc_ctx_allocated = 0;
     s->mpeg_enc_ctx.picture_number = 0;
     s->repeat_field = 0;
+		avctx->resync= 0;
     s->mpeg_enc_ctx.codec_id= avctx->codec->id;
     return 0;
 }
@@ -2240,12 +2241,6 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
             s->intra_matrix[j] = v;
             s->chroma_intra_matrix[j] = v;
         }
-#ifdef DEBUG
-        dprintf("intra matrix present\n");
-        for(i=0;i<64;i++)
-            dprintf(" %d", s->intra_matrix[s->intra_scantable.permutated[i]]);
-        printf("\n");
-#endif
     } else {
         for(i=0;i<64;i++) {
             int j= s->dsp.idct_permutation[i];
@@ -2261,12 +2256,6 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
             s->inter_matrix[j] = v;
             s->chroma_inter_matrix[j] = v;
         }
-#ifdef DEBUG
-        dprintf("non intra matrix present\n");
-        for(i=0;i<64;i++)
-            dprintf(" %d", s->inter_matrix[s->intra_scantable.permutated[i]]);
-        printf("\n");
-#endif
     } else {
         for(i=0;i<64;i++) {
             int j= s->dsp.idct_permutation[i];
@@ -2423,7 +2412,6 @@ static int mpeg_decode_frame(AVCodecContext *avctx,
         *data_size = sizeof(AVFrame);
         return 0;
     }
-
     if(s2->flags&CODEC_FLAG_TRUNCATED){
         int next= mpeg1_find_frame_end(s2, buf, buf_size);
         
@@ -2449,44 +2437,49 @@ static int mpeg_decode_frame(AVCodecContext *avctx,
     if(s->mpeg_enc_ctx_allocated==0 && avctx->codec_tag == ff_get_fourcc("VCR2"))
         vcr2_init_sequence(avctx);
 
+    *data_size = sizeof(AVPicture);
     for(;;) {
         /* find start next code */
         start_code = find_start_code(&buf_ptr, buf_end);
         if (start_code < 0){
-            if(s2->pict_type != B_TYPE || avctx->hurry_up==0){
-                if (slice_end(avctx, picture)) {
-                    if(s2->last_picture_ptr) //FIXME merge with the stuff in mpeg_decode_slice
-                        *data_size = sizeof(AVPicture);
-                }
-            }
+            if (!slice_end(avctx, picture))
+						{
+              *data_size = 0;
+						}
+	
+            //if(s2->last_picture_ptr) //FIXME merge with the stuff in mpeg_decode_slice
+            //}
+						//if( avctx->resync )
+						//	*data_size = 0;
             return FFMAX(0, buf_ptr - buf - s2->parse_context.last_index);
         }
-        
+
         input_size = buf_end - buf_ptr;
 
         if(avctx->debug & FF_DEBUG_STARTCODE){
             printf("%3X at %d left %d\n", start_code, buf_ptr-buf, input_size);
         }
-
+//printf( "'%d' ", start_code );
                 /* prepare data for next start code */
                 switch(start_code) {
                 case SEQ_START_CODE:
-                    mpeg1_decode_sequence(avctx, buf_ptr, 
-                                          input_size);
+                    mpeg1_decode_sequence(avctx, buf_ptr, input_size);
                     break;
                             
                 case PICTURE_START_CODE:
                     /* we have a complete image : we try to decompress it */
-                    mpeg1_decode_picture(avctx, 
-                                         buf_ptr, input_size);
+										mpeg1_decode_picture(avctx, buf_ptr, input_size);
+										if( avctx->resync && s2->pict_type==I_TYPE )
+										{
+											avctx->resync= 0;
+										}
+
                     break;
                 case EXT_START_CODE:
-                    mpeg_decode_extension(avctx,
-                                          buf_ptr, input_size);
+                   mpeg_decode_extension(avctx, buf_ptr, input_size);
                     break;
                 case USER_START_CODE:
-                    mpeg_decode_user_data(avctx, 
-                                          buf_ptr, input_size);
+                    mpeg_decode_user_data(avctx, buf_ptr, input_size);
                     break;
                 case GOP_START_CODE:
                     s2->first_field=0;
@@ -2496,14 +2489,16 @@ static int mpeg_decode_frame(AVCodecContext *avctx,
                         start_code <= SLICE_MAX_START_CODE) {
                         
                         /* skip b frames if we dont have reference frames */
-                        if(s2->last_picture_ptr==NULL && s2->pict_type==B_TYPE) break;
+                        if( (s2->last_picture_ptr==NULL && s2->pict_type==B_TYPE) ||
                         /* skip b frames if we are in a hurry */
-                        if(avctx->hurry_up && s2->pict_type==B_TYPE) break;
+                           ( avctx->hurry_up && s2->pict_type==B_TYPE ) ||
                         /* skip everything if we are in a hurry>=5 */
-                        if(avctx->hurry_up>=5) break;
-                        
-                        if (!s->mpeg_enc_ctx_allocated) break;
+													 avctx->hurry_up>=5 ||
+													/* Resync process is in progress */
+														(avctx->resync && s2->pict_type!=I_TYPE) )
+													break;
 
+                        if (!s->mpeg_enc_ctx_allocated) break;
                         ret = mpeg_decode_slice(avctx, picture,
                                                 start_code, &buf_ptr, input_size);
                         emms_c();
@@ -2530,6 +2525,11 @@ static int mpeg_decode_end(AVCodecContext *avctx)
     return 0;
 }
 
+static void mpeg_reset(AVCodecContext * avctx)
+{
+  avctx->resync= 1;
+}
+
 AVCodec mpeg1video_decoder = {
     "mpeg1video",
     CODEC_TYPE_VIDEO,
@@ -2543,6 +2543,7 @@ AVCodec mpeg1video_decoder = {
 		NULL,
 		NULL,
     ff_mpeg_flush,
+		mpeg_reset
 };
 
 AVCodec mpeg2video_decoder = {
@@ -2558,6 +2559,7 @@ AVCodec mpeg2video_decoder = {
 		NULL,
 		NULL,
     ff_mpeg_flush,
+		mpeg_reset
 };
 
 #ifdef HAVE_XVMC
@@ -2588,6 +2590,10 @@ AVCodec mpeg_xvmc_decoder = {
     mpeg_decode_end,
     mpeg_decode_frame,
     CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1 | CODEC_CAP_TRUNCATED,
+		NULL,
+		NULL,
+		NULL,
+		mpeg_reset
 };
 
 #endif

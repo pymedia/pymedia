@@ -18,12 +18,12 @@
  */
 #include "avformat.h"
 #include <ctype.h>
-#ifndef CONFIG_WIN32
+#if !defined( CONFIG_WIN32 ) && !defined( WIN32 )
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #else
-#define strcasecmp _stricmp
+//#define strcasecmp _stricmp
 #include <sys/types.h>
 #include <sys/timeb.h>
 #endif

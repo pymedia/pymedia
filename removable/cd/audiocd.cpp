@@ -197,6 +197,27 @@ AudioCD_Track_Tell( PyTrackObject *track )
 }
 
 /* ---------------------------------------------------------------------------------*/
+static PyObject *
+AudioCD_Track_Properties( PyTrackObject *track )
+{
+	CDDA_TRACK_INFO* stTrack= (CDDA_TRACK_INFO*)track->pData;
+	CDDARead* cTrack= (CDDARead*)track->cObject;
+	PyObject *cRes= PyDict_New();
+	if( !cRes )
+		return PyErr_NoMemory();
+
+	// Set some data in the dictionary
+	PyDict_SetItemString( cRes, LENGTH, PyFloat_FromDouble( cTrack->GetTrackLength( stTrack->iTrack )) );
+
+	// Some data hardcoded for now...
+	PyDict_SetItemString( cRes, "sample_rate", PyLong_FromLong( 16 ) );
+	PyDict_SetItemString( cRes, "sample_freq", PyLong_FromLong( 44100 ) );
+	PyDict_SetItemString( cRes, "channels", PyLong_FromLong( 2 ) );
+	PyDict_SetItemString( cRes, "bitrate", PyLong_FromLong( 999 ) );
+	return cRes;
+}
+
+/* ---------------------------------------------------------------------------------*/
 // File like object to support contiques read from a track
 static PyMethodDef audiocd_track_methods[] = 
 {
@@ -227,6 +248,18 @@ static PyMethodDef audiocd_track_methods[] =
 		METH_NOARGS,
 	  "tell() -> pos\n"
 		"Returns current position in a file"
+	},
+	{ 
+		"getProperties", 
+		(PyCFunction)AudioCD_Track_Properties, 
+		METH_NOARGS,
+	  "getProperties() -> { properties }\n"
+		"Returns properties for the title as dictionary.\n"
+		"The following available for AudioCD:\n"
+		"\t'"LENGTH"' length of the track in secs\n"
+		"\t'sample_rate' sample rate of the track in bits( 16, 24 )\n"
+		"\t'sample_freq' sample frequency rate in Hz ( ex 44100, 48000, 96000 )\n"
+		"\t'channels' number of channels on a track( ex 1, 2 )\n"
 	},
 	{ NULL, NULL },
 };

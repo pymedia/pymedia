@@ -12,8 +12,8 @@
  */
 
 typedef	union {
-	long long		q;	/* Quadword (64-bit) value */
-	unsigned long long	uq;	/* Unsigned Quadword */
+	INT64		q;	/* Quadword (64-bit) value */
+	UINT64	uq;	/* Unsigned Quadword */
 	int			d[2];	/* 2 Doubleword (32-bit) values */
 	unsigned int		ud[2];	/* 2 Unsigned Doubleword */
 	short			w[4];	/* 4 Word (16-bit) values */

@@ -210,6 +210,7 @@ public:
 		stInfo->iPos= 0;
 		stInfo->iStartFrame= this->GetStartSector( iTrack- 1 );
 		stInfo->iEndFrame= this->GetStartSector( iTrack );
+		stInfo->iTrack= iTrack;
 		return stInfo;
 	}	
 };

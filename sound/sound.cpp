@@ -11,7 +11,7 @@
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
+ * Library General Public License for more details. 
  *
  * You should have received a copy of the GNU Library General Public
  * License along with this library; if not, write to the Free
@@ -21,20 +21,21 @@
 */
 
 #include <Python.h>
-
+#include <structmember.h>
+ 
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "audio_win.h"
+#include "audio_win.h"   
 #else
 #include "audio_unix.h"
 #endif
 
 #include "resample.h"
 #include "fft.h"
-
+ 
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
-
+ 
 #define MODULE_NAME "pymedia.audio.sound"
 
 #define RETURN_NONE	Py_INCREF( Py_None ); return Py_None;
@@ -72,6 +73,7 @@ Here is the simple player for a pcm file\n\
 
 #define OUTPUT_NAME "Output"
 #define INPUT_NAME "Input"
+#define MIXER_NAME "Mixer"
 #define PLAY_NAME "play"
 #define START_NAME "start"
 #define CAN_PLAY_NAME "canPlay"
@@ -80,11 +82,8 @@ Here is the simple player for a pcm file\n\
 #define STOP_NAME "stop"
 #define POSITION_NAME "getPosition"
 #define CHANNELS_NAME "getChannels"
-#define ISMUTE_NAME "isMute"
-#define SETMUTE_NAME "setMute"
-#define GETVOLUME_NAME "getVolume"
+#define GET_CONTROLS_NAME "getControls"
 #define GETRATE_NAME "getRate"
-#define SETVOLUME_NAME "setVolume"
 #define IS_PLAYING_NAME "isPlaying"
 #define GET_LEFT_NAME "getLeft"
 #define GET_SIZE_NAME "getSize"
@@ -92,6 +91,16 @@ Here is the simple player for a pcm file\n\
 #define RESAMPLE_NAME "resample"
 #define AS_FREQS_NAME "asFrequencies"
 #define AS_BANDS_NAME "asBands"
+#define MAX_VALUE_NAME "maxValue"
+#define MIN_VALUE_NAME "minValue"
+#define STEPS_NAME "step"
+#define TYPE_NAME "type"
+#define COUNT_NAME "count"
+#define GET_VALUE_NAME "getValue"
+#define SET_VALUE_NAME "setValue"
+#define SET_ACTIVE_NAME "setActive"
+#define PROP_CHANNELS_NAME "channels"
+
 #define GET_OUTPUT_DEVICES_NAME "getODevices"
 #define GET_INPUT_DEVICES_NAME "getIDevices"
 
@@ -113,12 +122,8 @@ Here is the simple player for a pcm file\n\
 #define STOP_DOC STOP_NAME"() -> None \n\tStops currently played fragment\n"
 #define POSITION_DOC POSITION_NAME"() -> int\n\tReturns position for the currently playing fragment.\n\tPosition is calculated from the last full stop. Pause does not considered as a stop\n"
 #define CHANNELS_DOC CHANNELS_NAME"() -> {1..n}\n\tReturns number of channels that have been passed during the initialization\n"
-#define ISMUTE_DOC ISMUTE_NAME"() -> ( { 1 | 0 } )\n\tWhether sound is mute\n"
-#define SETMUTE_DOC ISMUTE_NAME"( { 1 | 0 } ) -> None\n\tSet or unset mute\n"
-#define GETVOLUME_DOC GETVOLUME_NAME"() -> ( 0..0xffff )\n\tCurrent volume level\n"
 #define GETRATE_DOC GETRATE_NAME"() -> rate\n\tCurrent frequency rate\n"
 #define GET_SIZE_DOC GET_SIZE_NAME"() -> bufSize \n\tSize of the grabbing buffer. 0 if empty.\n"
-#define SETVOLUME_DOC SETVOLUME_NAME"( volume ) -> None\n\tSet volume level\n"
 #define GET_DATA_DOC GET_DATA_NAME"() -> data \n\treturns data from the sound device as string.\n"
 #define IS_PLAYING_DOC IS_PLAYING_NAME"() -> {0|1}\n\tWhether sound is playing\n"
 #define GET_LEFT_DOC GET_LEFT_NAME"() -> secs \n\tNumber of seconds left in a buffer to play\n"
@@ -136,6 +141,20 @@ Here is the simple player for a pcm file\n\
 				"It will be at least len( data ) / n elements in a list for every n samples in the input data.\n"\
 				"If there is no enough data to fullfill the n samples, it will be right padded with zeroes.\n"\
 				"IMPORTANT: Please note that only mono signals are supported at this time."
+#define GET_CONTROLS_DOC "get controls in a list.\n"\
+													"Returned list contains dictionary with the following ietms:\n."\
+													"'destination' - destination name( playback or recording )\n"\
+													"'connection' - name of connection for the control\n"\
+													"'name' - name of the control( Line-In, Volume, etc )\n"\
+													"'control'- control object"
+#define MAX_VALUE_DOC "maximum value for the control to have. The control will never exceed this value"
+#define MIN_VALUE_DOC "minimum value for the control to have. The control will never be less than this value"
+#define STEPS_DOC "minimal step you can increase the value of the control"
+#define MIXER_CONTROL_DOC "allows you to get and change the value of the control"
+#define TYPE_DOC "the type of mixer control as integer"
+#define GET_VALUE_DOC "get value of the control"
+#define SET_VALUE_DOC "set value of the control"
+#define SET_ACTIVE_DOC "activate control for recording"
 
 #define RESAMPLER_NAME "Resampler"
 
@@ -173,11 +192,7 @@ const char* OUTPUT_DOC=
 		"\n\t"STOP_NAME"()"
 		"\n\t"POSITION_NAME"()"
 		"\n\t"CHANNELS_NAME"()"
-		"\n\t"ISMUTE_NAME"()"
-		"\n\t"SETMUTE_NAME"()"
-		"\n\t"GETVOLUME_NAME"()"
 		"\n\t"GETRATE_NAME"()"
-		"\n\t"SETVOLUME_NAME"()"
 		"\n\t"GET_LEFT_NAME"()"
 		"\n\t"IS_PLAYING_NAME"()";
 
@@ -191,6 +206,10 @@ const char* INPUT_DOC=
 		"\n\t"GETRATE_NAME"()"
 		"\n\t"GET_SIZE_NAME"()"
 		"\n\t"GET_DATA_NAME"()";
+
+const char* MIXER_DOC=
+		MIXER_NAME"( [ device_id ] ) -> mixer\n"
+		"Opens mixer device for access.";
 
 const int MIN_SAMPLES= 32;
 const int MAX_SAMPLES= 576;
@@ -209,7 +228,7 @@ typedef struct
 } PyResamplerObject;
 
 // ---------------------------------------------------------------------------------
-typedef struct
+typedef struct    
 {
 	PyObject_HEAD
 
@@ -233,6 +252,28 @@ typedef struct
 	ISoundStream* cObj;
 } PyISoundObject;
 
+// ---------------------------------------------------------------------------------
+typedef struct
+{
+	PyObject_HEAD
+	Mixer* cObj;
+} PyMixerObject;
+
+// ---------------------------------------------------------------------------------
+typedef struct
+{
+	PyObject_HEAD
+	PyMixerObject* cObj;
+	int iDest;
+	int iConn;
+	int iControl;
+	int iMaxValue;
+	int iMinValue;
+	int iStep;
+	int iType;
+	int iChannels;
+	char sName[ 255 ];
+} PyMixerControlObject;
 
 // ---------------------------------------------------------------------------------
 static PyObject *
@@ -263,7 +304,7 @@ ISound_Stop( PyISoundObject* obj)
 static PyObject *
 ISound_GetPosition( PyISoundObject* obj)
 {
-  return PyFloat_FromDouble( obj->cObj->GetPosition() );
+  return PyFloat_FromDouble( obj->cObj->GetPosition() );     
 }
 
 // ---------------------------------------------------------------------------------
@@ -283,7 +324,7 @@ ISound_GetChannels( PyISoundObject* obj)
 // ---------------------------------------------------------------------------------
 static PyObject *
 ISound_GetSize( PyISoundObject* obj)
-{
+{ 
   return PyInt_FromLong( obj->cObj->GetSize() );
 }
 
@@ -423,11 +464,11 @@ Sound_Play( PyOSoundObject* obj, PyObject *args)
 
   Py_BEGIN_ALLOW_THREADS
 	f= obj->cObj->Play( sData, iLen );
-  Py_END_ALLOW_THREADS
+  Py_END_ALLOW_THREADS   
   if( f== -1 )
 	{
  		PyErr_Format( g_cErr, "Cannot play sound because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() );
-		return NULL;
+		return NULL;  
 	}
 	// Return how many samples are queued
 	return PyFloat_FromDouble( f );
@@ -452,55 +493,21 @@ Sound_Stop( PyOSoundObject* obj)
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_GetPosition( PyOSoundObject* obj)
-{
-  return PyFloat_FromDouble( obj->cObj->GetPosition() );
+{ 
+	double d;
+  Py_BEGIN_ALLOW_THREADS
+	d= obj->cObj->GetPosition();
+  Py_END_ALLOW_THREADS   
+  return PyFloat_FromDouble( d );
 }
-
+  
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_Unpause( PyOSoundObject* obj)
 {
   obj->cObj->Unpause();
 	RETURN_NONE
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
-Sound_IsMute( PyOSoundObject* obj)
-{
-	return PyLong_FromLong( obj->cObj->IsMute() );
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
-Sound_SetMute( PyOSoundObject* obj, PyObject *args)
-{
-	int bMute;
-	if (!PyArg_ParseTuple(args, "i:isMute", &bMute ))
-		return NULL;
-
-	obj->cObj->SetMute( ( bMute!= 0 ) );
-	RETURN_NONE
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
-Sound_GetVolume( PyOSoundObject* obj)
-{
-	return PyLong_FromLong( obj->cObj->GetVolume() & 0xffff );
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
-Sound_SetVolume( PyOSoundObject* obj, PyObject *args)
-{
-	int iVolume;
-	if (!PyArg_ParseTuple(args, "i:setVolume", &iVolume ))
-		return NULL;
-
-	obj->cObj->SetVolume( iVolume | ( ((unsigned int)iVolume) << 16 ) );
-	RETURN_NONE
-}
+} 
 
 // ---------------------------------------------------------------------------------
 static PyObject *
@@ -541,11 +548,7 @@ static PyMethodDef sound_methods[] =
 	{ STOP_NAME, (PyCFunction)Sound_Stop, METH_NOARGS,	STOP_DOC },
 	{ POSITION_NAME, (PyCFunction)Sound_GetPosition, METH_NOARGS,	POSITION_DOC	},
 	{ CHANNELS_NAME, (PyCFunction)Sound_GetChannels, METH_NOARGS,	CHANNELS_DOC },
-	{ ISMUTE_NAME, (PyCFunction)Sound_IsMute, METH_NOARGS,	ISMUTE_DOC	},
-	{ SETMUTE_NAME, (PyCFunction)Sound_SetMute, 	METH_VARARGS,	SETMUTE_DOC	},
-	{ GETVOLUME_NAME, (PyCFunction)Sound_GetVolume, METH_NOARGS,	GETVOLUME_DOC	},
 	{ GETRATE_NAME, (PyCFunction)Sound_GetRate, METH_NOARGS,	GETRATE_DOC	},
-	{ SETVOLUME_NAME, (PyCFunction)Sound_SetVolume, METH_VARARGS,SETVOLUME_DOC	},
 	{ IS_PLAYING_NAME, (PyCFunction)Sound_IsPlaying, METH_NOARGS,	IS_PLAYING_DOC	},
 	{ GET_LEFT_NAME, (PyCFunction)Sound_GetLeft, METH_NOARGS,	GET_LEFT_DOC	},
 	{ NULL, NULL },
@@ -633,12 +636,297 @@ PyTypeObject PySoundType =
 	PyObject_Del,				/* tp_free */
 };
 
+// ----------------------------------------------------------------
+static PyObject *
+MixerControl_GetName(PyMixerControlObject *obj, void *closure)
+{
+	return PyString_FromString( obj->sName );
+}
+
+// ----------------------------------------------------------------
+static PyObject *
+MixerControl_SetActive(PyMixerControlObject *obj)
+{
+	obj->cObj->cObj->SetActive( obj->iDest, obj->iConn, obj->iControl );
+	RETURN_NONE
+}
+
+// ----------------------------------------------------------------
+static PyObject *
+MixerControl_GetValue(PyMixerControlObject *obj)
+{
+	int aiVals[ 20 ];
+	int i= obj->cObj->cObj->GetControlValue( obj->iDest, obj->iConn, obj->iControl, -1, &aiVals[ 0 ] );
+	if( i== -1 )
+	{
+		PyErr_Format( g_cErr, "Cannot get control value. Error text is: %d, %s", obj->cObj->cObj->GetLastError(), obj->cObj->cObj->GetErrorString() );
+		return NULL;
+	}
+	PyObject *cRet= PyTuple_New( i );
+	for( int ii= 0; ii< i; ii++ )
+		PyTuple_SetItem( cRet, ii, PyInt_FromLong( aiVals[ ii ] ) );
+	
+	return cRet;
+}
+
+// ----------------------------------------------------------------
+static PyObject *
+MixerControl_SetValue(PyMixerControlObject *obj, PyObject *args)
+{
+	int iChannel= -1, iVal;
+	if (!PyArg_ParseTuple(args, "i|i:", &iVal, &iChannel ))
+		return NULL;
+
+	if( !obj->cObj->cObj->SetControlValue( obj->iDest, obj->iConn, obj->iControl, iChannel, iVal ))
+	{
+		PyErr_Format( g_cErr, "Cannot set value for the control %d.\nError text is: %d, %s", iChannel, obj->cObj->cObj->GetLastError(), obj->cObj->cObj->GetErrorString() );
+		return NULL;
+	}
+
+	RETURN_NONE
+}
+
+// ---------------------------------------------------------------------------------
+// List of all methods for the mp3decoder
+static PyMethodDef mixer_control_methods[] =
+{
+
+	{ GET_VALUE_NAME, (PyCFunction)MixerControl_GetValue, METH_NOARGS, GET_VALUE_DOC },
+	{ SET_VALUE_NAME, (PyCFunction)MixerControl_SetValue, METH_VARARGS, SET_VALUE_DOC },
+	{ SET_ACTIVE_NAME, (PyCFunction)MixerControl_SetActive, METH_NOARGS, SET_ACTIVE_DOC },
+	{ NULL, NULL },
+};
+
+// ----------------------------------------------------------------
+static PyMemberDef mixer_control_members[] = 
+{
+	{MAX_VALUE_NAME, T_INT, offsetof(PyMixerControlObject,iMaxValue), 0, MAX_VALUE_DOC },
+	{MIN_VALUE_NAME, T_INT, offsetof(PyMixerControlObject,iMinValue), 0, MIN_VALUE_NAME },
+	{STEPS_NAME, T_INT, offsetof(PyMixerControlObject,iStep), 0, STEPS_DOC },
+	{TYPE_NAME, T_INT, offsetof(PyMixerControlObject,iType), 0, TYPE_DOC },
+	{PROP_CHANNELS_NAME, T_INT, offsetof(PyMixerControlObject,iChannels), 0, CHANNELS_DOC },
+	{NULL},
+};
+
+// ----------------------------------------------------------------
+static PyGetSetDef mixer_control_getset[] =
+{
+	{"name", (getter)MixerControl_GetName, NULL, "name of the control"},
+	{0}
+};
+ 
+// ----------------------------------------------------------------
+static void
+MixerControlClose( PyMixerControlObject *obj )
+{
+	Py_DECREF( obj->cObj );
+	PyObject_Free( obj );
+}
+
+// ----------------------------------------------------------------
+PyTypeObject MixerControlType =
+{
+	PyObject_HEAD_INIT(NULL)
+	0,
+	"MixerControl",
+	sizeof(PyMixerControlObject),
+	0,
+	(destructor)MixerControlClose,  //tp_dealloc
+	0,			  //tp_print
+	0, //tp_getattr
+	0,			  //tp_setattr
+	0,			  //tp_compare
+	0,			  //tp_repr
+	0,			  //tp_as_number
+	0,			  //tp_as_sequence
+	0,				//tp_as_mapping
+	0,					/* tp_hash */
+	0,					/* tp_call */
+	0,					/* tp_str */
+	PyObject_GenericGetAttr,		/* tp_getattro */
+	0,					/* tp_setattro */
+	0,					/* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+	(char*)MIXER_CONTROL_DOC,		/* tp_doc */
+	0,					/* tp_traverse */
+	0,					/* tp_clear */
+	0,					/* tp_richcompare */
+	0,					/* tp_weaklistoffset */
+	0,					/* tp_iter */
+	0,					/* tp_iternext */
+	mixer_control_methods,					/* tp_methods */
+	mixer_control_members,					/* tp_members */
+	mixer_control_getset,					/* tp_getset */
+	0,					/* tp_base */
+	0,					/* tp_dict */
+	0,					/* tp_descr_get */
+	0,					/* tp_descr_set */
+	0,					/* tp_dictoffset */
+	0,					/* tp_init */
+	PyType_GenericAlloc,			/* tp_alloc */
+	0,					/* tp_new */
+	PyObject_Del,				/* tp_free */
+};
+
+// ---------------------------------------------------------------------------------
+static PyObject *
+Mixer_GetControls( PyMixerObject* obj)
+{
+	// Populate list of destinations first
+	PyObject* cRes= PyList_New( 0 );
+	if( !cRes )
+		return NULL;
+
+	// Scan all destinations
+	for( int i= 0; i< obj->cObj->GetDestinationsCount(); i++ )
+	{
+		//
+		char* sDest= obj->cObj->GetDestinationName( i );
+
+		// Scan all sources for destination 
+		for( int j= 0; j< obj->cObj->GetConnectionsCount( i ); j++ )
+		{ 
+			// Set connection wise data
+			char* sConn= obj->cObj->GetConnectionName( i, j );
+
+			// Create lines under connections
+			for( int k= 0; k< obj->cObj->GetControlsCount( i, j ); k++ )
+			{
+				// Create the mixer control object
+				PyMixerControlObject* cControl= (PyMixerControlObject*)MixerControlType.tp_alloc( &MixerControlType, 0);
+				if( !cControl )
+				{
+					Py_DECREF( cRes );
+					return NULL;
+				}
+				
+				// Set line wise data
+				cControl->cObj= obj;
+				Py_INCREF( obj );
+				cControl->iDest= i;
+				cControl->iConn= j;
+				cControl->iControl= k;
+				strcpy( cControl->sName, obj->cObj->GetControlName( i, j, k ) );
+				obj->cObj->GetControlValues( i, j, k, 
+					&cControl->iMinValue, &cControl->iMaxValue, &cControl->iStep, &cControl->iType, &cControl->iChannels );
+
+				if( cControl->iChannels== 0 )
+					cControl->iChannels= 1;
+
+				// Create dictionary with all names and controls
+				PyObject *cTmp= Py_BuildValue( "{sssssssisN}", 
+						"destination", sDest, 
+						"connection", sConn, 
+						"name", obj->cObj->GetControlName( i, j, k ),
+						"active", obj->cObj->IsActive( i, j, k ),
+						"control", cControl );
+				PyList_Append( cRes, cTmp );
+				Py_DECREF( cTmp );
+			}
+		}
+	}
+	return cRes;
+}
+
+// ----------------------------------------------------------------
+static PyObject *
+MixerNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
+{
+	int iId= 0;
+	if (!PyArg_ParseTuple(args, "|i:"MIXER_NAME, &iId ))
+		return NULL;
+
+	Mixer* cMixer= new Mixer( iId );
+	if( !cMixer )
+		return PyErr_NoMemory();
+
+	if( cMixer->GetLastError()!= 0 )
+	{
+		// Raise an exception when the sampling rate is not supported by the module
+		PyErr_Format( g_cErr, "Cannot create mixer object. Error text is: %d, %s", cMixer->GetLastError(), cMixer->GetErrorString() );
+		delete cMixer;
+		return NULL;
+	}
+
+	PyMixerObject* cRet= (PyMixerObject*)type->tp_alloc(type, 0);
+	if( !cRet )
+	{
+		delete cMixer;
+		return NULL;
+	}
+
+	// return mixer object
+	cRet->cObj= cMixer;
+	return (PyObject*)cRet;
+}
+
+// ----------------------------------------------------------------
+static void
+MixerClose( PyMixerObject *obj )
+{
+	delete obj->cObj;
+	PyObject_Free( obj );
+}
+
+// ---------------------------------------------------------------------------------
+// List of all methods for the mp3decoder
+static PyMethodDef mixer_methods[] =
+{
+
+	{ GET_CONTROLS_NAME, (PyCFunction)Mixer_GetControls, METH_NOARGS, GET_CONTROLS_DOC },
+	{ NULL, NULL },
+};
+
+// ----------------------------------------------------------------
+PyTypeObject MixerType =
+{
+	PyObject_HEAD_INIT(NULL)
+	0,
+	MODULE_NAME"."MIXER_NAME,
+	sizeof(PyMixerObject),
+	0,
+	(destructor)MixerClose,  //tp_dealloc
+	0,			  //tp_print
+	0, //tp_getattr
+	0,			  //tp_setattr
+	0,			  //tp_compare
+	0,			  //tp_repr
+	0,			  //tp_as_number
+	0,			  //tp_as_sequence
+	0,				//tp_as_mapping
+	0,					/* tp_hash */
+	0,					/* tp_call */
+	0,					/* tp_str */
+	PyObject_GenericGetAttr,		/* tp_getattro */
+	0,					/* tp_setattro */
+	0,					/* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+	(char*)MIXER_DOC,		/* tp_doc */
+	0,					/* tp_traverse */
+	0,					/* tp_clear */
+	0,					/* tp_richcompare */
+	0,					/* tp_weaklistoffset */
+	0,					/* tp_iter */
+	0,					/* tp_iternext */
+	mixer_methods,				/* tp_methods */
+	0,					/* tp_members */
+	0,					/* tp_getset */
+	0,					/* tp_base */
+	0,					/* tp_dict */
+	0,					/* tp_descr_get */
+	0,					/* tp_descr_set */
+	0,					/* tp_dictoffset */
+	0,					/* tp_init */
+	PyType_GenericAlloc,			/* tp_alloc */
+	MixerNew,	/* tp_new */
+	PyObject_Del,				/* tp_free */
+};
 
 // ---------------------------------------------------------------------------------
 static PyObject* Resampler_Resample( PyResamplerObject* obj, PyObject *args)
 {
 	char* sData = NULL;
-	int iLen = 0, iSamples= 0;
+	int iLen = 0, iSamples= 0, iNewSamples;
 	PyObject *cRes;
 	if (!PyArg_ParseTuple(args, "s#:"RESAMPLE_NAME, &sData, &iLen ))
 		return NULL;
@@ -647,7 +935,11 @@ static PyObject* Resampler_Resample( PyResamplerObject* obj, PyObject *args)
 	iSamples= iLen/ ( sizeof( short )* obj->resample_ctx->input_channels );
 
 	// Create output buffer
-	cRes= PyString_FromStringAndSize( NULL, iSamples* sizeof( short )* obj->resample_ctx->output_channels );
+	iNewSamples= iSamples;
+	if( obj->resample_ctx->ratio< 1.0 || obj->resample_ctx->ratio > 1.0 )
+		iNewSamples= iSamples* obj->resample_ctx->ratio;
+
+	cRes= PyString_FromStringAndSize( NULL, iNewSamples* sizeof( short )* obj->resample_ctx->output_channels );
 	if( !cRes )
 		return NULL;
 
@@ -1045,7 +1337,7 @@ static PyMethodDef pysound_methods[] =
 		GET_OUTPUT_DEVICES_DOC
 	},
 	{
-		GET_INPUT_DEVICES_NAME,
+		GET_INPUT_DEVICES_NAME, 
 		(PyCFunction)GetInputDevices,
 		METH_NOARGS,
 		GET_INPUT_DEVICES_DOC
@@ -1099,6 +1391,9 @@ initsound(void)
 	AnalyzerType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&AnalyzerType);
 	PyModule_AddObject(m, ANALYZER_NAME, (PyObject *)&AnalyzerType);
+	MixerType.ob_type = &PyType_Type;
+	Py_INCREF((PyObject *)&MixerType);
+	PyModule_AddObject(m, MIXER_NAME, (PyObject *)&MixerType);
 }
 
 };
@@ -1190,9 +1485,12 @@ s1= r.resample( s )
 res= a.asFrequencies( s1 )
 res= a.asBands( 3, s1 )
 
-
+   
 import pymedia.audio.sound as sound
-snd= sound.Input( 22050, 1, sound.AFMT_S16_LE )
-
+mixer= sound.Mixer()
+c= mixer.getControls()
+cc= c[ 7 ]
+   
 	*/
 
+ 

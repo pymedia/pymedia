@@ -323,11 +323,7 @@ extern int mm_flags;
 void add_pixels_clamped_mmx(const DCTELEM *block, uint8_t *pixels, int line_size);
 void put_pixels_clamped_mmx(const DCTELEM *block, uint8_t *pixels, int line_size);
 
-static inline void emms(void)
-{
-    __asm __volatile ("emms;":::"memory");
-}
-
+void emms(void);
 
 #define emms_c() \
 {\
@@ -335,7 +331,7 @@ static inline void emms(void)
         emms();\
 }
 
-#define __align8 __attribute__ ((aligned (8)))
+#define __align8 /* __attribute__ ((aligned (8))) */
 
 void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx);
 void dsputil_init_pix_mmx(DSPContext* c, AVCodecContext *avctx);
@@ -477,20 +473,7 @@ static int name16(void /*MpegEncContext*/ *s, uint8_t *dst, uint8_t *src, int st
           +name8(s, dst+8+8*stride, src+8+8*stride, stride);\
 }
 
-#ifndef HAVE_LRINTF
-/* XXX: add ISOC specific test to avoid specific BSD testing. */
-/* better than nothing implementation. */
-/* btw, rintf() is existing on fbsd too -- alex */
-static inline long int lrintf(float x)
-{
-#ifdef CONFIG_WIN32
-    /* XXX: incorrect, but make it compile */
-    return (int)(x);
-#else
-    return (int)(rint(x));
-#endif
-}
-#endif
+
 
 #if defined(CONFIG_OS2) || defined(CONFIG_SUNOS)
 static inline float floorf(float f) {

@@ -523,6 +523,15 @@ static int wma_decode_init(AVCodecContext * avctx)
     return 0;
 }
 
+// -------------------------------------------------------------------------------------------
+static int wma_decode_resync(AVCodecContext *avctx)
+{
+  WMADecodeContext *s = avctx->priv_data;
+	s->last_bitoffset= 0;
+	s->last_superframe_len= 0;
+  return 0;
+}
+
 /* interpolate values for a bigger or smaller block. The block must
    have multiple sizes */
 static void interpolate_array(float *scale, int old_size, int new_size)
@@ -1311,6 +1320,11 @@ AVCodec wmav1_decoder =
     NULL,
     wma_decode_end,
     wma_decode_superframe,
+		0,
+		NULL,
+		NULL,
+		NULL,
+		wma_decode_resync
 };
 
 AVCodec wmav2_decoder =
@@ -1323,4 +1337,9 @@ AVCodec wmav2_decoder =
     NULL,
     wma_decode_end,
     wma_decode_superframe,
+		0,
+		NULL,
+		NULL,
+		NULL,
+		wma_decode_resync
 };

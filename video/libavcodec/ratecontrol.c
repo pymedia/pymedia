@@ -661,7 +661,7 @@ float ff_rate_estimate_qscale(MpegEncContext *s)
 //printf("%f ", q);
         q= get_diff_limited_q(s, rce, q);
 //printf("%f ", q);
-        assert(q>0.0);
+        //assert(q>0.0);
 
         if(pict_type==P_TYPE || s->intra_only){ //FIXME type dependant blur like in 2-pass
             rcc->short_term_qsum*=s->qblur;

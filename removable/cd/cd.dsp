@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYCDDA_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYCDDA_EXPORTS" /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "HAVE_DVDCSS_DVDCSS_H" /D "UDF_CACHE" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -56,9 +56,10 @@ LINK32=link.exe
 # ADD LINK32 kernel32.lib /nologo /dll /machine:I386 /out:"Release/cd.pyd" /export:initcd
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
+TargetPath=.\Release\cd.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy ($TargetPath) c:\python23\lib\site-packages\pymedia\removable
+PostBuild_Cmds=copy $(TargetPath) c:\python23\lib\site-packages\pymedia\removable
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "cd - Win32 Debug"
@@ -75,7 +76,7 @@ PostBuild_Cmds=copy ($TargetPath) c:\python23\lib\site-packages\pymedia\removabl
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYCDDA_EXPORTS" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYCDDA_EXPORTS" /D "HAVE_DVDCSS_DVDCSS_H" /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYCDDA_EXPORTS" /D "HAVE_DVDCSS_DVDCSS_H" /D "UDF_CACHE" /YX /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -195,6 +196,10 @@ SOURCE=.\dvd.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# Begin Source File
+
+SOURCE=..\..\..\..\..\..\favicon.ico
+# End Source File
 # End Group
 # End Target
 # End Project

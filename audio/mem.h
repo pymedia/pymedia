@@ -20,5 +20,6 @@ void __av_freep(void **ptr);
 void av_free_static(void);
 void *__av_mallocz_static(void** location, unsigned int size);
 #define av_mallocz_static(p, s) __av_mallocz_static((void **)(p), s)
+void *av_realloc(void *ptr, unsigned int size);
 
 #endif

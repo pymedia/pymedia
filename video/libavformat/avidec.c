@@ -176,7 +176,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 					return AVILIB_NEED_DATA;
 				}
 
-#ifdef DEBUG
+#ifdef DEBUG 
         print_tag("tag", tag, size);
 #endif
 
@@ -254,8 +254,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 st->duration = (double)nb_frames * 
                     st->codec.frame_rate_base * AV_TIME_BASE / 
                     st->codec.frame_rate;
-                
-                if (avi->type == 1) {
+                if (avi->type == 1 ) {
                     AVStream *st;
 
                     st = av_new_stream(s, 0);
@@ -396,7 +395,6 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
 		/* See if we have enough data in a buffer for header */
 		if( get_mem_buffer_size( pb )< 20 )
 			return AVILIB_NEED_DATA;
-    
     if (avi->type == 1 && avi->stream_index) {
         /* duplicate DV packet */
         av_init_packet(pkt);

@@ -40,7 +40,7 @@ static int RENAME(dct_quantize)(MpegEncContext *s,
     const uint16_t *qmat, *bias;
     __align8 int16_t temp_block[64];
     
-    assert((7&(int)(&temp_block[0])) == 0); //did gcc align it correctly?
+    //assert((7&(int)(&temp_block[0])) == 0); //did gcc align it correctly?
 
     //s->fdct (block);
     ff_fdct_mmx (block); //cant be anything else ...

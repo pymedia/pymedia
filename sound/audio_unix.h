@@ -27,9 +27,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/soundcard.h>
-//#include <pthread.h>
 #include <fcntl.h>
-//#include <string.h>
 
 #include "afmt.h"
 
@@ -47,14 +45,14 @@ struct BUFFER_CHUNK
 
 // -------------------------------------------------------------------
 static char *dsp=PATH_DEV_DSP;
-char *oss_mixer_device = PATH_DEV_MIXER;
+char *mixer = PATH_DEV_MIXER;
 const int MAX_INT_BUFFERS= 20;
 const int OPEN_FLAGS= (O_WRONLY|O_NONBLOCK);
 
 // -------------------------------------------------------------------
 int GetDevicesCount()
 {
-	int audio_fd, i= 0;
+	int audio_fd, i= 0, iRes= 0;
 	char audiopath[1024];
 
 	/* Figure out what our audio device is */
@@ -63,6 +61,7 @@ int GetDevicesCount()
 	{
 		i++;
 		close( audio_fd );
+		iRes++;
 	}
 
 	/* If the first open fails, look for other devices */
@@ -73,10 +72,32 @@ int GetDevicesCount()
 		/* Don't use errno ENOENT - it may not be thread-safe */
 		sprintf(audiopath, "%s%d", dsp, i);
 		if ( stat(audiopath, &sb) == 0 )
-			i++;
+			iRes++;
+		i++;
 	}
-	return i;
+	return iRes;
 }
+
+// *****************************************************************************************************
+// generic error handler for all classes below
+// *****************************************************************************************************
+class DeviceHandler
+{
+protected:
+	char sErr[ 512 ];
+	int iErr;
+
+	// ----------------------------------------------
+	void FormatError()
+	{
+		this->iErr= errno;
+		strcpy( &this->sErr[ 0 ], strerror( errno ));
+	}
+public:
+	DeviceHandler(){ this->iErr= 0; }
+	int GetLastError(){ return this->iErr; }
+	char* GetErrorString(){ return this->sErr; }
+};
 
 // *****************************************************************************************************
 // Input device enumerator
@@ -160,12 +181,13 @@ typedef InputDevices OutputDevices;
 // *****************************************************************************************************
 //	Sound stream main class
 // *****************************************************************************************************
-class OSoundStream
+class OSoundStream : public DeviceHandler
 {
 private:
 	bool bStopFlag;
 	// Buffers to be freed by the stop op
 	int dev;
+	int iDev;
 	int format;
 	int channels;
 	int rate;
@@ -173,8 +195,6 @@ private:
 	int iMute;
 	int bufsize;
 	long long bytesPlayed;
-	int iErr;
-	char sErr[ 512 ];
 
 	// ---------------------------------------------------------------------------------------------------
 	// close audio device
@@ -189,9 +209,17 @@ private:
 	}
 
 	// ---------------------------------------------------------------------------------------------------
-	int Init( int rate, int channels, int format )
+	int Init( int rate, int channels, int format, int iDev )
 	{
-		this->dev= open( dsp, O_WRONLY );
+		if( iDev )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", dsp, iDev );
+			this->dev= open( s, O_WRONLY );
+		}
+		else
+			this->dev= open( dsp, O_WRONLY );
+
 		if( this->dev< 0 )
 		{
 			this->iErr= errno;
@@ -246,11 +274,10 @@ private:
 
 public:
 	// ---------------------------------------------------------------------------------------------------
-	OSoundStream( int rate, int channels, int format, int flags, int iDev )
+	OSoundStream( int rate, int channels, int format, int flags, int iDev ) : DeviceHandler()
 	{
-		this->sErr[ 0 ]= 0;
-		this->iErr= 0;
-		if( this->Init( rate, channels, format )== 0 )
+		this->iDev= iDev;
+		if( this->Init( rate, channels, format, iDev )== 0 )
 			this->bufsize= this->GetSpace();
 	}
 
@@ -260,10 +287,6 @@ public:
 		this->Stop();
 	}
 
-	// ---------------------------------------------------------------------------------------------------
-	char* GetErrorString()	{ return( this->sErr );	}
-	// ---------------------------------------------------------------------------------------------------
-	int GetLastError()	{ return( this->iErr );	}
 	// ---------------------------------------------------------------------------------------------------
 	int GetDevice(){ return this->dev;	}
 	// ---------------------------------------------------------------------------------------------------
@@ -314,9 +337,20 @@ public:
 	int GetVolume()
 	{
 		int fd, devs, v= 0;
-		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
-			return -1;
+		if( this->iDev )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", mixer, this->iDev );
+			fd= open( s, O_RDWR, 0 );
+		}
+		else
+			fd= open( mixer, O_RDWR, 0 );
 
+		if( fd== -1 )
+		{
+			this->FormatError();
+			return -1;
+		}
 		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
 		if( devs & SOUND_MASK_PCM )
 			ioctl(fd, SOUND_MIXER_READ_PCM, &v);
@@ -328,8 +362,20 @@ public:
 	int SetVolume(int iVolume )
 	{
 		int fd, devs;
-		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
+		if( this->iDev )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", mixer, this->iDev );
+			fd= open( s, O_RDWR, 0 );
+		}
+		else
+			fd= open( mixer, O_RDWR, 0 );
+
+		if( fd== -1 )
+		{
+			this->FormatError();
 			return -1;
+		}
 
 		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
 		if( devs & SOUND_MASK_PCM )
@@ -370,7 +416,7 @@ public:
 	float Play( unsigned char *buf, int iLen )
 	{
 		if( this->GetDevice()== -1 )
-			this->Init( this->rate, this->channels, this->format );
+			this->Init( this->rate, this->channels, this->format, this->iDev );
 
 		// See how many bytes playing right now and add them to the pos
 		while( iLen )
@@ -404,7 +450,10 @@ public:
 	{
 		int r=0;
 		if(ioctl( this->GetDevice(), SNDCTL_DSP_GETODELAY, &r)==-1)
+		{
+			this->FormatError();
 			return -1;
+		}
 
 		return ((double)( this->bytesPlayed- r ))/((double)( 2* this->channels* this->rate ));
 	}
@@ -415,7 +464,7 @@ public:
 // *****************************************************************************************************
 //	Input sound stream main class
 // *****************************************************************************************************
-class ISoundStream
+class ISoundStream : public DeviceHandler
 {
 private:
 	bool bStopFlag;
@@ -428,8 +477,6 @@ private:
 	int bufsize;
 	int bufsused;
 	long long bytes;
-	char sErr[ 512 ];
-	int iErr;
 
 	// ---------------------------------------------------------------------------------------------------
 	// close audio device
@@ -499,10 +546,8 @@ private:
 	}
 public:
 	// ---------------------------------------------------------------------------------------------------
-	ISoundStream( int rate, int channels, int format, int flags, int iDev )
+	ISoundStream( int rate, int channels, int format, int flags, int iDev ) : DeviceHandler()
 	{
-		this->iErr= 0;
-		this->sErr[ 0 ]= 0;
 		this->bufsize= 0;
 		if( this->Init( rate, channels, format )== 0 )
 			this->bufsize= READ_BUFFER_SIZE;
@@ -561,8 +606,7 @@ public:
 		int i= read( this->GetDevice(), pData, iSize );
 		if( i< 0 )
 		{
-			this->iErr= errno;
-			sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "READ");
+			this->FormatError();
 			return i;
 		}
 		this->bytes+= i;
@@ -570,6 +614,255 @@ public:
 	}
 
 };
+
+// *****************************************************************************************************
+// Mixer devices enumerator/holder
+// *****************************************************************************************************
+class Mixer : public DeviceHandler
+{
+private:
+	char sName[ 512 ];
+	int dev;
+
+	int devmask;
+	int recmask;
+	int stereodevs;
+	int recsrc;
+
+	// ----------------------------------------------
+	int GetConnection( int iDest, int iConn )
+	{
+		int i, cnt= 0;
+		for( i= 0; i< SOUND_MIXER_NRDEVICES; i++ )
+			if( this->devmask & ( 1 << i ) )
+			{
+				// Get connection name by number
+				if( cnt== iConn )
+					return i;
+
+				// Device exists so proceed with count
+				if( (this->recmask & ( 1 << i )) == ( iDest << i ))
+					cnt++;
+			}
+
+		return -1;
+	}
+
+	// ----------------------------------------------
+	bool Refresh()
+	{
+		int status = ioctl( this->dev, SOUND_MIXER_READ_DEVMASK, &this->devmask);
+		if (status == -1)
+		{
+			this->FormatError();
+			return false;
+		}
+		status = ioctl( this->dev, SOUND_MIXER_READ_RECMASK, &this->recmask);
+		if (status == -1)
+		{
+			this->FormatError();
+			return false;
+		}
+		status = ioctl( this->dev, SOUND_MIXER_READ_STEREODEVS, &this->stereodevs);
+		if (status == -1)
+		{
+			this->FormatError();
+			return false;
+		}
+		status = ioctl( this->dev, SOUND_MIXER_READ_RECSRC, &this->recsrc);
+		if (status == -1)
+		{
+			this->FormatError();
+			return false;
+		}
+		return true;
+	}
+
+public:
+	// ----------------------------------------------
+	Mixer( int i ) : DeviceHandler()
+	{
+		if( i )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", mixer, i );
+			this->dev= open( s, O_RDWR, 0 );
+		}
+		else
+			this->dev= open( mixer, O_RDWR, 0 );
+
+		if( this->dev< 0 )
+			this->FormatError();
+		else
+			this->Refresh();
+	}
+	// ----------------------------------------------
+	~Mixer()
+	{
+		if( this->dev> 0 )
+			close( this->dev );
+	}
+	// ----------------------------------------------
+	int GetDestinationsCount()
+	{
+		// It seems OSS is very limited in terms of destination enumeration...
+		// hardcode number of destinations
+		return 2;
+	}
+	// ----------------------------------------------
+	char* GetDestinationName( int iDest )
+	{
+		return (char*)( iDest ? "Recording Control": "Volume Control" );
+	}
+	// ----------------------------------------------
+	// Return number of sources under destination iDest
+	int GetConnectionsCount( int iDest )
+	{
+		int i, cnt= 0;
+		for( i= 0; i< SOUND_MIXER_NRDEVICES; i++ )
+			if( this->devmask & ( 1 << i ) )
+				// Device exists so proceed with count
+				if( ( this->recmask & ( 1 << i )) == ( iDest << i ))
+					cnt++;
+
+		return cnt;
+	}
+	// ----------------------------------------------
+	// Return number of sources under destination iDest
+	char* GetConnectionName( int iDest, int iConn )
+	{
+	  const char *sound_device_names[] = SOUND_DEVICE_LABELS;
+		int i= this->GetConnection( iDest, iConn );
+		return (char*)( ( i>= 0 ) ? sound_device_names[ i ]: "?????" );
+	}
+	// ----------------------------------------------
+	// Return number of lines attached to the connection
+	int GetControlsCount( int iDest, int iConn )
+	{
+		// It looks like OSS does not support mutliple lines attached to the connection
+		return 1;
+	}
+	// ----------------------------------------------
+	// Return control value
+	int GetControlValue( int iDest, int iConn, int iControl, int iChannel, int *piValues )
+	{
+		int i= this->GetConnection( iDest, iConn ), iRet= 0;
+		// Get values normalized to 0xffff
+		if( i!= -1 )
+		{
+			int iVal, status;
+			status = ioctl(this->dev, MIXER_READ(i), &iVal);
+			if (status == -1)
+			{
+				this->FormatError();
+				return -1;
+			}
+
+			iRet++;
+			if( iChannel== -1 )
+			{
+				// loop through all channels
+				piValues[ 0 ]= (int)( (float)( iVal & 0xff )* 655.35 );
+				if( this->stereodevs & ( 1 << i ) )
+				{
+					piValues[ 1 ]= (int)( (float)( ( iVal & 0xff00 ) >> 8 )* 655.35 );
+					iRet++;
+				}
+			}
+			else
+				piValues[ 0 ]= iChannel ? 
+					(int)( (float)( ( iVal & 0xff00 ) >> 8 )* 655.35 ):
+					(int)( (float)( iVal & 0xff )* 655.35 );
+		}
+		return iRet;
+	}
+
+	// ----------------------------------------------
+	// Set control value
+	bool SetControlValue( int iDest, int iConn, int iControl, int iChannel, int iValue )
+	{
+		int i= this->GetConnection( iDest, iConn );
+		// Get values normalized to 0xffff
+		if( i!= -1 )
+		{
+			int iVal, iNewVal, status;
+			iNewVal= (int)( (float)iValue/ 655.35 ) & 0xff;
+
+			if( iChannel== -1 )
+				// loop through all channels
+				iVal= iNewVal | ( iNewVal << 8 );
+			else
+			{
+				status = ioctl(this->dev, MIXER_READ(i), &iVal);
+				if (status == -1)
+				{
+					this->FormatError();
+					return false;
+				}
+
+				iVal= iChannel ?  
+					( iVal & 0xff ) | ( iNewVal << 8 ):
+					( iVal & 0xff00 ) | iNewVal;
+			}
+			/* set gain */
+			status = ioctl( this->dev, MIXER_WRITE(i), &iVal);
+			if (status == -1) 
+			{
+				this->FormatError();
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// ----------------------------------------------
+	// Return control name
+	char* GetControlName( int iDest, int iConn, int iControl )
+	{
+		return "Volume";
+	}
+	// ----------------------------------------------
+	// Return control selection
+	bool IsActive( int iDest, int iConn, int iControl )
+	{
+		int i= this->GetConnection( iDest, iConn );
+		if( i== -1 )
+			return false;
+
+		return ( this->recsrc & ( 1 << i ) );
+	}
+
+	// ----------------------------------------------
+	// Set control selection
+	bool SetActive( int iDest, int iConn, int iControl )
+	{
+		int i= this->GetConnection( iDest, iConn );
+		if( i== -1 )
+			return false;
+
+		i= ( 1 << i );
+		ioctl(this->dev, SOUND_MIXER_WRITE_RECSRC, &i);
+		return this->Refresh();
+	}
+	
+	// ----------------------------------------------
+	// Return control values
+	bool GetControlValues( int iDest, int iConn, int iControl, int *piMin, int* piMax, int *piStep, int *piType, int* piChannels  )
+	{
+		int i= this->GetConnection( iDest, iConn );
+		if( i== -1 )
+			return false;
+
+		*piMin= 0;
+		*piMax= 0xffff;
+		*piStep= 656;
+		*piType= 0;
+		*piChannels= ( this->stereodevs & ( 1 << i ) ) ? 2: 1;
+		return true;
+	}
+};
+
+
 #endif
 
 

@@ -19,6 +19,6 @@
 Set of modules to deal with the video encode/decode
 """
 
-__all__= [ 'muxer', 'vcodec' ]
-import muxer, vcodec
-__version__= "1.2.2"
+__all__= [ 'muxer', 'vcodec', 'ext_codecs' ]
+import muxer, vcodec, ext_codecs
+__version__= "1.2.3.0"

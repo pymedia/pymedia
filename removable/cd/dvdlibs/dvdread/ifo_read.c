@@ -1531,6 +1531,8 @@ static int ifoRead_VOBU_ADMAP_internal(ifo_handle_t *ifofile,
   CHECK_VALUE(info_length % sizeof(uint32_t) == 0);
   
   vobu_admap->vobu_start_sectors = (uint32_t *)malloc(info_length); 
+//if( info_length> 40000 )
+//free( vobu_admap->vobu_start_sectors ); 
   if(!vobu_admap->vobu_start_sectors) {
     return 0;
   }

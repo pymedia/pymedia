@@ -38,9 +38,9 @@ def recodeAudio( fName, fOutput, type, bitrate= None ):
 	if fw: fw.close()
 	f.close()
 
-
-#psyco.full()
-# Test all modules
+# ----------------------------------------------------------------------------------
+# Change the format of your compressed audio files to something different
+# http://pymedia.org/
 if __name__== '__main__':
   if len( sys.argv )< 4 or len( sys.argv )> 5:
     print "Usage: recode_audio.py <audio_input_file> <audio_output_file> <format_name> [ <bitrate> ]"

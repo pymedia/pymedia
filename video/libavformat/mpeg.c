@@ -495,7 +495,7 @@ static int64_t get_pts(ByteIOContext *pb, int c)
 }
 
 static int mpegps_read_packet(AVFormatContext *s,
-                                  AVPacket *pkt)
+                                  AVPacket *pkt, int format )
 {
     MpegDemuxContext *m = s->priv_data;
     AVStream *st;
@@ -623,7 +623,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     }
     if (startcode >= 0x1e0 && startcode <= 0x1ef) {
         type = CODEC_TYPE_VIDEO;
-        codec_id = CODEC_ID_MPEG1VIDEO;
+        codec_id = format;
     } else if (startcode >= 0x1c0 && startcode <= 0x1df) {
         type = CODEC_TYPE_AUDIO;
         codec_id = CODEC_ID_MP2;
@@ -685,6 +685,16 @@ static int mpegps_read_packet(AVFormatContext *s,
     return 0;
 }
 
+static int mpegps_read_packet1(AVFormatContext *s, AVPacket *pkt )
+{
+	return mpegps_read_packet( s, pkt, CODEC_ID_MPEG1VIDEO );
+}
+
+static int mpegps_read_packet2(AVFormatContext *s, AVPacket *pkt )
+{
+	return mpegps_read_packet( s, pkt, CODEC_ID_MPEG2VIDEO );
+}
+
 static int mpegps_read_close(AVFormatContext *s)
 {
     return 0;
@@ -735,11 +745,24 @@ AVInputFormat mpegps_demux = {
     sizeof(MpegDemuxContext),
     mpegps_probe,
     mpegps_read_header,
-    mpegps_read_packet,
+    mpegps_read_packet1,
     mpegps_read_close,
 		NULL,
     AVFMT_NOHEADER,
-		"vob,mpg,mpeg,dat"
+		"mpg,mpeg,dat"
+};
+
+AVInputFormat mpeg2_demux = {
+    "mpeg2",
+    "MPEG2 format",
+    sizeof(MpegDemuxContext),
+    mpegps_probe,
+    mpegps_read_header,
+    mpegps_read_packet2,
+    mpegps_read_close,
+		NULL,
+    AVFMT_NOHEADER,
+		"vob"
 };
 
 int mpegps_init(void)
@@ -748,5 +771,6 @@ int mpegps_init(void)
     av_register_output_format(&mpeg1vcd_mux);
     av_register_output_format(&mpeg2vob_mux);
     av_register_input_format(&mpegps_demux);
+    av_register_input_format(&mpeg2_demux);
     return 0;
 }

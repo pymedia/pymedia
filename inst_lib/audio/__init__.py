@@ -24,4 +24,4 @@ Modules to deal with the audio data. It includes:
 
 __all__= [ 'acodec', 'sound' ]
 import acodec, sound
-__version__= "1.2.2"
+__version__= "1.2.3.0"

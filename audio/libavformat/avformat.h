@@ -176,6 +176,7 @@ typedef struct AVFormatContext {
     char year[4];
     char copyright[512];
     char comment[512];
+		unsigned char *album_cover;
 		int has_header;
     int flags; /* format specific flags */
     /* private data for pts handling (do not modify directly) */
@@ -206,6 +207,9 @@ int asf_init(void);
 
 /* ogg.c */
 int ogg_init(void);
+
+/* mov.c */
+int mov_init(void);
 
 /* utils.c */
 #define MKTAG(a,b,c,d) (a | (b << 8) | (c << 16) | (d << 24))

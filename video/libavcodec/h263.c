@@ -4897,7 +4897,7 @@ static int decode_vop_header(MpegEncContext *s, GetBitContext *gb){
     
     /* vop coded */
     if (get_bits1(gb) != 1){
-        printf("vop not coded\n");
+        //printf("vop not coded\n");
         return FRAME_SKIPED;
     }
 //printf("time %d %d %d || %Ld %Ld %Ld\n", s->time_increment_bits, s->time_increment_resolution, s->time_base,
@@ -5041,11 +5041,12 @@ int ff_mpeg4_decode_picture_header(MpegEncContext * s, GetBitContext *gb)
         startcode = ((startcode << 8) | v) & 0xffffffff;
         
         if(get_bits_count(gb) >= gb->size_in_bits){
-            if(gb->size_in_bits==8 && s->divx_version){
+					return FRAME_SKIPED;
+          /*  if(gb->size_in_bits==8 && s->divx_version){
                 printf("frame skip %d\n", gb->size_in_bits);
                 return FRAME_SKIPED; //divx bug
             }else
-                return -1; //end of stream
+                return -1; //end of stream*/
         }
 
         if((startcode&0xFFFFFF00) != 0x100)

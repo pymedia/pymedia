@@ -36,7 +36,7 @@ FFT::FFT()
 
     envelope = 0;
     equalize = 0;
-    bitrevtable = 0;
+    bitrevtable = 0; 
     cossintable = 0;
     temp1 = 0;
     temp2 = 0;

@@ -2679,14 +2679,16 @@ static int rd8x8_c(/*MpegEncContext*/ void *c, uint8_t *src1, uint8_t *src2, int
     MpegEncContext * const s= (MpegEncContext *)c;
     const uint8_t *scantable= s->intra_scantable.permutated;
     uint64_t __align8 aligned_temp[sizeof(DCTELEM)*64/8];
-    uint64_t __align8 aligned_bak[1000];
     DCTELEM * const temp= (DCTELEM*)aligned_temp;
-    uint8_t * const bak= (uint8_t*)aligned_bak;
     int i, last, run, bits, level, distoration, start_i;
     const int esc_length= s->ac_esc_length;
     uint8_t * length;
     uint8_t * last_length;
-    
+		// uint64_t __align8  aligned_bak[ 1000 ];
+		// In gcc 3.2.* on cygwin it produces alloca call.
+    uint64_t * aligned_bak= (uint64_t *)av_malloc( sizeof( uint64_t )* 1000 );
+    uint8_t * const bak= (uint8_t*)aligned_bak;
+
     for(i=0; i<8; i++){
         ((uint32_t*)(bak + i*stride))[0]= ((uint32_t*)(src2 + i*stride))[0];
         ((uint32_t*)(bak + i*stride))[1]= ((uint32_t*)(src2 + i*stride))[1];
@@ -2746,6 +2748,7 @@ static int rd8x8_c(/*MpegEncContext*/ void *c, uint8_t *src1, uint8_t *src2, int
     
     distoration= s->dsp.sse[1](NULL, bak, src1, stride);
 
+		av_free( aligned_bak );
     return distoration + ((bits*s->qscale*s->qscale*109 + 64)>>7);
 }
 

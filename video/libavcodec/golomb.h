@@ -37,6 +37,9 @@ extern const uint8_t ff_interleaved_ue_golomb_vlc_code[256];
 extern const  int8_t ff_interleaved_se_golomb_vlc_code[256];
 
  
+#ifndef GOLOMB_H
+#define GOLOMB_H
+
  /**
  * read unsigned exp golomb code.
  */
@@ -392,3 +395,6 @@ static inline void set_ur_golomb_jpegls(PutBitContext *pb, int i, int k, int lim
         put_bits(pb, esc_len, i - 1);
     }
 }
+
+#endif GOLOMB_H
+

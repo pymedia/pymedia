@@ -326,14 +326,6 @@ static int mov_read_default(MOVContext *c, ByteIOContext *pb, MOV_atom_t atom)
 		    a.size = get_be32(pb);
         a.type = get_le32(pb);
 			}
-			if( get_mem_buffer_size( pb )< a.size+ 20 )
-			{
-				if( a.type!= MKTAG('m', 'd', 'a', 't') )
-				{
-					url_fseek( pb, pos, SEEK_SET );
-					return AVILIB_NEED_DATA;
-				}
-			}
 
 			total_size += 8;
       a.offset += 8;
@@ -358,12 +350,27 @@ static int mov_read_default(MOVContext *c, ByteIOContext *pb, MOV_atom_t atom)
 #ifdef DEBUG
             print_atom("unknown", a);
 #endif
+				if( get_mem_buffer_size( pb )< a.size+ 20 )
+				{
+					url_fseek( pb, pos, SEEK_SET );
+					return AVILIB_NEED_DATA;
+				}
         url_fskip(pb, a.size);
 			} else {
 #ifdef DEBUG
 	    //char b[5] = { type & 0xff, (type >> 8) & 0xff, (type >> 16) & 0xff, (type >> 24) & 0xff, 0 };
 	    //print_atom(b, type, offset, size);
 #endif
+				if( get_mem_buffer_size( pb )< a.size+ 20 )
+				{
+					if( a.type!= MKTAG('m', 'd', 'a', 't') )
+					{
+						url_fseek( pb, pos, SEEK_SET );
+						return AVILIB_NEED_DATA;
+					}
+					return (c->parse_table[i].func)(c, pb, a);
+				}
+
 				err = (c->parse_table[i].func)(c, pb, a);
 				if( err< 0 )
 					return err;
@@ -1478,7 +1485,7 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 			return err;
 
 		// Dirty hack to make demuxer work
-    if( ( err<0 || (!mov->found_moov && !mov->found_mdat)) &&	err!= MOV_HEADER_PARSED ) 
+    if( err<0  ) 
 		{
 			fprintf(stderr, "mov: header not found !!! (err:%d, moov:%d, mdat:%d) pos:%lld\n",
 				err, mov->found_moov, mov->found_mdat, url_ftell(pb));
@@ -1487,10 +1494,6 @@ static int mov_read_header(AVFormatContext *s, AVFormatParameters *ap)
 #ifdef DEBUG
     printf("on_parse_exit_offset=%d\n", (int) url_ftell(pb));
 #endif
-    /* some cleanup : make sure we are on the mdat atom */
-    if(!url_is_streamed(pb) && (url_ftell(pb) != mov->mdat_offset))
-      url_fseek(pb, mov->mdat_offset, SEEK_SET);
-
     mov->next_chunk_offset = mov->mdat_offset; /* initialise reading */
 
 #ifdef DEBUG
@@ -1709,7 +1712,7 @@ static AVInputFormat mov_iformat = {
     mov_read_close,
 		NULL,
 		0,
-		"mov"
+		"mov,mp4"
 };
 
 int mov_init(void)
@@ -1717,3 +1720,14 @@ int mov_init(void)
     av_register_input_format(&mov_iformat);
     return 0;
 }
+
+
+/*
+
+import pymedia.video.muxer as muxer
+dm= muxer.Demuxer("mp4")
+f= open("c:\\bors\\Download\\movie.mp4", 'rb' )
+s= f.read( 20000 )
+r= dm.parse( s )
+
+	*/

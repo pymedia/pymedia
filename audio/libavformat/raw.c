@@ -1,6 +1,6 @@
 /*
  * RAW encoder and decoder
- * Copyright (c) 2001 Fabrice Bellard.
+ * Copyright (c) 2001 Fabrice Bellard, Dmitry Borisov
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,85 @@ typedef struct
   unsigned char genre;
 } ID3INFO;
 
+/* write ID3v2 tag */
+int idv3v2_size_put( struct AVFormatContext *s, int i )
+{
+	char ss[ 4 ];
+	ss[ 3 ]= i & 0x7f;
+	ss[ 2 ]= ( i >> 7 ) & 0x7f;
+	ss[ 1 ]= ( i >> 14 ) & 0x7f;
+	ss[ 0 ]= ( i >> 21 ) & 0x7f;
+	put_buffer( &s->pb, ss, 4 );
+	return 0;
+}
+
+/* start writing ID3v2 */
+int start_mp3_id3v2( struct AVFormatContext *s )
+{
+	put_byte( &s->pb, 'I' );
+	put_byte( &s->pb, 'D' );
+	put_byte( &s->pb, '3' );
+	// Version
+	put_byte( &s->pb, 3 );
+	put_byte( &s->pb, 0 );
+	// Flags
+	put_byte( &s->pb, 0 );
+	// Do not know what's the length would be...
+	put_be32( &s->pb, 0 );
+	return 0;
+}
+
+/* finish writing ID3v2 */
+int finish_mp3_id3v2( struct AVFormatContext *s )
+{
+	// Save current position
+	int i= url_ftell( &s->pb );
+	// seek to the length field
+	url_fseek( &s->pb, 6, SEEK_SET );
+	idv3v2_size_put( s, i- 10 );
+	url_fseek( &s->pb, i, SEEK_SET );
+	return 0;
+}
+
+/* write ID3v2 tag */
+int set_mp3_id3v2_tag( unsigned char* sData, char* sTag, struct AVFormatContext *s )
+{
+	int i= strlen( sData );
+	// Put tag
+	put_byte( &s->pb, sTag[ 0 ] );
+	put_byte( &s->pb, sTag[ 1 ] );
+	put_byte( &s->pb, sTag[ 2 ] );
+	put_byte( &s->pb, sTag[ 3 ] );
+	// Tag size
+	idv3v2_size_put( s, i+ 1 );
+	put_be16( &s->pb, 0 );
+	put_byte( &s->pb, 0 );
+	// Tag itself
+	put_buffer( &s->pb, sData, i );
+	return 0;
+}
+
+/* mp3 format with IDv2 support */
+int mp3_write_header(struct AVFormatContext *s)
+{
+	int i= 0;
+	if( s->has_header )
+	{
+		char year[ 5 ];
+		start_mp3_id3v2( s );
+		set_mp3_id3v2_tag( s->title, "TIT2", s );
+		set_mp3_id3v2_tag( s->author, "TPE1", s );
+		set_mp3_id3v2_tag( s->album, "TALB", s );
+		set_mp3_id3v2_tag( s->track, "TRCK", s );
+		strncpy( year, s->year, 4 );
+		year[ 4 ]= 0;
+		set_mp3_id3v2_tag( year, "TYER", s );
+		set_mp3_id3v2_tag( s->comment, "COMM", s );
+		set_mp3_id3v2_tag( s->copyright, "TCOP", s );
+		finish_mp3_id3v2( s );
+	}
+	return 1;
+}
 
 /* simple formats */
 int raw_write_header(struct AVFormatContext *s)
@@ -41,7 +120,7 @@ int raw_write_packet(struct AVFormatContext *s,
                      unsigned char *buf, int size, int force_pts)
 {
     put_buffer(&s->pb, buf, size);
-    put_flush_packet(&s->pb);
+    //put_flush_packet(&s->pb);
     return 0;
 }
 
@@ -88,7 +167,7 @@ static int raw_read_header(AVFormatContext *s,
     return 0;
 }
 
-#define RAW_PACKET_SIZE 1024
+#define RAW_PACKET_SIZE 4096
 
 int raw_read_packet(AVFormatContext *s,
                     AVPacket *pkt)
@@ -111,23 +190,144 @@ int raw_read_packet(AVFormatContext *s,
 
 int raw_read_close(AVFormatContext *s)
 {
+	if( s->album_cover )
+		av_free( s->album_cover );
     return 0;
 }
 
+
+extern const uint16_t mpa_bitrate_tab[2][3][15];
+extern const uint16_t mpa_freq_tab[3];
+
 /* --------------------------------------------------------------------------------- */
-void get_mp3_id3v2_tag( char* sDest, char* sFrameName, char* sBuf, int iLen )
+/* return frame size */
+static int mp3_frame_size(uint32_t header)
+{
+    int bitrate_index, layer, sample_rate, frame_size= 0, mpeg25, padding, lsf;
+    if (header & (1<<20))
+		{
+        lsf = (header & (1<<19)) ? 0 : 1;
+        mpeg25 = 0;
+    }
+		else
+		{
+        lsf = 1;
+        mpeg25 = 1;
+    }
+
+    layer = 4 - ((header >> 17) & 3);
+    /* extract frequency */
+    sample_rate = mpa_freq_tab[ (header >> 10) & 3 ] >> (lsf + mpeg25);
+    bitrate_index = (header >> 12) & 0xf;
+    padding = (header >> 9) & 1;
+
+    if (bitrate_index != 0)
+		{
+        frame_size = mpa_bitrate_tab[ lsf ][ layer - 1 ][ bitrate_index ];
+        switch( layer )
+				{
+          case 1:
+            frame_size = (frame_size * 12000) / sample_rate;
+            frame_size = (frame_size + padding) * 4;
+            break;
+          case 2:
+            frame_size = (frame_size * 144000) / sample_rate+ padding;
+            break;
+          default:
+          case 3:
+            frame_size = (frame_size * 144000) / (sample_rate << lsf)+ padding;
+            break;
+        }
+    }
+    return frame_size;
+}
+
+/* --------------------------------------------------------------------------------- */
+/* fast header check for resync */
+static int check_header(uint32_t header)
+{
+return header== 0xfffbb204;
+    /* header */
+    if ((header & 0xffe00000) != 0xffe00000)
+	return 0;
+    /* layer check */
+    if (((header >> 17) & 3) == 0)
+	return 0;
+    /* bit rate */
+    if (((header >> 12) & 0xf) == 0xf)
+	return 0;
+    /* frequency */
+    if (((header >> 10) & 3) == 3)
+	return 0;
+    return 1;
+}
+
+/* --------------------------------------------------------------------------------- */
+int mp3_read_packet(AVFormatContext *s, AVPacket *pkt)
+{
+    int ret, size, sz;
+    AVStream *st = s->streams[0];
+		uint32_t iHeader= 0;
+	  ByteIOContext *pb = &s->pb;
+
+		// Try to locate mp3 header tags and get the frame size
+		while( get_mem_buffer_size( pb )> 0 && !check_header( iHeader ) )
+		{
+			int c= get_byte(pb);
+			iHeader= ( iHeader << 8 ) | c;
+		}
+
+		sz= get_mem_buffer_size( pb );
+		if( sz== 0 )
+		{
+			url_fskip(pb, -4 );
+			return AVILIB_NEED_DATA;
+		}
+		// Here we found the mp3 header
+    size= mp3_frame_size( iHeader );
+		// It may not be correct, but it was here before...
+		if( !size )
+		{
+			printf( "Size cannot be calculated for a stream\n" );
+			size= ( RAW_PACKET_SIZE> sz ? RAW_PACKET_SIZE: sz );
+		}
+
+    if (av_new_packet(pkt, size) < 0)
+        return -EIO;
+
+    pkt->stream_index = 0;
+		url_fskip(pb, -4 );
+    ret = get_buffer(&s->pb, pkt->data, size);
+    /* note: we need to modify the packet size here to handle the last
+       packet */
+    pkt->size = ret;
+    return ret;
+}
+
+/* --------------------------------------------------------------------------------- */
+void get_mp3_id3v2_tag( char** sDest1, char* sDest, char* sFrameName, char* sBuf, int iLen )
 {
 	/* HACK. Locate desired frame in a buffer and get the data from there */
 	int iPos= 0;
 	while( iPos< iLen )
 	{
-		char* sTmp=	strstr( sBuf, sFrameName );
+		unsigned char* sTmp=	strstr( sBuf, sFrameName );
 		if( sTmp )
 		{
 			/* Possibly found the tag. Just return the value...*/
 			int iSize= ( sTmp[ 4 ] << 21 ) | ( sTmp[ 5 ] << 14 ) | ( sTmp[ 6 ] << 7 ) | sTmp[ 7 ];
 			if( iSize> 0 )
+			{
+				if( sDest1 )
+				{
+					// Allocate memory for the tag
+					sDest= av_malloc( iSize ); 
+					*sDest1= sDest;
+					if( !sDest )
+						return;
+				}
 				memcpy( sDest, sTmp+ 11, iSize- 1 );
+			}
 			return;
 		}
 
@@ -145,10 +345,6 @@ static int mp3_read_header(AVFormatContext *s,
 	char sTmp[ 1024 ];
   ByteIOContext *pb = &s->pb;
 
-  st = av_new_stream(s, 0);
-  if (!st)
-      return AVERROR_NOMEM;
-
 	if( s->has_header )
 		return 0;
 
@@ -161,24 +357,30 @@ static int mp3_read_header(AVFormatContext *s,
 	{
 		/* Almost sure we have id3v2 tag in there, lets get the length and see if the whole tag fits into the buffer */
 		int iLen1;
+		char* sTmp1;
 		get_str( pb, sTmp, 7 );
 		iLen1= ( sTmp[ 3 ] << 21 ) | ( sTmp[ 4 ] << 14 ) | ( sTmp[ 5 ] << 7 ) | sTmp[ 6 ];
 		if( iLen1 > get_mem_buffer_size( pb ) )
 		{
-			/* No enough data to get the correct tag info( hopefully it won't happen ever... ) */
+			/* No enough data to get the correct tag info */
 			url_fseek( pb, -10, SEEK_CUR );
-			return 0;
+			return AVILIB_NEED_DATA;
 		}
 
 		/* Copy only up to the buffer length or all if any */
-		iLen1= ( iLen1 < sizeof( sTmp )- 1 ) ? iLen1: sizeof( sTmp )- 1;
-		get_str( pb, sTmp, iLen1 );
+		sTmp1= av_malloc( iLen1 );
+		if( !sTmp1 )
+			return AVERROR_NOMEM;
 
-		get_mp3_id3v2_tag( s->title, "TIT2", sTmp, iLen1 );
-		get_mp3_id3v2_tag( s->author, "TPE1", sTmp, iLen1 );
-		get_mp3_id3v2_tag( s->album, "TALB", sTmp, iLen1 );
-		get_mp3_id3v2_tag( s->track, "TRCK", sTmp, iLen1 );
-		get_mp3_id3v2_tag( s->year, "TYER", sTmp, iLen1 );
+		get_str( pb, sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->title, "TIT2", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->author, "TPE1", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->album, "TALB", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->track, "TRCK", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->year, "TYER", sTmp1, iLen1 );
+		//get_mp3_id3v2_tag( &s->album_cover, NULL, "APIC", sTmp1, iLen1 );
+
+		av_free( sTmp1 );
 		s->has_header= 1;
 	}
 	else if( !strncmp( sTmp, "TAG", 3 ))
@@ -200,6 +402,10 @@ static int mp3_read_header(AVFormatContext *s,
 	}
 	else
 		url_fseek( pb, -3, SEEK_CUR );
+
+  st = av_new_stream(s, 0);
+  if (!st)
+      return AVERROR_NOMEM;
 
   st->codec.codec_type = CODEC_TYPE_AUDIO;
   st->codec.codec_id = CODEC_ID_MP2;
@@ -224,8 +430,7 @@ AVInputFormat mp3_iformat = {
 		0,
     "mp2,mp3", /* XXX: use probe */
 };
-
-#ifdef CONFIG_FAAD
+
 
 AVInputFormat ac3_iformat = {
     "ac3",
@@ -241,9 +446,33 @@ AVInputFormat ac3_iformat = {
     CODEC_ID_AC3
 };
 
-#endif
+AVInputFormat aac_iformat = {
+    "aac",
+    "raw aac",
+    0,
+    NULL,
+    raw_read_header,
+    raw_read_packet,
+    raw_read_close,
+		NULL,
+		0,
+    "aac",
+    CODEC_ID_AAC
+}; 
 
-
+AVOutputFormat mp3_oformat = {
+    "mp3",
+    "MPEG audio layer 3",
+    "audio/x-mpeg",
+    "mp3,mp2",
+    0,
+    CODEC_ID_MP3,
+    0,
+    mp3_write_header,
+    raw_write_packet,
+    raw_write_trailer,
+};
+ 
 #ifdef WORDS_BIGENDIAN
 #define BE_DEF(s) s
 #define LE_DEF(s) NULL
@@ -256,8 +485,8 @@ AVInputFormat ac3_iformat = {
 int raw_init(void)
 {
     av_register_input_format(&mp3_iformat);
-#ifdef CONFIG_FAAD
     av_register_input_format(&ac3_iformat);
-#endif
+    av_register_input_format(&aac_iformat);
+    av_register_output_format(&mp3_oformat);
     return 0;
 }

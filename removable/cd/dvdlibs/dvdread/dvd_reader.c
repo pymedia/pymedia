@@ -144,7 +144,7 @@ dvd_reader_t *DVDOpen( const char *location )
 	dvd->fd = dev;
 	dvd->path_root = 0;
 	
-	dvd->udfcache_level = 0;
+	dvd->udfcache_level = DEFAULT_UDF_CACHE_LEVEL;
 	dvd->udfcache = NULL;
 	
 	/* Only if DVDCSS_METHOD = title, a bit if it's disc or if

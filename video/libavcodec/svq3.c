@@ -48,9 +48,13 @@
 #define THIRDPEL_MODE 3
 #define PREDICT_MODE  4
 
-#include "common.h"
-#include "dsputil.h"
- 
+//#include "common.h"
+//#include "dsputil.h"
+//#include "avcodec.h"
+//#include "mpegvideo.h"
+//#include "h264data.h"
+//#include "golomb.h"
+
 /* dual scan (from some older h264 draft)
  o-->o-->o   o
          |  /|
@@ -957,7 +961,6 @@ static int svq3_decode_frame (AVCodecContext *avctx,
 
   return buf_size;
 }
-
 
 AVCodec svq3_decoder = {
     "svq3",

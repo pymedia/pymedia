@@ -135,7 +135,7 @@ static int oggvorbis_encode_close(AVCodecContext *avccontext) {
 
 
 AVCodec oggvorbis_encoder = {
-    "vorbis",
+    "ogg",
     CODEC_TYPE_AUDIO,
     CODEC_ID_VORBIS,
     sizeof(OggVorbisContext),
@@ -239,7 +239,7 @@ static int oggvorbis_decode_close(AVCodecContext *avccontext) {
 
 
 AVCodec oggvorbis_decoder = {
-    "vorbis",
+    "ogg",
     CODEC_TYPE_AUDIO,
     CODEC_ID_VORBIS,
     sizeof(OggVorbisContext),
@@ -247,6 +247,11 @@ AVCodec oggvorbis_decoder = {
     NULL,
     oggvorbis_decode_close,
     oggvorbis_decode_frame,
+		0,
+		NULL,
+		NULL,
+		NULL,
+		NULL
 } ;
 
 #endif // CONFIG_VORBIS

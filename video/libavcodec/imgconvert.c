@@ -16,10 +16,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#if defined( WIN32 )
-#include "inttypes.h"
-#endif
-
 #include "avcodec.h"
 #include "dsputil.h"
 
@@ -31,11 +27,11 @@
 #include "i386/mmx.h"
 #endif
 /* XXX: totally non optimized */
-static void yuv422_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
-                              UINT8 *src, int width, int height)
+static void yuv422_to_yuv420p(uint8_t *lum, uint8_t *cb, uint8_t *cr,
+                              uint8_t *src, int width, int height)
 {
     int x, y;
-    UINT8 *p = src;
+    uint8_t *p = src;
 
     for(y=0;y<height;y+=2) {
         for(x=0;x<width;x+=2) {
@@ -61,12 +57,12 @@ static void yuv422_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
 #define ONE_HALF  (1 << (SCALEBITS - 1))
 #define FIX(x)		((int) ((x) * (1L<<SCALEBITS) + 0.5))
 
-static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
-                              UINT8 *src, int width, int height)
+static void rgb24_to_yuv420p(uint8_t *lum, uint8_t *cb, uint8_t *cr,
+                              uint8_t *src, int width, int height)
 {
     int wrap, wrap3, x, y;
     int r, g, b, r1, g1, b1;
-    UINT8 *p;
+    uint8_t *p;
 
     wrap = width;
     wrap3 = width * 3;
@@ -124,12 +120,12 @@ static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
     }
 }
 
-static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
-                              UINT8 *src, int width, int height)
+static void rgba32_to_yuv420p(uint8_t *lum, uint8_t *cb, uint8_t *cr,
+                              uint8_t *src, int width, int height)
 {
     int wrap, wrap4, x, y;
     int r, g, b, r1, g1, b1;
-    UINT8 *p;
+    uint8_t *p;
 
     wrap = width;
     wrap4 = width * 4;
@@ -196,18 +192,18 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
 #define gbr555_to_yuv420p(lum,cb,cr,src,width,height) rgbmisc_to_yuv420p((lum),(cb),(cr),(src),(width),(height),0x0001,31, 0x0400,31,0x0020,31)
 
 static void rgbmisc_to_yuv420p
-  (UINT8 *lum, UINT8 *cb, UINT8 *cr,
-   UINT8 *src, int width, int height,
+  (uint8_t *lum, uint8_t *cb, uint8_t *cr,
+   uint8_t *src, int width, int height,
 
-   UINT16 R_LOWMASK, UINT16 R_MAX,
-   UINT16 G_LOWMASK, UINT16 G_MAX,
-   UINT16 B_LOWMASK, UINT16 B_MAX
+   uint16_t R_LOWMASK, uint16_t R_MAX,
+   uint16_t G_LOWMASK, uint16_t G_MAX,
+   uint16_t B_LOWMASK, uint16_t B_MAX
   )
 {
     int wrap, wrap2, x, y;
     int r, g, b, r1, g1, b1;
-    UINT8 *p;
-    UINT16 pixel;
+    uint8_t *p;
+    uint16_t pixel;
 
     wrap = width;
     wrap2 = width * 2;
@@ -271,12 +267,12 @@ static void rgbmisc_to_yuv420p
 }
 
 
-static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
-                              UINT8 *src, int width, int height)
+static void bgr24_to_yuv420p(uint8_t *lum, uint8_t *cb, uint8_t *cr,
+                              uint8_t *src, int width, int height)
 {
     int wrap, wrap3, x, y;
     int r, g, b, r1, g1, b1;
-    UINT8 *p;
+    uint8_t *p;
 
     wrap = width;
     wrap3 = width * 3;
@@ -334,12 +330,12 @@ static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
     }
 }
 
-static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
-                              UINT8 *src, int width, int height)
+static void bgra32_to_yuv420p(uint8_t *lum, uint8_t *cb, uint8_t *cr,
+                              uint8_t *src, int width, int height)
 {
     int wrap, wrap4, x, y;
     int r, g, b, r1, g1, b1;
-    UINT8 *p;
+    uint8_t *p;
 
     wrap = width;
     wrap4 = width * 4;
@@ -399,12 +395,12 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
 
 /* XXX: use generic filter ? */
 /* 1x2 -> 1x1 */
-static void shrink2(UINT8 *dst, int dst_wrap,
-                    UINT8 *src, int src_wrap,
+static void shrink2(uint8_t *dst, int dst_wrap,
+                    uint8_t *src, int src_wrap,
                     int width, int height)
 {
     int w;
-    UINT8 *s1, *s2, *d;
+    uint8_t *s1, *s2, *d;
 
     for(;height > 0; height--) {
         s1 = src;
@@ -431,12 +427,12 @@ static void shrink2(UINT8 *dst, int dst_wrap,
 }
 
 /* 2x2 -> 1x1 */
-static void shrink22(UINT8 *dst, int dst_wrap,
-                     UINT8 *src, int src_wrap,
+static void shrink22(uint8_t *dst, int dst_wrap,
+                     uint8_t *src, int src_wrap,
                      int width, int height)
 {
     int w;
-    UINT8 *s1, *s2, *d;
+    uint8_t *s1, *s2, *d;
 
     for(;height > 0; height--) {
         s1 = src;
@@ -463,12 +459,12 @@ static void shrink22(UINT8 *dst, int dst_wrap,
 }
 
 /* 1x1 -> 2x2 */
-static void grow22(UINT8 *dst, int dst_wrap,
-                     UINT8 *src, int src_wrap,
+static void grow22(uint8_t *dst, int dst_wrap,
+                     uint8_t *src, int src_wrap,
                      int width, int height)
 {
     int w;
-    UINT8 *s1, *d;
+    uint8_t *s1, *d;
 
     for(;height > 0; height--) {
         s1 = src;
@@ -491,12 +487,12 @@ static void grow22(UINT8 *dst, int dst_wrap,
 }
 
 /* 1x2 -> 2x1. width and height are given for the source picture */
-static void conv411(UINT8 *dst, int dst_wrap,
-                    UINT8 *src, int src_wrap,
+static void conv411(uint8_t *dst, int dst_wrap,
+                    uint8_t *src, int src_wrap,
                     int width, int height)
 {
     int w, c;
-    UINT8 *s1, *s2, *d;
+    uint8_t *s1, *s2, *d;
 
     for(;height > 0; height -= 2) {
         s1 = src;
@@ -515,8 +511,8 @@ static void conv411(UINT8 *dst, int dst_wrap,
     }
 }
 
-static void img_copy(UINT8 *dst, int dst_wrap,
-                     UINT8 *src, int src_wrap,
+static void img_copy(uint8_t *dst, int dst_wrap,
+                     uint8_t *src, int src_wrap,
                      int width, int height)
 {
     for(;height > 0; height--) {
@@ -546,9 +542,9 @@ static void img_copy(UINT8 *dst, int dst_wrap,
 static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
-    UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
+    uint8_t *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
     int w, y, cb, cr, r_add, g_add, b_add, width2;
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
 
     d = dst->data[0];
     y1_ptr = src->data[0];
@@ -592,9 +588,9 @@ static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src,
 static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
-    UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
+    uint8_t *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
     int w, y, cb, cr, r_add, g_add, b_add, width2;
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
 
     d = dst->data[0];
     y1_ptr = src->data[0];
@@ -638,9 +634,9 @@ static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src,
 static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
-    UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
+    uint8_t *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
     int w, y, cb, cr, r_add, g_add, b_add, width2;
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
 
     d = dst->data[0];
     y1_ptr = src->data[0];
@@ -682,9 +678,9 @@ static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src,
 static void yuv422p_to_rgb24(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
-    UINT8 *y1_ptr, *cb_ptr, *cr_ptr, *d, *d1;
+    uint8_t *y1_ptr, *cb_ptr, *cr_ptr, *d, *d1;
     int w, y, cb, cr, r_add, g_add, b_add, width2;
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
 
     d = dst->data[0];
     y1_ptr = src->data[0];
@@ -910,11 +906,11 @@ int img_convert(AVPicture *dst, int dst_pix_fmt,
 #endif
 
 /* filter parameters: [-1 4 2 4 -1] // 8 */
-static void deinterlace_line(UINT8 *dst, UINT8 *lum_m4, UINT8 *lum_m3, UINT8 *lum_m2, UINT8 *lum_m1, UINT8 *lum,
+static void deinterlace_line(uint8_t *dst, uint8_t *lum_m4, uint8_t *lum_m3, uint8_t *lum_m2, uint8_t *lum_m1, uint8_t *lum,
                                 int size)
 {
 #ifndef HAVE_MMX
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
     int sum;
 
     for(;size > 0;size--) {
@@ -944,11 +940,11 @@ static void deinterlace_line(UINT8 *dst, UINT8 *lum_m4, UINT8 *lum_m3, UINT8 *lu
     }
 #endif
 }
-static void deinterlace_line_inplace(UINT8 *lum_m4, UINT8 *lum_m3, UINT8 *lum_m2, UINT8 *lum_m1, UINT8 *lum,
+static void deinterlace_line_inplace(uint8_t *lum_m4, uint8_t *lum_m3, uint8_t *lum_m2, uint8_t *lum_m1, uint8_t *lum,
                              int size)
 {
 #ifndef HAVE_MMX
-    UINT8 *cm = cropTbl + MAX_NEG_CROP;
+    uint8_t *cm = cropTbl + MAX_NEG_CROP;
     int sum;
 
     for(;size > 0;size--) {
@@ -981,11 +977,11 @@ static void deinterlace_line_inplace(UINT8 *lum_m4, UINT8 *lum_m3, UINT8 *lum_m2
 /* deinterlacing : 2 temporal taps, 3 spatial taps linear filter. The
    top field is copied as is, but the bottom field is deinterlaced
    against the top field. */
-static void deinterlace_bottom_field(UINT8 *dst, int dst_wrap,
-                                    UINT8 *src1, int src_wrap,
+static void deinterlace_bottom_field(uint8_t *dst, int dst_wrap,
+                                    uint8_t *src1, int src_wrap,
                                     int width, int height)
 {
-    UINT8 *src_m2, *src_m1, *src_0, *src_p1, *src_p2;
+    uint8_t *src_m2, *src_m1, *src_0, *src_p1, *src_p2;
     int y;
 
     src_m2 = src1;
@@ -1010,13 +1006,13 @@ static void deinterlace_bottom_field(UINT8 *dst, int dst_wrap,
     deinterlace_line(dst,src_m2,src_m1,src_0,src_0,src_0,width);
 }
 
-static void deinterlace_bottom_field_inplace(UINT8 *src1, int src_wrap,
+static void deinterlace_bottom_field_inplace(uint8_t *src1, int src_wrap,
                                      int width, int height)
 {
-    UINT8 *src_m1, *src_0, *src_p1, *src_p2;
+    uint8_t *src_m1, *src_0, *src_p1, *src_p2;
     int y;
-    UINT8 *buf;
-    buf = (UINT8*)av_malloc(width);
+    uint8_t *buf;
+    buf = (uint8_t*)av_malloc(width);
 
     src_m1 = src1;
     memcpy(buf,src_m1,width);

@@ -40,10 +40,10 @@ RSC=rc.exe
 # PROP Output_Dir "libavcodec/Release"
 # PROP Intermediate_Dir "libavcodec/Release"
 # PROP Target_Dir ""
-LINK32=link.exe
 MTL=midl.exe
+LINK32=link.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /I "." /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "HAVE_MMX" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -65,10 +65,10 @@ LIB32=link.exe -lib
 # PROP Output_Dir "libavcodec/Debug"
 # PROP Intermediate_Dir "libavcodec/Debug"
 # PROP Target_Dir ""
-LINK32=link.exe
 MTL=midl.exe
+LINK32=link.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "HAVE_MMX" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -93,46 +93,390 @@ LIB32=link.exe -lib
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\cputest.c
-# PROP Exclude_From_Build 1
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\cputest.c
+InputName=cputest
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\cputest.c
+InputName=cputest
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\dsputil.c
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\dsputil.c
+InputName=dsputil
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\dsputil.c
+InputName=dsputil
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\dsputil_mmx.c
-# PROP Exclude_From_Build 1
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\dsputil_mmx.c
+InputName=dsputil_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\dsputil_mmx.c
+InputName=dsputil_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\fdct_mmx.c
-# PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
 
-SOURCE=.\libavcodec\i386\fft_sse.c
-# PROP Exclude_From_Build 1
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\fdct_mmx.c
+InputName=fdct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\fdct_mmx.c
+InputName=fdct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\idct_mmx.c
-# PROP Exclude_From_Build 1
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\idct_mmx.c
+InputName=idct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\idct_mmx.c
+InputName=idct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\imgconvert.c
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\imgconvert.c
+InputName=imgconvert
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\imgconvert.c
+InputName=imgconvert
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\imgresample.c
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\imgresample.c
+InputName=imgresample
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\imgresample.c
+InputName=imgresample
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\motion_est_mmx.c
-# PROP Exclude_From_Build 1
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\motion_est_mmx.c
+InputName=motion_est_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\motion_est_mmx.c
+InputName=motion_est_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\mpegvideo_mmx.c
-# PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
 
-SOURCE=.\libavcodec\i386\mpegvideo_mmx_template.c
-# PROP Exclude_From_Build 1
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\mpegvideo_mmx.c
+InputName=mpegvideo_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\mpegvideo_mmx.c
+InputName=mpegvideo_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\i386\simple_idct_mmx.c
+
+!IF  "$(CFG)" == "vcodec_lib - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Release
+ProjDir=.
+InputPath=.\libavcodec\i386\simple_idct_mmx.c
+InputName=simple_idct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "vcodec_lib - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build
+OutDir=.\libavcodec/Debug
+ProjDir=.
+InputPath=.\libavcodec\i386\simple_idct_mmx.c
+InputName=simple_idct_mmx
+
+"$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	PATH=%PATH%;c:\cygwin\bin 
+	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	
+# End Custom Build
+
+!ENDIF 
+
+# End Source File
+# End Group
+# Begin Group "nonmmx"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\libavcodec\fdctref.c
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\fft.c
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\mdct.c
 # PROP Exclude_From_Build 1
 # End Source File
 # End Group
@@ -146,23 +490,11 @@ SOURCE=.\common.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libavcodec\dsputil.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libavcodec\error_resilience.c
 # End Source File
 # Begin Source File
 
 SOURCE=.\libavcodec\eval.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\fdctref.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\fft.c
 # End Source File
 # Begin Source File
 
@@ -182,14 +514,6 @@ SOURCE=.\libavcodec\h264.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\libavcodec\imgconvert.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\imgresample.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\libavcodec\jfdctfst.c
 # End Source File
 # Begin Source File
@@ -199,10 +523,6 @@ SOURCE=.\libavcodec\jfdctint.c
 # Begin Source File
 
 SOURCE=.\libavcodec\jrevdct.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\mdct.c
 # End Source File
 # Begin Source File
 
@@ -251,10 +571,6 @@ SOURCE=.\libavcodec\svq1.c
 # Begin Source File
 
 SOURCE=.\libavcodec\utils.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\xvmcvideo.c
 # End Source File
 # End Group
 # Begin Group "Header Files"

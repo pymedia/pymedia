@@ -19,6 +19,9 @@ def dumpWAV( name ):
 			
 			snd.writeframes( r.data )
 
+# ----------------------------------------------------------------------------------
+# Save compressed audio file into the WAV file suitable for writing on a regular Audio CD
+# http://pymedia.org/
 import sys
 if len( sys.argv )!= 2:
 	print "Usage: dump_wav <filename>"
