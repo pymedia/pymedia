@@ -705,7 +705,7 @@ static void encode_frame(MpegAudioContext *s,
                                 q[m] = ((q1 + (1 << P)) * steps) >> (P + 1);
                             }
 #endif
-                            if (q[m] >= steps)
+                            if (q[m] >= steps || q[m]< 0 )
                                 q[m] = steps - 1;
                             assert(q[m] >= 0 && q[m] < steps);
                         }

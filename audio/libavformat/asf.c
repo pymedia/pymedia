@@ -1052,7 +1052,7 @@ static int asf_read_packet(AVFormatContext *s, AVPacket *pkt)
 			}
 			if (asf->packet_time_start == 0) {
 	    /* read frame header */
-            int num = get_byte(pb);
+      int num = get_byte(pb);
 	    asf->packet_segments--;
 	    rsize++;
 	    asf->packet_key_frame = (num & 0x80) >> 7;

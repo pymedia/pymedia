@@ -149,7 +149,7 @@ typedef struct DSPContext {
     /* maybe create an array for 16/8/4/2 functions */
     /**
      * Halfpel motion compensation with rounding (a+b+1)>>1.
-     * this is an array[4][4] of motion compensation funcions for 4 
+     * this is an array[4][4] of motion compensation funcions for 4
      * horizontal blocksizes (2,4,8,16) and the 4 halfpel positions<br>
      * *pixels_tab[ 0->16xH 1->8xH ][ xhalfpel + 2*yhalfpel ]
      * @param block destination where the result is stored
@@ -161,7 +161,7 @@ typedef struct DSPContext {
 
     /**
      * Halfpel motion compensation with rounding (a+b+1)>>1.
-     * This is an array[4][4] of motion compensation functions for 4 
+     * This is an array[4][4] of motion compensation functions for 4
      * horizontal blocksizes (2,4,8,16) and the 4 halfpel positions<br>
      * *pixels_tab[ 0->16xH 1->8xH ][ xhalfpel + 2*yhalfpel ]
      * @param block destination into which the result is averaged (a+b+1)>>1
@@ -173,7 +173,7 @@ typedef struct DSPContext {
 
     /**
      * Halfpel motion compensation with no rounding (a+b)>>1.
-     * this is an array[2][4] of motion compensation funcions for 2 
+     * this is an array[2][4] of motion compensation funcions for 2
      * horizontal blocksizes (8,16) and the 4 halfpel positions<br>
      * *pixels_tab[ 0->16xH 1->8xH ][ xhalfpel + 2*yhalfpel ]
      * @param block destination where the result is stored
@@ -185,7 +185,7 @@ typedef struct DSPContext {
 
     /**
      * Halfpel motion compensation with no rounding (a+b)>>1.
-     * this is an array[2][4] of motion compensation funcions for 2 
+     * this is an array[2][4] of motion compensation funcions for 2
      * horizontal blocksizes (8,16) and the 4 halfpel positions<br>
      * *pixels_tab[ 0->16xH 1->8xH ][ xhalfpel + 2*yhalfpel ]
      * @param block destination into which the result is averaged (a+b)>>1
@@ -194,7 +194,7 @@ typedef struct DSPContext {
      * @param h height
      */
     op_pixels_func avg_no_rnd_pixels_tab[2][4];
-    
+
     /**
      * Thirdpel motion compensation with rounding (a+b+1)>>1.
      * this is an array[12] of motion compensation funcions for the 9 thirdpel positions<br>
@@ -212,7 +212,7 @@ typedef struct DSPContext {
     qpel_mc_func put_no_rnd_qpel_pixels_tab[2][16];
     qpel_mc_func avg_no_rnd_qpel_pixels_tab[2][16];
     qpel_mc_func put_mspel_pixels_tab[8];
-    
+
     /**
      * h264 Chram MC
      */
@@ -221,7 +221,7 @@ typedef struct DSPContext {
 
     qpel_mc_func put_h264_qpel_pixels_tab[3][16];
     qpel_mc_func avg_h264_qpel_pixels_tab[3][16];
-    
+
     op_pixels_abs_func pix_abs16x16;
     op_pixels_abs_func pix_abs16x16_x2;
     op_pixels_abs_func pix_abs16x16_y2;
@@ -230,31 +230,31 @@ typedef struct DSPContext {
     op_pixels_abs_func pix_abs8x8_x2;
     op_pixels_abs_func pix_abs8x8_y2;
     op_pixels_abs_func pix_abs8x8_xy2;
-    
+
     /* huffyuv specific */
     void (*add_bytes)(uint8_t *dst/*align 16*/, uint8_t *src/*align 16*/, int w);
     void (*diff_bytes)(uint8_t *dst/*align 16*/, uint8_t *src1/*align 16*/, uint8_t *src2/*align 1*/,int w);
     void (*bswap_buf)(uint32_t *dst, uint32_t *src, int w);
-    
+
     /* (I)DCT */
     void (*fdct)(DCTELEM *block/* align 16*/);
-    
+
     /* IDCT really*/
     void (*idct)(DCTELEM *block/* align 16*/);
-    
+
     /**
      * block -> idct -> clip to unsigned 8 bit -> dest.
      * (-1392, 0, 0, ...) -> idct -> (-174, -174, ...) -> put -> (0, 0, ...)
      * @param line_size size in bytes of a horizotal line of dest
      */
     void (*idct_put)(uint8_t *dest/*align 8*/, int line_size, DCTELEM *block/*align 16*/);
-    
+
     /**
      * block -> idct -> add dest -> clip to unsigned 8 bit -> dest.
      * @param line_size size in bytes of a horizotal line of dest
      */
     void (*idct_add)(uint8_t *dest/*align 8*/, int line_size, DCTELEM *block/*align 16*/);
-    
+
     /**
      * idct input permutation.
      * several optimized IDCTs need a permutated input (relative to the normal order of the reference
@@ -493,8 +493,8 @@ static inline long int lrintf(float x)
 #endif
 
 #if defined(CONFIG_OS2) || defined(CONFIG_SUNOS)
-static inline float floorf(float f) { 
-    return floor(f); 
+static inline float floorf(float f) {
+    return floor(f);
 }
 #endif
 

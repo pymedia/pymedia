@@ -118,6 +118,10 @@ SOURCE=.\libavcodec\a52dec.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libavcodec\ac3enc.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\libavcodec\common.c
 # End Source File
 # Begin Source File
@@ -131,6 +135,10 @@ SOURCE=.\libavcodec\mdct.c
 # Begin Source File
 
 SOURCE=.\mem.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\mpegaudio.c
 # End Source File
 # Begin Source File
 

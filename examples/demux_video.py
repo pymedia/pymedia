@@ -4,7 +4,7 @@ import pymedia.video.muxer as muxer
 import pymedia.video.vcodec as vcodec
 
 def demuxVideo( inFile, outFile ):
-	dm= muxer.Demuxer( inFile.split( '.' )[ -1 ] )
+	dm= muxer.Demuxer( inFile.split( '.' )[ -1 ].lower() )
 	f= open( inFile, 'rb' )
 	fw= open( outFile, 'wb' )
 	s= f.read( 400000 )

@@ -62,7 +62,7 @@ def encodeVideo( fName, fOutFile, codecName ):
 					params= { 'channels': 		frame.channels,
 										'sample_rate': 	frame.sample_rate,
 										'bitrate': 			frame.bitrate,
-										'id': 					acodec.getCodecID( 'mp2' ) }
+										'id': 					acodec.getCodecID( 'mp3' ) }
 					print 'Audio: encoder params ', params
 					ac1= acodec.Encoder( params ) 				#or any other supported audio encoder
 					a_id1 = mux.addStream( muxer.CODEC_TYPE_AUDIO, ac1.getParams() )

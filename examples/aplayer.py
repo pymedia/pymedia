@@ -7,21 +7,14 @@ def aplayer( name ):
 	dec= acodec.Decoder( str.split( name, '.' )[ -1 ].lower() )
 	f= open( name, 'rb' )
 	snd= None
-	while 1:
-		s= f.read( 50000 )
-		if len( s ):
-			b= time.time()
-			r= dec.decode( s )
-			print 'D', time.time()- b
-			if snd== None:
-				print 'Opening sound with %d channels' % r.channels
-				snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
-			
-			b= time.time()
-			snd.play( r.data )
-			print 'P', time.time()- b
-		else:
-			break
+	s= f.read( 50000 )
+	while len( s ):
+		r= dec.decode( s )
+		if snd== None:
+			print 'Opening sound with %d channels' % r.channels
+			snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
+		snd.play( r.data )
+		s= f.read( 512 )
 	
 	while snd.isPlaying():
 	  time.sleep( .05 )

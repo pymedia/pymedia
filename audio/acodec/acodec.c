@@ -36,6 +36,9 @@
 #define BUILD_NUM 1
 #endif
 
+
+#define MODULE_NAME "pymedia.audio.acodec"
+
 const int PYBUILD= BUILD_NUM;
 char* PYVERSION= "2";
 char* PYDOC=
@@ -73,10 +76,10 @@ char* PYDOC=
 	DECODE"( fragment ) -> audio_frame\n \
 	Convert audio compressed data into pcm fragment. \n\
 	Returns list of audio frame. Frame has the following members available:\n" \
-	"\t\t"SAMPLE_RATE"\n" \
-	"\t\t"BITRATE"\n" \
-	"\t\t"CHANNELS"\n" \
-	"\t\t"DATA"\n"
+	"\t"SAMPLE_RATE"\n" \
+	"\t"BITRATE"\n" \
+	"\t"CHANNELS"\n" \
+	"\t"DATA"\n"
 
 #define HAS_HEADER_DOC \
 	HAS_HEADER"() -> { true | false }\n \
@@ -148,11 +151,6 @@ typedef struct
 	int iTriedHeader;
 	int iAcodecFlags;
 	ByteIOContext stInBuf;
-
-	int audio_resample;
-	ReSampleContext * resample_ctx;
-	int old_sample_rate;
-	int old_channels;
 } PyACodecObject;
 
 // ---------------------------------------------------------------------------------
@@ -290,42 +288,6 @@ static PyObject * Codec_GetParams( PyACodecObject* obj, PyObject *args)
 }
 
 // ---------------------------------------------------------------------------------
-int CodecResampleInit(PyACodecObject* obj)
-{
-	// check resampling. resample only if channels/sample rate differs
-	// and are not 0
-	if ((obj->old_sample_rate == 0) || (obj->cCodec->sample_rate == 0) )
-		return 1; //do nothing, return success
-	if ((obj->old_channels == 0) || (obj->cCodec->channels == 0) )
-		return 1; //do nothing, return success
-
-	if (obj->cCodec->channels == obj->old_channels &&
- 		obj->cCodec->sample_rate == obj->old_sample_rate)
- 	{
-		obj->audio_resample = 0;
-	} 
-	else
-	{
-		//init resampling
-
-		if (obj->resample_ctx)
-			audio_resample_close(obj->resample_ctx);
-		obj->audio_resample = 1;
-		obj->resample_ctx = audio_resample_init(obj->cCodec->channels,
-				obj->old_channels,
-				obj->cCodec->sample_rate,
-				obj->old_sample_rate);
-		if(!obj->resample_ctx)
-		{
-
-			PyErr_Format(g_cErr, "Can't resample, bad parameters combination" );
-			return 0;
-		}
-	}
-	return 1;
-}
-
-// ---------------------------------------------------------------------------------
 static PyObject * Codec_GetID( PyACodecObject* obj, PyObject *args)
 {
 	AVCodec *p;
@@ -440,7 +402,7 @@ PyTypeObject FrameType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
-	"pymedia.audio.acodec.Frame",
+	MODULE_NAME".Frame",
 	sizeof(PyAFrameObject),
 	0,
 	(destructor)AFrameClose,  //tp_dealloc
@@ -564,6 +526,11 @@ Decoder_Convert2PCM( PyACodecObject* obj, PyObject *args)
 					size-= len;
 					inbuf_ptr+= len;
 				}
+				// Hmm. If we not doing break here it could be endless loop,
+				// from the other hand we may lose some data...
+				//else
+				//	break;
+
 				if (out_size > 0)
 					iLeft-= out_size;
 			}
@@ -732,6 +699,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 		{
 			cFrame = PyString_FromStringAndSize((const char*)sOutbuf, iLen );
 			PyList_Append(cRes,cFrame);
+			Py_DECREF( cFrame );
 		}
 	}
 
@@ -756,7 +724,6 @@ static PyMethodDef encoder_methods[] =
 	},
 	{ NULL, NULL },
 };
-
 
 // ----------------------------------------------------------------
 PyTypeObject EncoderType;
@@ -805,9 +772,6 @@ static PyObject* CreateNewPyACodec(AVInputFormat *fmt, int bDecoder)
 	acodec->iTriedHeader= 0;
 	acodec->iBufLen= 0;
 	acodec->cDict= NULL;
-	acodec->old_sample_rate= 0;
-	acodec->old_channels= 0;
-	acodec->audio_resample= 0;
 	memset( &acodec->stInBuf,0,sizeof(ByteIOContext));
 
 	// allocate private data
@@ -924,7 +888,7 @@ PyTypeObject DecoderType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
-	"pymedia.audio.acodec.Decoder",
+	MODULE_NAME".Decoder",
 	sizeof(PyACodecObject),
 	0,
 	(destructor)ACodecClose,  //tp_dealloc
@@ -979,7 +943,7 @@ PyTypeObject EncoderType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
-	"pymedia.audio.acodec.Encoder",
+	MODULE_NAME".Encoder",
 	sizeof(PyACodecObject),
 	0,
 	(destructor)ACodecClose,  //tp_dealloc
@@ -1040,7 +1004,7 @@ initacodec(void)
 	AVInputFormat *fmt;
 
 	Py_Initialize();
-	m= Py_InitModule("acodec", pympg_methods);
+	m= Py_InitModule(MODULE_NAME, pympg_methods);
 
   /* register all the codecs (you can also register only the codec you wish to have smaller code */
   register_avcodec(&wmav1_decoder);
@@ -1072,7 +1036,7 @@ initacodec(void)
 	PyModule_AddStringConstant(m, "version", PYVERSION );
 	PyModule_AddIntConstant(m, "build", PYBUILD );
 
-	g_cErr = PyErr_NewException("pymedia.audio.Error", NULL, NULL);
+	g_cErr = PyErr_NewException(MODULE_NAME".Error", NULL, NULL);
 	if( g_cErr != NULL)
 	  PyModule_AddObject(m, "error", g_cErr );
 
@@ -1148,19 +1112,44 @@ print dec.getInfo()
 print r.sample_rate
 
 
-# test codec with encoder
-import pymedia.audio.acodec as acodec
-codec= 'mp3'
-parms= {'index': 0, 'type': 1, 'frame_rate_base': 1, 'height': 0, 'channels': 2, 'width': 0, 'sample_rate': 44100, 'frame_rate': 25, 'bitrate': 192000, 'id': acodec.getCodecID(codec)}
-enc= acodec.Encoder( parms )
-f= open( 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\test.pcm', 'rb' )
-f1= open( 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\test_enc.'+ codec, 'wb' )
-s= f.read( 300000 )
-while len( s ):
-	frames= enc.encode( s )
-	for fr in frames:
-		f1.write( fr )
+	# test codec with encoder
+def encode():
+	import pymedia.audio.acodec as acodec
+	codec= 'mp2'
+	parms= {'channels': 2, 'sample_rate': 44100, 'bitrate': 128000, 'id': acodec.getCodecID(codec)}
+	enc= acodec.Encoder( parms )
+	f= open( 'c:\\music\\Roots.pcm', 'rb' )
+	f1= open( 'c:\\music\\test_enc.'+ codec, 'wb' )
 	s= f.read( 300000 )
+	while len( s ):
+		frames= enc.encode( s )
+		#for fr in frames:
+		#	f1.write( fr )
+		s= f.read( 300000 )
+	f.close()
+	f1.close()
 
+encode()
+
+def aplayer( name ):
+	import pymedia.audio.acodec as acodec
+	import pymedia.audio.sound as sound
+	import time
+	dec= acodec.Decoder( str.split( name, '.' )[ -1 ].lower() )
+	f= open( name, 'rb' )
+	snd= None
+	s= f.read( 50000 )
+	while len( s ):
+		r= dec.decode( s )
+		if snd== None:
+			print 'Opening sound with %d channels' % r.channels
+			snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
+		snd.play( r.data )
+		s= f.read( 512 )
+	
+	while snd.isPlaying():
+	  time.sleep( .05 )
+
+aplayer( 'c:\\music\\Test\\test.wma' )
 
 */

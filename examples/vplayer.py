@@ -40,6 +40,7 @@ class VPlayer:
     # ------------------------------------
     def aud( self, queue ):
         self.snd= None
+        resampler= None
         ac= None
         print 'VPlayer: Audio thread has started'
         try:
@@ -66,16 +67,37 @@ class VPlayer:
                 
                 afr= ac.decode( d[ 1 ] )
                 if self.snd== None:
+                    f= open( 'c:\\t.pcm', 'wb' )
                     print 'Sound: ', afr.sample_rate, afr.channels
                     try:
                         # Hardcode S16 ( 16 bit signed ) for now
                         self.snd= sound.Output( afr.sample_rate, afr.channels, 0x10 )
+                        resampler= None
                     except:
-                        traceback.print_exc()
+                      # Fallback to 2 channels
+                      try:
+                        resampler= sound.Resampler( (afr.sample_rate,afr.channels), (afr.sample_rate,2) )
+                        self.snd= sound.Output( afr.sample_rate, 2, 0x10 )
+                      except:
                         self.err.append( sys.exc_info()[1] )
                         continue
                 
-                self.snd.play( afr.data )
+                f.write( d[ 1 ] )
+                s= afr.data
+                if resampler:
+                    s= resampler.resample( s )
+                
+                if d[ 3 ]> 0:
+                  # set correction factor in case of PTS presence
+                  self.aDelta= ( float( d[ 3 ] ) / 90000 )- self.snd.getPosition()- self.snd.getLeft()
+                  #print 'AUDIO: ', d[3], self.aDelta, queue.qsize(), self.snd.getLeft()
+                else:
+                  # No correction
+                  self.aDelta= 0
+                
+                # Get number of seconds to be played in a buffer
+                if len( s )> 0:
+                  self.snd.play( s )
         except:
             traceback.print_exc()
             
@@ -85,7 +107,7 @@ class VPlayer:
     def vid( self, queue ):
         frRate= 0
         vc= None
-        sndDelay= lastPts= pts= 0
+        sndDelay= lastPts= pts= vPTS= 0
         clock= 0
         delay= .0
         print 'VPlayer: Video thread has started'
@@ -101,7 +123,7 @@ class VPlayer:
                         params= queue.get()
                         try:
                             vc= vcodec.Decoder( params )
-                            sndDelay= -.2
+                            sndDelay= 0
                         except:
                             traceback.print_exc()
                             self.err.append( sys.exc_info()[1] )
@@ -122,18 +144,22 @@ class VPlayer:
                     #print d[3]
                     if d[ 3 ]> 0:
                         # Calc frRate
-                        if pts== 0:
-                            pts= d[3]
-                        elif lastPts< d[3]:
-                            r= float( d[ 3 ]- pts ) / 90000
-                            frRate= r/ self.frameNum
+                        if lastPts< d[3]:
                             lastPts= d[3]
-                            sndDelay= -.2
-                            #print 'PTS: ', d[3], self.frameNum, frRate
+                            vPTS= float( d[ 3 ] ) / 90000
+                            frRate= vPTS / self.frameNum
+                            if frRate> .04:
+                              frRate= .04
+                            
+                            sndDelay= -.5
+                            #print 'PTS: ', vPTS, self.getAPTS(), self.frameNum
                     
                     if self.overlayLoc and self.overlay== None:
                         self.overlay= pygame.Overlay( YV12, vfr.size )
-                        self.pictureSize= vfr.size
+                        if vfr.aspect_ratio> .0:
+                          self.pictureSize= ( vfr.size[ 1 ]* vfr.aspect_ratio, vfr.size[ 1 ] )
+                        else:
+                          self.pictureSize= vfr.size
                         self.setOverlay( self.overlayLoc )
                     
                     if self.frameNum> 0:
@@ -143,8 +169,8 @@ class VPlayer:
                             # use our internal clock instead
                             aPTS= time.time()- clock
                         
-                        delay= ( frRate* self.frameNum )- aPTS+ sndDelay # mpeg2 +.3, avi -.2
-                        #print frRate, len( d[1] ), self.frameNum, delay, aPTS
+                        delay= vPTS- aPTS+ sndDelay  # mpeg2 +.3, avi -.2
+                        #print 'Delay', delay, self.frameNum, vPTS, aPTS, queue.qsize(), frRate
                         if delay> 0 and delay< 2:
                             time.sleep( delay )
                     else:
@@ -155,6 +181,7 @@ class VPlayer:
                         self.overlay.display( vfr.data )
                     
                     self.frameNum+= 1
+                    vPTS+= frRate
         except:
             traceback.print_exc()
         
@@ -174,6 +201,7 @@ class VPlayer:
         self.vq= Queue.Queue()
         self.stopPlayback()
         self.err= []
+        self.aDelta= 0
     
     # ------------------------------------
     def start( self ):
@@ -270,7 +298,7 @@ class VPlayer:
     def getAPTS( self ):
         if self.snd== None:
             return 0
-        return self.snd.getPosition()
+        return self.snd.getPosition()+ self.aDelta
     
     # ------------------------------------
     def getPlayingFile( self ):
@@ -336,7 +364,7 @@ player= VPlayer()
 
 if __name__ == "__main__":
   if len( sys.argv )< 2 or len( sys.argv )> 3:
-      print 'Usage: vplayer <file_name> [ fullscreen ]'
+      print 'Usage: vplayer <file_name>'
   else:
       pygame.init()
       pygame.display.set_mode( (800,600), 0 )

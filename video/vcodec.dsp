@@ -53,12 +53,13 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 c:\bors\hmedia\download\SDL-1.2.5\VisualC\SDL\Debug\SDL.lib /nologo /dll /machine:I386 /out:"vcodec/Release/vcodec.pyd" /export:initvcodec
+# ADD LINK32 ..\..\..\pygame\SDL-1.2.5\VisualC\SDL\Debug\SDL.lib /nologo /dll /machine:I386 /out:"vcodec/Release/vcodec.pyd" /export:initvcodec
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
+TargetPath=.\vcodec\Release\vcodec.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy ($TargetPath) c:\python23\lib\site-packages\pymedia\video
+PostBuild_Cmds=copy $(TargetPath) c:\python23\lib\site-packages\pymedia\video
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "vcodec - Win32 Debug"

@@ -20,6 +20,6 @@ PyMedia is a set of Python modules designed to be used in media centers.
 Small footprint, fast and reliable library for embedded environments
 """
 
-__all__= [ 'audio', 'video' ]
-import audio, video
-__version__= "1.3.0"
+__all__= [ 'audio', 'video', 'removable' ]
+import audio, video, removable
+__version__= "1.2.1"

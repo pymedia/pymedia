@@ -1395,9 +1395,28 @@ extern AVCodec ac3_decoder;
 
 /* resample.c */
 
+
 struct ReSampleContext;
 
 typedef struct ReSampleContext ReSampleContext;
+
+typedef struct {
+    /* fractional resampling */
+    uint32_t incr; /* fractional increment */
+    uint32_t frac;
+    int last_sample;
+    /* integer down sample */
+    int iratio;  /* integer divison ratio */
+    int icount, isum;
+    int inv;
+} ReSampleChannelContext;
+
+struct ReSampleContext {
+    ReSampleChannelContext channel_ctx[2];
+    float ratio;
+    /* channel convert */
+    int input_channels, output_channels, filter_channels;
+};
 
 ReSampleContext *audio_resample_init(int output_channels, int input_channels,
                                      int output_rate, int input_rate);

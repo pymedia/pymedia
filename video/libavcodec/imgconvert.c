@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "inttypes.h"
+//#include "inttypes.h"
 #include "avcodec.h"
 #include "dsputil.h"
 
@@ -76,7 +76,7 @@ static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 = r;
             g1 = g;
             b1 = b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             r = p[3];
             g = p[4];
@@ -84,7 +84,7 @@ static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             p += wrap3;
             lum += wrap;
@@ -95,7 +95,7 @@ static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             r = p[3];
             g = p[4];
@@ -103,12 +103,12 @@ static void rgb24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
-            
-            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 + 
+
+            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 +
                       FIX(0.50000) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
-            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 - 
+            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 -
                      FIX(0.08131) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
 
             cb++;
@@ -139,7 +139,7 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 = r;
             g1 = g;
             b1 = b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             r = p[4];
             g = p[5];
@@ -147,7 +147,7 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             p += wrap4;
             lum += wrap;
@@ -158,7 +158,7 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             r = p[4];
             g = p[5];
@@ -166,12 +166,12 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
-            
-            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 + 
+
+            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 +
                       FIX(0.50000) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
-            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 - 
+            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 -
                      FIX(0.08131) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
 
             cb++;
@@ -195,7 +195,7 @@ static void rgba32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
 static void rgbmisc_to_yuv420p
   (UINT8 *lum, UINT8 *cb, UINT8 *cr,
    UINT8 *src, int width, int height,
-   
+
    UINT16 R_LOWMASK, UINT16 R_MAX,
    UINT16 G_LOWMASK, UINT16 G_MAX,
    UINT16 B_LOWMASK, UINT16 B_MAX
@@ -218,7 +218,7 @@ static void rgbmisc_to_yuv420p
             r1 = r;
             g1 = g;
             b1 = b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
 
             pixel = p[2] | (p[3]<<8);
@@ -228,7 +228,7 @@ static void rgbmisc_to_yuv420p
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             p += wrap2;
             lum += wrap;
@@ -240,7 +240,7 @@ static void rgbmisc_to_yuv420p
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             pixel = p[2] | (p[3]<<8);
             r = (((pixel/R_LOWMASK) & R_MAX) * (0x100 / (R_MAX+1)));
@@ -249,12 +249,12 @@ static void rgbmisc_to_yuv420p
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
-            
-            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 + 
+
+            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 +
                       FIX(0.50000) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
-            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 - 
+            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 -
                      FIX(0.08131) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
 
             cb++;
@@ -286,7 +286,7 @@ static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 = r;
             g1 = g;
             b1 = b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             b = p[3];
             g = p[4];
@@ -294,7 +294,7 @@ static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             p += wrap3;
             lum += wrap;
@@ -305,7 +305,7 @@ static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             b = p[3];
             g = p[4];
@@ -313,12 +313,12 @@ static void bgr24_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
-            
-            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 + 
+
+            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 +
                       FIX(0.50000) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
-            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 - 
+            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 -
                      FIX(0.08131) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
 
             cb++;
@@ -349,7 +349,7 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 = r;
             g1 = g;
             b1 = b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             b = p[4];
             g = p[5];
@@ -357,7 +357,7 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             p += wrap4;
             lum += wrap;
@@ -368,7 +368,7 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[0] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
             b = p[4];
             g = p[5];
@@ -376,12 +376,12 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
             r1 += r;
             g1 += g;
             b1 += b;
-            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g + 
+            lum[1] = (FIX(0.29900) * r + FIX(0.58700) * g +
                       FIX(0.11400) * b + ONE_HALF) >> SCALEBITS;
-            
-            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 + 
+
+            cb[0] = ((- FIX(0.16874) * r1 - FIX(0.33126) * g1 +
                       FIX(0.50000) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
-            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 - 
+            cr[0] = ((FIX(0.50000) * r1 - FIX(0.41869) * g1 -
                      FIX(0.08131) * b1 + 4 * ONE_HALF - 1) >> (SCALEBITS + 2)) + 128;
 
             cb++;
@@ -396,7 +396,7 @@ static void bgra32_to_yuv420p(UINT8 *lum, UINT8 *cb, UINT8 *cr,
 
 /* XXX: use generic filter ? */
 /* 1x2 -> 1x1 */
-static void shrink2(UINT8 *dst, int dst_wrap, 
+static void shrink2(UINT8 *dst, int dst_wrap,
                     UINT8 *src, int src_wrap,
                     int width, int height)
 {
@@ -428,7 +428,7 @@ static void shrink2(UINT8 *dst, int dst_wrap,
 }
 
 /* 2x2 -> 1x1 */
-static void shrink22(UINT8 *dst, int dst_wrap, 
+static void shrink22(UINT8 *dst, int dst_wrap,
                      UINT8 *src, int src_wrap,
                      int width, int height)
 {
@@ -488,7 +488,7 @@ static void grow22(UINT8 *dst, int dst_wrap,
 }
 
 /* 1x2 -> 2x1. width and height are given for the source picture */
-static void conv411(UINT8 *dst, int dst_wrap, 
+static void conv411(UINT8 *dst, int dst_wrap,
                     UINT8 *src, int src_wrap,
                     int width, int height)
 {
@@ -512,7 +512,7 @@ static void conv411(UINT8 *dst, int dst_wrap,
     }
 }
 
-static void img_copy(UINT8 *dst, int dst_wrap, 
+static void img_copy(UINT8 *dst, int dst_wrap,
                      UINT8 *src, int src_wrap,
                      int width, int height)
 {
@@ -540,7 +540,7 @@ static void img_copy(UINT8 *dst, int dst_wrap,
 }
 
 /* XXX: no chroma interpolating is done */
-static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src, 
+static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
     UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
@@ -562,7 +562,7 @@ static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src,
             r_add = C_RV * cr + (1 << (SCALE_BITS - 1));
             g_add = - C_GU * cb - C_GV * cr + (1 << (SCALE_BITS - 1));
             b_add = C_BU * cb + (1 << (SCALE_BITS - 1));
-            
+
             /* output 4 pixels */
             RGBOUT(d1[2], d1[1], d1[0], y1_ptr[0]);
             RGBOUT(d1[6], d1[5], d1[4], y1_ptr[1]);
@@ -586,7 +586,7 @@ static void yuv420p_to_bgra32(AVPicture *dst, AVPicture *src,
 }
 
 /* XXX: no chroma interpolating is done */
-static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src, 
+static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
     UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
@@ -603,12 +603,12 @@ static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src,
         d2 = d + dst->linesize[0];
         y2_ptr = y1_ptr + src->linesize[0];
         for(w = width2; w > 0; w --) {
-            cb = cb_ptr[0] - 128;
-            cr = cr_ptr[0] - 128;
+            cb = cr_ptr[0] - 128;
+            cr = cb_ptr[0] - 128;
             r_add = C_RV * cr + (1 << (SCALE_BITS - 1));
             g_add = - C_GU * cb - C_GV * cr + (1 << (SCALE_BITS - 1));
             b_add = C_BU * cb + (1 << (SCALE_BITS - 1));
-            
+
             /* output 4 pixels */
             RGBOUT(d1[0], d1[1], d1[2], y1_ptr[0]);
             RGBOUT(d1[4], d1[5], d1[6], y1_ptr[1]);
@@ -632,7 +632,7 @@ static void yuv420p_to_rgba32(AVPicture *dst, AVPicture *src,
 }
 
 /* XXX: no chroma interpolating is done */
-static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src, 
+static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
     UINT8 *y1_ptr, *y2_ptr, *cb_ptr, *cr_ptr, *d, *d1, *d2;
@@ -649,12 +649,12 @@ static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src,
         d2 = d + dst->linesize[0];
         y2_ptr = y1_ptr + src->linesize[0];
         for(w = width2; w > 0; w --) {
-            cb = cb_ptr[0] - 128;
-            cr = cr_ptr[0] - 128;
+            cb = cr_ptr[0] - 128;
+            cr = cb_ptr[0] - 128;
             r_add = C_RV * cr + (1 << (SCALE_BITS - 1));
             g_add = - C_GU * cb - C_GV * cr + (1 << (SCALE_BITS - 1));
             b_add = C_BU * cb + (1 << (SCALE_BITS - 1));
-            
+
             /* output 4 pixels */
             RGBOUT(d1[2], d1[1], d1[0], y1_ptr[0]);
             RGBOUT(d1[5], d1[4], d1[3], y1_ptr[1]);
@@ -674,9 +674,9 @@ static void yuv420p_to_rgb24(AVPicture *dst, AVPicture *src,
         cr_ptr += src->linesize[2] - width2;
     }
 }
- 
+
 /* XXX: no chroma interpolating is done */
-static void yuv422p_to_rgb24(AVPicture *dst, AVPicture *src, 
+static void yuv422p_to_rgb24(AVPicture *dst, AVPicture *src,
                              int width, int height)
 {
     UINT8 *y1_ptr, *cb_ptr, *cr_ptr, *d, *d1;
@@ -691,12 +691,12 @@ static void yuv422p_to_rgb24(AVPicture *dst, AVPicture *src,
     for(;height > 0; height --) {
         d1 = d;
         for(w = width2; w > 0; w --) {
-            cb = cb_ptr[0] - 128;
-            cr = cr_ptr[0] - 128;
+            cb = cr_ptr[0] - 128;
+            cr = cb_ptr[0] - 128;
             r_add = C_RV * cr + (1 << (SCALE_BITS - 1));
             g_add = - C_GU * cb - C_GV * cr + (1 << (SCALE_BITS - 1));
             b_add = C_BU * cb + (1 << (SCALE_BITS - 1));
-            
+
             /* output 2 pixels */
             RGBOUT(d1[0], d1[1], d1[2], y1_ptr[0]);
             RGBOUT(d1[3], d1[4], d1[5], y1_ptr[1]);
@@ -715,7 +715,7 @@ static void yuv422p_to_rgb24(AVPicture *dst, AVPicture *src,
 
 /* XXX: always use linesize. Return -1 if not supported */
 int img_convert(AVPicture *dst, int dst_pix_fmt,
-                AVPicture *src, int pix_fmt, 
+                AVPicture *src, int pix_fmt,
                 int width, int height)
 {
     int i;
@@ -739,7 +739,7 @@ int img_convert(AVPicture *dst, int dst_pix_fmt,
             return -1;
         }
     } else if (dst_pix_fmt == PIX_FMT_YUV420P) {
-        
+
         switch(pix_fmt) {
         case PIX_FMT_YUV411P:
             img_copy(dst->data[0], dst->linesize[0],
@@ -795,35 +795,35 @@ int img_convert(AVPicture *dst, int dst_pix_fmt,
             }
             break;
         case PIX_FMT_YUV422:
-            yuv422_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            yuv422_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                               src->data[0], width, height);
             break;
         case PIX_FMT_RGB24:
-            rgb24_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            rgb24_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
         case PIX_FMT_RGBA32:
-            rgba32_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            rgba32_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
         case PIX_FMT_BGR24:
-            bgr24_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            bgr24_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
         case PIX_FMT_RGB565:
-            rgb565_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            rgb565_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
         case PIX_FMT_RGB555:
-            rgb555_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            rgb555_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
 /*        case PIX_FMT_RGB5551:
-            rgb5551_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            rgb5551_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;*/
 /*        case PIX_FMT_GBR565:
-            gbr565_to_yuv420p(dst->data[0], dst->data[1], dst->data[2], 
+            gbr565_to_yuv420p(dst->data[0], dst->data[1], dst->data[2],
                              src->data[0], width, height);
             break;
         case PIX_FMT_GBR555:
@@ -1058,7 +1058,7 @@ int avpicture_deinterlace(AVPicture *dst, AVPicture *src,
     }
 #endif
 
-    
+
     for(i=0;i<3;i++) {
         if (i == 1) {
             switch(pix_fmt) {
@@ -1088,6 +1088,6 @@ int avpicture_deinterlace(AVPicture *dst, AVPicture *src,
     return 0;
 }
 
- 
+
 
 #undef FIX

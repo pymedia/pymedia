@@ -301,12 +301,14 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		iRet= av_read_packet(&obj->ic,&obj->pkt);
 		// Parse single packet until all parsed
 		if( iRet>= 0 )
+		{
 			if( obj->pkt.size> 0 )
 				if( !AppendStreamData( obj, &obj->pkt ) )
 				{
 					PyErr_Format(g_cErr, "Cannot allocate memory ( %d bytes ) for codec parameters", obj->pkt.size );
 					return NULL;
 				}
+		}
 	}
 	// In case of error or something
 	if( iRet<= AVILIB_ERROR )

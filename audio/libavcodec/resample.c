@@ -24,24 +24,6 @@
 
 #include "avcodec.h"
 
-typedef struct {
-    /* fractional resampling */
-    uint32_t incr; /* fractional increment */
-    uint32_t frac;
-    int last_sample;
-    /* integer down sample */
-    int iratio;  /* integer divison ratio */
-    int icount, isum;
-    int inv;
-} ReSampleChannelContext;
-
-struct ReSampleContext {
-    ReSampleChannelContext channel_ctx[2];
-    float ratio;
-    /* channel convert */
-    int input_channels, output_channels, filter_channels;
-};
-
 
 #define FRAC_BITS 16
 #define FRAC (1 << FRAC_BITS)
@@ -172,6 +154,28 @@ static void mono_to_stereo(short *output, short *input, int n1)
     }
 }
 
+/* n1: number of samples */
+static void mchannel_to_stereo(short *output_l, short *output_r, short *input, int channels, int n1)
+{
+	int i= 0;
+	for(; i< n1; i++ )
+	{
+		if( channels> 4 ) 
+		{
+			*output_l= ( input[ 0 ] + input[ 1 ] ) >> 1;
+			*output_r= ( input[ 2 ] + input[ 1 ] ) >> 1;
+		}
+		else
+		{
+			*output_l= input[ 0 ];
+			*output_r= input[ 1 ];
+		}
+		input+= channels;
+		output_l++;
+		output_r++;
+  }
+}
+
 /* XXX: should use more abstract 'N' channels system */
 static void stereo_split(short *output1, short *output2, short *input, int n)
 {
@@ -241,10 +245,10 @@ ReSampleContext *audio_resample_init(int output_channels, int input_channels,
     ReSampleContext *s;
     int i;
     
-    if ( input_channels > 2)
+    if ( input_channels > 2 && output_channels!= 2 )
       {
-	printf("Resampling with input channels greater than 2 unsupported.");
-	return NULL;
+        printf("Resampling with input channels greater than 2 and output with non stereo is unsupported.");
+        return NULL;
       }
 
     s = av_mallocz(sizeof(ReSampleContext));
@@ -312,6 +316,12 @@ int audio_resample(ReSampleContext *s, short *output, short *input, int nb_sampl
     } else if (s->output_channels >= 2 && s->input_channels == 1) {
         buftmp2[0] = input;
         buftmp3[0] = bufout[0];
+    } else if (s->input_channels > 2) {
+        buftmp2[0] = bufin[0];
+        buftmp2[1] = bufin[1];
+        buftmp3[0] = bufout[0];
+        buftmp3[1] = bufout[1];
+        mchannel_to_stereo(buftmp2[0], buftmp2[1], input, s->input_channels, nb_samples);
     } else if (s->output_channels >= 2) {
         buftmp2[0] = bufin[0];
         buftmp2[1] = bufin[1];

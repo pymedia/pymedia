@@ -16,13 +16,13 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
- 
+
 /**
  * @file utils.c
  * utils.
  */
- 
-#include "inttypes.h"
+
+//#include "inttypes.h"
 #include "avcodec.h"
 #include "dsputil.h"
 #include "mpegvideo.h"
@@ -67,8 +67,8 @@ static PixFmtInfo pix_fmt_info[PIX_FMT_NB]= {
 		{ "pal8", 4, FF_COLOR_RGB, FF_PIXEL_PALETTE, 1, 0, 0, 8 },
 		{ "yuvj420p", 3, FF_COLOR_YUV_JPEG, FF_PIXEL_PLANAR, 0, 1, 1, 8 },
 		{ "yuv422", 1, FF_COLOR_YUV, FF_PIXEL_PACKED, 0, 1, 0, 8 },
-		{ NULL, 0, 0, 0, 0, 0, 0, 0 }, 
-		{ NULL, 0, 0, 0, 0, 0, 0, 0 } 
+		{ NULL, 0, 0, 0, 0, 0, 0, 0 },
+		{ NULL, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 void avcodec_get_chroma_sub_sample(int pix_fmt, int *h_shift, int *v_shift)
@@ -76,7 +76,7 @@ void avcodec_get_chroma_sub_sample(int pix_fmt, int *h_shift, int *v_shift)
     *h_shift = pix_fmt_info[pix_fmt].x_chroma_shift;
     *v_shift = pix_fmt_info[pix_fmt].y_chroma_shift;
 }
- 
+
 char *av_strdup(const char *s)
 {
     char *ptr;
@@ -119,7 +119,7 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
     const int width = s->width;
     const int height= s->height;
     InternalBuffer *buf;
-    
+
     assert(pic->data[0]==NULL);
     assert(INTERNAL_BUFFER_SIZE > s->internal_buffer_count);
 
@@ -128,12 +128,12 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
     }
 #if 0
     s->internal_buffer= av_fast_realloc(
-        s->internal_buffer, 
-        &s->internal_buffer_size, 
+        s->internal_buffer,
+        &s->internal_buffer_size,
         sizeof(InternalBuffer)*FFMAX(99,  s->internal_buffer_count+1)/*FIXME*/
         );
 #endif
-     
+
     buf= &((InternalBuffer*)s->internal_buffer)[s->internal_buffer_count];
 
     if(buf->base[0]){
@@ -142,7 +142,7 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
     }else{
         int align, h_chroma_shift, v_chroma_shift;
         int w, h, pixel_size;
-        
+
         avcodec_get_chroma_sub_sample(s->pix_fmt, &h_chroma_shift, &v_chroma_shift);
         switch(s->pix_fmt){
         case PIX_FMT_RGB555:
@@ -160,18 +160,18 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
         default:
             pixel_size=1;
         }
-        
+
         if(s->codec_id==CODEC_ID_SVQ1) align=63;
         else                           align=15;
-    
+
         w= (width +align)&~align;
         h= (height+align)&~align;
-    
+
         if(!(s->flags&CODEC_FLAG_EMU_EDGE)){
             w+= EDGE_WIDTH*2;
             h+= EDGE_WIDTH*2;
         }
-        
+
         buf->last_pic_num= -256*256*256*64;
 
         for(i=0; i<3; i++){
@@ -183,7 +183,7 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
             buf->base[i]= av_mallocz((pic->linesize[i]*h>>v_shift)+16); //FIXME 16
             if(buf->base[i]==NULL) return -1;
             memset(buf->base[i], 128, pic->linesize[i]*h>>v_shift);
-        
+
             if(s->flags&CODEC_FLAG_EMU_EDGE)
                 buf->data[i] = buf->base[i];
             else
@@ -258,32 +258,32 @@ void avcodec_get_context_defaults(AVCodecContext *s){
     s->release_buffer= avcodec_default_release_buffer;
     s->get_format= avcodec_default_get_format;
     s->me_subpel_quality=8;
-    
+
     s->intra_quant_bias= FF_DEFAULT_QUANT_BIAS;
     s->inter_quant_bias= FF_DEFAULT_QUANT_BIAS;
 }
 
 /**
  * allocates a AVCodecContext and set it to defaults.
- * this can be deallocated by simply calling free() 
+ * this can be deallocated by simply calling free()
  */
 AVCodecContext *avcodec_alloc_context(void){
     AVCodecContext *avctx= av_mallocz(sizeof(AVCodecContext));
-    
+
     if(avctx==NULL) return NULL;
-    
+
     avcodec_get_context_defaults(avctx);
-    
+
     return avctx;
 }
 
 /**
  * allocates a AVPFrame and set it to defaults.
- * this can be deallocated by simply calling free() 
+ * this can be deallocated by simply calling free()
  */
 AVFrame *avcodec_alloc_frame(void){
     AVFrame *pic= av_mallocz(sizeof(AVFrame));
-    
+
     return pic;
 }
 
@@ -296,7 +296,7 @@ int avcodec_open(AVCodecContext *avctx, AVCodec *codec)
     avctx->frame_number = 0;
     if (codec->priv_data_size > 0) {
         avctx->priv_data = av_mallocz(codec->priv_data_size);
-        if (!avctx->priv_data) 
+        if (!avctx->priv_data)
             return -ENOMEM;
     } else {
         avctx->priv_data = NULL;
@@ -309,7 +309,7 @@ int avcodec_open(AVCodecContext *avctx, AVCodec *codec)
     return 0;
 }
 
-int avcodec_encode_audio(AVCodecContext *avctx, uint8_t *buf, int buf_size, 
+int avcodec_encode_audio(AVCodecContext *avctx, uint8_t *buf, int buf_size,
                          const short *samples)
 {
     int ret;
@@ -319,40 +319,40 @@ int avcodec_encode_audio(AVCodecContext *avctx, uint8_t *buf, int buf_size,
     return ret;
 }
 
-int avcodec_encode_video(AVCodecContext *avctx, uint8_t *buf, int buf_size, 
+int avcodec_encode_video(AVCodecContext *avctx, uint8_t *buf, int buf_size,
                          const AVFrame *pict)
 {
     int ret;
 
     ret = avctx->codec->encode(avctx, buf, buf_size, (void *)pict);
-    
+
     emms_c(); //needed to avoid a emms_c() call before every return;
 
     avctx->frame_number++;
     return ret;
 }
 
-/** 
- * decode a frame. 
+/**
+ * decode a frame.
  * @param buf bitstream buffer, must be FF_INPUT_BUFFER_PADDING_SIZE larger then the actual read bytes
  * because some optimized bitstream readers read 32 or 64 bit at once and could read over the end
  * @param buf_size the size of the buffer in bytes
  * @param got_picture_ptr zero if no frame could be decompressed, Otherwise, it is non zero
  * @return -1 if error, otherwise return the number of
- * bytes used. 
+ * bytes used.
  */
-int avcodec_decode_video(AVCodecContext *avctx, AVFrame *picture, 
+int avcodec_decode_video(AVCodecContext *avctx, AVFrame *picture,
                          int *got_picture_ptr,
                          uint8_t *buf, int buf_size)
 {
     int ret;
-    
-    ret = avctx->codec->decode(avctx, picture, got_picture_ptr, 
+
+    ret = avctx->codec->decode(avctx, picture, got_picture_ptr,
                                buf, buf_size);
 
     emms_c(); //needed to avoid a emms_c() call before every return;
-    
-    if (*got_picture_ptr)                           
+
+    if (*got_picture_ptr)
         avctx->frame_number++;
     return ret;
 }
@@ -361,13 +361,13 @@ int avcodec_decode_video(AVCodecContext *avctx, AVFrame *picture,
    *number of bytes used. If no frame could be decompressed,
    *frame_size_ptr is zero. Otherwise, it is the decompressed frame
    *size in BYTES. */
-int avcodec_decode_audio(AVCodecContext *avctx, int16_t *samples, 
+int avcodec_decode_audio(AVCodecContext *avctx, int16_t *samples,
                          int *frame_size_ptr,
                          uint8_t *buf, int buf_size)
 {
     int ret;
 
-    ret = avctx->codec->decode(avctx, samples, frame_size_ptr, 
+    ret = avctx->codec->decode(avctx, samples, frame_size_ptr,
                                buf, buf_size);
     avctx->frame_number++;
     return ret;
@@ -462,7 +462,7 @@ void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode)
     } else {
         /* output avi tags */
         if (enc->codec_type == CODEC_TYPE_VIDEO) {
-            snprintf(buf1, sizeof(buf1), "%c%c%c%c", 
+            snprintf(buf1, sizeof(buf1), "%c%c%c%c",
                      enc->codec_tag & 0xff,
                      (enc->codec_tag >> 8) & 0xff,
                      (enc->codec_tag >> 16) & 0xff,
@@ -486,7 +486,7 @@ void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode)
         if (enc->width) {
             snprintf(buf + strlen(buf), buf_size - strlen(buf),
                      ", %dx%d, %0.2f fps",
-                     enc->width, enc->height, 
+                     enc->width, enc->height,
                      (float)enc->frame_rate / enc->frame_rate_base);
         }
         if (encode) {
@@ -519,7 +519,7 @@ void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode)
                      enc->sample_rate,
                      channels_str);
         }
-        
+
         /* for PCM codecs, compute bitrate directly */
         switch(enc->codec_id) {
         case CODEC_ID_PCM_S16LE:
@@ -551,7 +551,7 @@ void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode)
                      ", pass 2");
     }
     if (bitrate != 0) {
-        snprintf(buf + strlen(buf), buf_size - strlen(buf), 
+        snprintf(buf + strlen(buf), buf_size - strlen(buf),
                  ", %d kb/s", bitrate / 1000);
     }
 }
@@ -591,7 +591,7 @@ void avcodec_default_free_buffers(AVCodecContext *s){
     int i, j;
 
     if(s->internal_buffer==NULL) return;
-    
+
     for(i=0; i<INTERNAL_BUFFER_SIZE; i++){
         InternalBuffer *buf= &((InternalBuffer*)s->internal_buffer)[i];
         for(j=0; j<4; j++){
@@ -600,18 +600,18 @@ void avcodec_default_free_buffers(AVCodecContext *s){
         }
     }
     av_freep(&s->internal_buffer);
-    
+
     s->internal_buffer_count=0;
 }
 
 char av_get_pict_type_char(int pict_type){
     switch(pict_type){
-    case I_TYPE: return 'I'; 
-    case P_TYPE: return 'P'; 
-    case B_TYPE: return 'B'; 
-    case S_TYPE: return 'S'; 
-    case SI_TYPE:return 'i'; 
-    case SP_TYPE:return 'p'; 
+    case I_TYPE: return 'I';
+    case P_TYPE: return 'P';
+    case B_TYPE: return 'B';
+    case S_TYPE: return 'S';
+    case SI_TYPE:return 'i';
+    case SP_TYPE:return 'p';
     default:     return '?';
     }
 }
@@ -626,33 +626,33 @@ int av_reduce(int *dst_nom, int *dst_den, int64_t nom, int64_t den, int64_t max)
         den= -den;
         nom= -nom;
     }
-    
+
     if(nom < 0){
         nom= -nom;
         sign= 1;
     }
-    
-    for(;;){ //note is executed 1 or 2 times 
+
+    for(;;){ //note is executed 1 or 2 times
         gcd = ff_gcd(nom, den);
         nom /= gcd;
         den /= gcd;
-    
+
         larger= FFMAX(nom, den);
-    
+
         if(larger > max){
             int64_t div= (larger + max - 1) / max;
             nom =  (nom + div/2)/div;
             den =  (den + div/2)/div;
             exact=0;
-        }else 
+        }else
             break;
     }
-    
+
     if(sign) nom= -nom;
-    
+
     *dst_nom = nom;
     *dst_den = den;
-    
+
     return exact;
 }
 
@@ -660,12 +660,12 @@ int64_t av_rescale(int64_t a, int b, int c){
     uint64_t h, l;
     assert(c > 0);
     assert(b >=0);
-    
+
     if(a<0) return -av_rescale(-a, b, c);
-    
+
     h= a>>32;
     if(h==0) return a*b/c;
-    
+
     l= a&0xFFFFFFFF;
     l *= b;
     h *= b;
@@ -766,4 +766,3 @@ int avpicture_get_size(int pix_fmt, int width, int height)
     }
     return size;
 }
-  

@@ -7,6 +7,9 @@
 #include <time.h>
 
 #include "avcodec.h"
+
+#if defined( CONFIG_VORBIS )
+
 #include "oggvorbis.h"
 
 #define OGGVORBIS_FRAME_SIZE 1024
@@ -20,7 +23,6 @@ typedef struct OggVorbisContext {
     vorbis_comment vc ;
 } OggVorbisContext ;
 
-#if defined( CONFIG_VORBIS )
 
 #include <vorbis/vorbisenc.h>
 
@@ -194,11 +196,12 @@ static int oggvorbis_decode_frame(AVCodecContext *avccontext,
     }
 
     if(op->packetno == 3) {
-	fprintf(stderr, "vorbis_decode: %d channel, %ldHz, encoder `%s'\n",
-		context->vi.channels, context->vi.rate, context->vc.vendor);
+			/*fprintf(stderr, "vorbis_decode: %d channel, %ldHz, sample_rate %d encoder `%s'\n",
+				context->vi.channels, context->vi.rate, context->vi.bitrate_nominal, context->vc.vendor);*/
 
 	avccontext->channels = context->vi.channels ;
 	avccontext->sample_rate = context->vi.rate ;
+	
 
 	vorbis_synthesis_init(&context->vd, &context->vi) ;
 	vorbis_block_init(&context->vd, &context->vb);
@@ -218,6 +221,9 @@ static int oggvorbis_decode_frame(AVCodecContext *avccontext,
     }
 
     *data_size = total_bytes ;
+		avccontext->bit_rate= context->vi.bitrate_nominal;
+		avccontext->channels= context->vi.channels;
+		avccontext->sample_rate= context->vi.rate;
     return buf_size ;
 }
 
