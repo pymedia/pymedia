@@ -54,25 +54,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "ffplay"=.\tests\ffplay\ffplay.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-    Begin Project Dependency
-    Project_Dep_Name libavformat
-    End Project Dependency
-    Begin Project Dependency
-    Project_Dep_Name vcodec_lib
-    End Project Dependency
-}}}
-
-###############################################################################
-
-Project: "libavcodectest"=.\TESTS\libavcodectest\libavcodectest.dsp - Package Owner=<4>
+Project: "cd"=.\removable\cd\cd.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -84,7 +66,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "libavformat"=.\tests\ffplay\libavformat\libavformat.dsp - Package Owner=<4>
+Project: "libavcodectest"=..\..\tests\libavcodectest\libavcodectest.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -96,7 +78,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "libfaad"=.\libfaad2\libfaad\libfaad.dsp - Package Owner=<4>
+Project: "libfaad"=..\libfaad2\libfaad\libfaad.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -123,7 +105,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "muxer_test"=.\TESTS\muxer_test\muxer_test.dsp - Package Owner=<4>
+Project: "muxer_test"=..\..\tests\muxer_test\muxer_test.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -141,19 +123,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "ogg_static"=".\libogg-1.0\win32\ogg_static.dsp" - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-}}}
-
-###############################################################################
-
-Project: "pycdda"=.\cd\pycdda.dsp - Package Owner=<4>
+Project: "ogg_static"="..\libogg-1.1\win32\ogg_static.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -166,6 +136,30 @@ Package=<4>
 ###############################################################################
 
 Project: "sound"=.\sound\sound.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "testusb"="..\..\USB\LIBUSB-WIN32-SRC-0.1.8.0\testusb\testusb.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "usb"=.\REMOVABLE\USB\usb.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -216,7 +210,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "vorbis_static"=".\libvorbis-1.0\win32\vorbis_static.dsp" - Package Owner=<4>
+Project: "vorbis_static"="..\libvorbis-1.0.1\win32\vorbis_static.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{

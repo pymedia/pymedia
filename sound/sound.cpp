@@ -791,7 +791,7 @@ static PyObject* Analyzer_AsFrequencies( PyAnalyzerObject* obj, PyObject *args)
 static PyObject* Analyzer_AsBands( PyAnalyzerObject* obj, PyObject *args)
 {
 	short* sData = NULL;
-	int iBands, iLen = 0, iSamples= 0, i, j;
+	int iBands, iLen = 0, i, j;
 	if (!PyArg_ParseTuple(args, "is#:"AS_BANDS_NAME, &iBands, &sData, &iLen ))
 		return NULL;
 

@@ -1,5 +1,5 @@
 /*
- *			Class to support direct audio playing 
+ *			Class to support direct audio playing
  *
  *						Copyright (C) 2002-2003  Dmitry Borisov
  *
@@ -48,16 +48,16 @@ private:
 	void FormatError()
 	{
 		LPVOID lpMsgBuf;
-		FormatMessage( 
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-				FORMAT_MESSAGE_FROM_SYSTEM | 
+		FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
 				GetLastError(),
 				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 				(LPTSTR) &lpMsgBuf,
 				0,
-				NULL 
+				NULL
 		);
 		strcpy( this->sErr, (char*)lpMsgBuf );
 	}
@@ -147,16 +147,16 @@ private:
 	void FormatError()
 	{
 		LPVOID lpMsgBuf;
-		FormatMessage( 
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-				FORMAT_MESSAGE_FROM_SYSTEM | 
+		FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
 				GetLastError(),
 				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 				(LPTSTR) &lpMsgBuf,
 				0,
-				NULL 
+				NULL
 		);
 		strcpy( this->sErr, (char*)lpMsgBuf );
 	}
@@ -232,7 +232,7 @@ public:
 };
 
 // *****************************************************************************************************
-// Mixer line 
+// Mixer line
 // *****************************************************************************************************
 /*
 class MixerLine
@@ -292,16 +292,16 @@ private:
 	void FormatError()
 	{
 		LPVOID lpMsgBuf;
-		FormatMessage( 
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-				FORMAT_MESSAGE_FROM_SYSTEM | 
+		FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
 				GetLastError(),
 				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 				(LPTSTR) &lpMsgBuf,
 				0,
-				NULL 
+				NULL
 		);
 		strcpy( this->sErr, (char*)lpMsgBuf );
 	}
@@ -455,6 +455,7 @@ private:
 	int iMute;
 	int iRate;
 	int iBuffers;
+	int iErr;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -479,33 +480,39 @@ public:
 		memset( headers, 0, sizeof( WAVEHDR )* MAX_HEADERS );
 		this->dev= NULL;
 
-		SetLastError( 0 );
+		this->iErr= 0;
 		InitializeCriticalSection(&this->cs);
 
 		this->hSem= CreateSemaphore( NULL, MAX_HEADERS- 1, MAX_HEADERS, NULL );
 		if( !this->hSem )
+		{
+			this->iErr= ::GetLastError();
 			return;
+		}
 
 		// No error is set, just do it manually
 		if(rate == -1)
 		{
-			SetLastError( -1 );
+			this->iErr= ::GetLastError();
 		  return;
 		}
 
 		// Last error should be set already
 		if(!waveOutGetNumDevs())
+		{
+			this->iErr= ::GetLastError();
 			return;
+		}
 
 		this->iRate= rate;
 		this->format= format;
 		this->iBuffers= this->iProcessed= this->iMute= 0;
 		this->bStopFlag= false;
 
-		outFormatex.wFormatTag = 
+		outFormatex.wFormatTag =
 			( format!= AFMT_MPEG && format != AFMT_AC3 ) ? WAVE_FORMAT_PCM: -1;
-		outFormatex.wBitsPerSample  = 
-			( format== AFMT_U8 || format== AFMT_S8 ) ? 8: 
+		outFormatex.wBitsPerSample  =
+			( format== AFMT_U8 || format== AFMT_S8 ) ? 8:
 			( format== AFMT_S16_LE || format== AFMT_S16_BE || format== AFMT_U16_LE || format== AFMT_U16_BE  ) ? 16:
 			( format== AFMT_AC3 ) ? 6: 0;
 		this->iChannels= channels;
@@ -516,7 +523,7 @@ public:
 		res = waveOutOpen( &this->dev, 0, &outFormatex, (DWORD)wave_callback, (DWORD)this, CALLBACK_FUNCTION);
 		if(res != MMSYSERR_NOERROR)
 		{
-			SetLastError( res );
+			this->iErr= res;
 		  return;
 		}
 
@@ -533,13 +540,16 @@ public:
 			wh->dwFlags= 0;
 			res = waveOutPrepareHeader( this->dev, wh, sizeof (WAVEHDR) );
 			if(res)
-			 return;
+			{
+				this->iErr= ::GetLastError();
+			  return;
+		  }
 		}
 		/*
 		switch(res)
-		{ 
+		{
 			case -1:
-				sprintf( s, "Cannot initialize audio device" ); 
+				sprintf( s, "Cannot initialize audio device" );
 				break;
 			case MMSYSERR_ALLOCATED:
 				sprintf( s, "Device Is Already Open" );
@@ -588,6 +598,8 @@ public:
 	}
 
 	// ---------------------------------------------------------------------------------------------------
+	int GetLastError(){ return ::GetLastError();	}
+	// ---------------------------------------------------------------------------------------------------
 	char* GetErrorString(){ return "";	}
 	// ---------------------------------------------------------------------------------------------------
 	int GetBuffersCount(){ return MAX_HEADERS;	}
@@ -599,7 +611,7 @@ public:
 	int IsMute(){ return this->iMute;	}
 	// ---------------------------------------------------------------------------------------------------
 	void SetMute( bool bMute )
-	{ 
+	{
 		if( bMute )
 		{
 			this->iMute= this->GetVolume();
@@ -657,7 +669,7 @@ public:
 		// Try to fit chunk in remaining buffers
 		while( len> 0 )
 		{
-			WaitForSingleObject( this->hSem, INFINITE ); 
+			WaitForSingleObject( this->hSem, INFINITE );
 			int i= this->iProcessed % MAX_HEADERS;
 			int l= ( len> BUFFER_SIZE ) ? BUFFER_SIZE: len;
 			memcpy( this->headers[ i ].lpData, buf, l );
@@ -665,7 +677,10 @@ public:
 			buf+= l;
 			len-= l;
 		  if( waveOutWrite( this->dev, &this->headers[ i ], sizeof (WAVEHDR) ) )
+		  {
+				this->iErr= ::GetLastError();
 				return -1;
+			}
 
 			dPos+= l / ((double)( 2* this->iChannels* this->iRate ));
 
@@ -681,7 +696,7 @@ public:
 	double GetPosition()
 	{
 		MMTIME stTime;
-		stTime.wType= TIME_MS; 
+		stTime.wType= TIME_MS;
 		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
 		return ((double)stTime.u.ms)/ this->iRate;
 	}
@@ -711,6 +726,7 @@ private:
 	int iChannels;
 	int iRate;
 	int iBuffers;
+	int iErr;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -735,7 +751,7 @@ public:
 		memset( headers, 0, sizeof( WAVEHDR )* MAX_HEADERS );
 		this->dev= NULL;
 
-		SetLastError( 0 );
+		this->iErr= 0;
 		InitializeCriticalSection(&this->cs);
 
 		this->hSem= CreateSemaphore( NULL, MAX_HEADERS- 1, MAX_HEADERS, NULL );
@@ -745,14 +761,14 @@ public:
 		// No error is set, just do it manually
 		if(rate == -1)
 		{
-			SetLastError( -1 );
+			this->iErr= ::GetLastError();
 		  return;
 		}
 
 		// Last error should be set already
 		if((int)waveInGetNumDevs()<= iId)
 		{
-			SetLastError( -1 );
+			this->iErr= ::GetLastError();
 			return;
 		}
 
@@ -771,7 +787,7 @@ public:
 		res = waveInOpen( &this->dev, iId, &inFormatex, (DWORD)iwave_callback, (DWORD)this, CALLBACK_FUNCTION);
 		if(res != MMSYSERR_NOERROR)
 		{
-			SetLastError( res );
+			this->iErr= res;
 		  return;
 		}
 
@@ -788,7 +804,10 @@ public:
 			wh->dwFlags= 0;
 			res = waveInPrepareHeader( this->dev, wh, sizeof (WAVEHDR) );
 			if(res)
-			 return;
+			{
+				this->iErr= ::GetLastError();
+				return;
+		  }
 		}
 		waveInReset( this->dev );
 	}
@@ -812,6 +831,8 @@ public:
 		DeleteCriticalSection(&this->cs);
 	}
 
+	// ---------------------------------------------------------------------------------------------------
+	int GetLastError(){ return this->iErr;	}
 	// ---------------------------------------------------------------------------------------------------
 	char* GetErrorString(){ return "";	}
 	// ---------------------------------------------------------------------------------------------------
@@ -860,7 +881,10 @@ public:
 			this->iBuffers= 0;
 
 			if( waveInStart( this->dev )!= MMSYSERR_NOERROR )
+			{
+				this->iErr= ::GetLastError();
 				return false;
+			}
 
 			// Submit buffer for grabbing
 			this->CompleteBuffer( NULL );
@@ -872,7 +896,7 @@ public:
 	double GetPosition()
 	{
 		MMTIME stTime;
-		stTime.wType= TIME_MS; 
+		stTime.wType= TIME_MS;
 		waveInGetPosition( this->dev, &stTime, sizeof( stTime ) );
 		return ((double)stTime.u.ms)/ this->iRate;
 	}

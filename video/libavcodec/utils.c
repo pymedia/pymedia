@@ -22,7 +22,10 @@
  * utils.
  */
 
-//#include "inttypes.h"
+#if defined( WIN32 )
+#include "inttypes.h"
+#endif
+
 #include "avcodec.h"
 #include "dsputil.h"
 #include "mpegvideo.h"

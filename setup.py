@@ -59,8 +59,6 @@ FILES={
 			'mpegaudio.c',
 			'ac3enc.c',
 			'mp3lameaudio.c',
-			'resample.c',
-
 		),
 	},
 	'video.muxer':
@@ -124,15 +122,36 @@ FILES={
 			'opts.c',
 		],
 	},
-	'audio.cd':
+	'removable.cd':
 	{
-		'#dir': 'cd',
-		'': ( 'cd.cpp', )
+		'#dir': 'removable',
+		'cd':
+		(
+			'cd.cpp',
+			'dvdcd.cpp',
+			'audiocd.cpp'
+		),
+		'cd/dvdlibs/dvdcss':
+		(
+			'device.c',
+			'libdvdcss.c',
+			'error.c',
+			'css.c',
+			'ioctl.c'
+		),
+		'cd/dvdlibs/dvdread':
+		(
+			'dvd_reader.c',
+			'dvd_udf.c',
+			'ifo_read.c',
+			'md5.c',
+			'nav_read.c'
+		)
 	},
 	'audio.sound':
 	{
 		'#dir': 'sound',
-		'': ( 'sound.cpp', )
+		'': ( 'sound.cpp', 'resample.c', 'fft.cpp' )
 	}
 }
 
@@ -150,42 +169,45 @@ f.close()
 DEFINES= [( 'BUILD_NUM', buildNum ),]
 
 if sys.platform == 'win32':
-    print 'Using WINDOWS configuration...\n'
-    dep= config.Dependency_win
-    inc_hunt = ['include']
-    lib_hunt = [
-    	'win32\\Static_Release',
-    	'win32\\VorbisEnc_Static_Release',
-    	'win32\\Vorbis_Static_Release',
-    	'libmp3lame\\Release',
+		print 'Using WINDOWS configuration...\n'
+		dep= config.Dependency_win
+		inc_hunt = ['include']
+		lib_hunt = [
+			'win32\\Static_Release',
+			'win32\\VorbisEnc_Static_Release',
+			'win32\\Vorbis_Static_Release',
+			'libmp3lame\\Release',
 			'libfaad\\Release',
 			'VisualC\\SDL\Release']
-    DEFINES.append( ('WIN32', None ) )
-    LIBS= [ 'winmm' ]
-    FILES[ 'video.vcodec' ][ 'libavcodec' ]+= NONMMX_FILES
+		DEFINES.append( ('WIN32', None ) )
+		LIBS= [ 'winmm' ]
+		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= NONMMX_FILES
 else:
-    print 'Using UNIX configuration...\n'
-    dep= config.Dependency_unix
-    inc_hunt = [ 
-    	'/usr/include', 
-    	'/usr/local/include', 
-    	'/usr/local/include/lame',]
-    lib_hunt = [ '/usr/lib', '/usr/local/lib', ]
-    LIBS= []
-    DEFINES+= [
-    	( 'PATH_DEV_DSP', '"/dev/dsp"' ), 
-    	( 'PATH_DEV_MIXER','"/dev/mixer"' ), 
-    	('_FILE_OFFSET_BITS',64),
-    	('ACCEL_DETECT',1),	
-    	('HAVE_MMX', '1' ),] 
-    FILES[ 'video.vcodec' ][ 'libavcodec' ]+= MMX_FILES
+		print 'Using UNIX configuration...\n'
+		dep= config.Dependency_unix
+		inc_hunt = [ 
+			'/usr/include', 
+			'/usr/local/include', 
+			'/usr/local/include/lame',]
+		lib_hunt = [ '/usr/lib', '/usr/local/lib', ]
+		LIBS= []
+		DEFINES+= [
+			('PATH_DEV_DSP', '"/dev/dsp"' ), 
+			('PATH_DEV_MIXER','"/dev/mixer"' ), 
+			('_FILE_OFFSET_BITS',64),
+			('ACCEL_DETECT',1),	
+			('HAVE_MMX', '1' ),
+			('HAVE_LINUX_DVD_STRUCT', '1' ),
+			('DVD_STRUCT_IN_LINUX_CDROM_H', '1' ),
+		] 
+		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= MMX_FILES
 
 DEPS = [
-    dep('OGG', 'libogg-[1-9].*', 'ogg/ogg.h', 'libogg', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
-    dep('VORBIS', 'libvorbis-[1-9].*', 'vorbis/codec.h', 'libvorbis', 'CONFIG_VORBIS' ).configure(inc_hunt,lib_hunt),
-    dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
-    dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
-    dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
+		dep('OGG', 'libogg-[1-9].*', 'ogg/ogg.h', 'libogg', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
+		dep('VORBIS', 'libvorbis-[1-9].*', 'vorbis/codec.h', 'libvorbis', 'CONFIG_VORBIS' ).configure(inc_hunt,lib_hunt),
+		dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
+		dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
+		dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
 ]
 
 DEPS= filter( lambda x: x.found, DEPS )
@@ -196,24 +218,24 @@ LIBS+= [ x.lib for x in DEPS ]
 
 choice = raw_input('Continue building '+MODULE_NAME+' ? [Y,n]:')
 if choice== 'n':
-    print 'To start installation please run: \n\tsetup.py install and press Enter when prompted\n'
-    sys.exit()
+		print 'To start installation please run: \n\tsetup.py install and press Enter when prompted\n'
+		sys.exit()
 
 METADATA = {
-    "name":             "pymedia",
-    "version":          "1.2.0",
-    "license":          "LGPL",
-    "url":              "http://pymedia.sourceforge.net/",
-    "author":           "Dmitry Borisov",
-    "author_email":     "jbors@users.sourceforge.net",
-    "description":      "Pymedia library for mutlimedia easy experience"
+		"name":             "pymedia",
+		"version":          "1.2.2",
+		"license":          "LGPL",
+		"url":              "http://pymedia.sourceforge.net/",
+		"author":           "Dmitry Borisov",
+		"author_email":     "jbors@users.sourceforge.net",
+		"description":      "Pymedia library for mutlimedia easy experience"
 }
 
 PACKAGEDATA = {
-        "packages":    ['pymedia','pymedia.audio','pymedia.video'],
-        "package_dir": 
-        	{'pymedia': 'inst_lib','pymedia.audio': 'inst_lib/audio','pymedia.video': 'inst_lib/video'},
-        "ext_modules": config.extensions( MODULE_NAME, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
+				"packages":    ['pymedia','pymedia.audio','pymedia.video', 'pymedia.removable'],
+				"package_dir": 
+					{'pymedia': 'inst_lib','pymedia.audio': 'inst_lib/audio','pymedia.video': 'inst_lib/video','pymedia.removable': 'inst_lib/removable'},
+				"ext_modules": config.extensions( MODULE_NAME, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
 }
 
 PACKAGEDATA.update(METADATA)

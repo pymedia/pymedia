@@ -1,28 +1,28 @@
                         Pymedia Readme
-   Version 1.1.3
+   Version 1.2.2
    by Dmitry Borisov http://www.pymedia.org
    jbors@mail.sourceforge.org
 
    About
 
-     Pymedia is a cross-platfrom library designed to make it easy to
-     write multimedia software, such as audio, video players. 
+     Pymedia is a Python cross-platfrom library designed to make it easy to
+     write multimedia software, such as multimedia aware apps.
      Small size makes it perfect for embedded mutlimedia software 
      development. 
      It requires the Python language.
 
    Installation
 
-     The installation is pretty simple is you have Python 2.2+ installed.
+     The installation is pretty simple is you have Python 2.3+ installed.
      Just type: "python setup.py build" as normal user and 
      "python setup.py install" as superuser. You may wish to run latter without
      the first one. As superuser of course.
-     If you wish to be able to play movies, you'll need SDL to be installed
-     and compile pymedia with "python setup.py build SDL" instead.
-     In case if experience compilation problems such as this:
-     	"can't find a register in class `GENERAL_REGS' while reloading `asm':
-     Try to edit file /usr/local/lib/python?.?/config/Makefile and remove the following:
-     	GCCSHARED = -fPIC
+     If you wish to be able to play movies, you'll need SDL/DirectFB to be installed.
+     For cygwin installation do the following:
+     	Edit file /usr/local/lib/python?.?/config/Makefile and change:
+     		GCC = gcc -> GCC = g++
+     For Windows users there is a better way of making it work:
+     	Just download binaries from the web site and you're all set.
 
    Help
 
@@ -32,10 +32,10 @@
      Then if you need additional information and features description, open the
      docs/index.html.
 
-     Visit pymedia website, there is documentation section as well. 
-     You should know that the online documentation stays
-     up to date with the development version of pymedia in cvs. This may
-     be a bit newer than the version of pymedia you are using.
+     Visit pymedia website( http://pymedia.sourceforge.net/ ), there is documentation
+     section as well. 
+     Be aware that the online documentation stays up to date with the development
+     version of pymedia in cvs. This may be a bit newer than the version of pymedia you are using.
 
    Credits
 
@@ -43,6 +43,7 @@
      Special thanks are also in order.
 
      Elena K - for creating such a great web site for pymedia
+     Drew Perttula <drewp@bigasterisk.com> - for making -fPIC fix during installation
 
    Dependencies
 
@@ -51,28 +52,39 @@
      libraries. Here is the list:
      - libvorbis
      - libogg
+     - mp3lame
      - libfaad2
-     In case if you wish to play movies, there is SDL library needed.
-     ( http://libsdl.org )
+     
+   Video playback
+ 
+     In case if you wish to play movies, there are 2 choices:
+         1. pygame-1.6.0 with patch
+             http://66.159.221.186/pygame-1.6-overlay.patch.gz
+         2. If you're lucky enough to use one of the DirectFB's supported video card, you may use
+             DirectFB-0.9.20 along with
+             pydfb-1.0.2 from http://sourceforge.net/projects/pymedia/
+            In this case just set PYCAR_DISPLAY=directfb.
 
    Todo / Ideas
-     * Better codecs support
+   
+     * Better codecs support( ape, flac, aac )
      * Support for dvd hw decoding
-     * Support for encoding interfaces
      * Support for usb devices
+     * Support for mixer device
 
    License
 
      This library is distributed under GNU LGPL version 2.1, which can
-     be found in the file "doc/LGPL". I reserve the right to place
+     be found in the file "docs/LGPL". I reserve the right to place
      future versions of this library under a different license.
      http://www.gnu.org/copyleft/lesser.html
 
-     This basically means you can use pygame in any project you want,
-     but if you make any changes or additions to pygame itself, those
+     This basically means you can use pymedia in any project you want,
+     but if you make any changes or additions to pymedia itself, those
      must be released with a compatible license. (preferably submitted
-     back to the pygame project). Closed source and commercial apps are
-     fine.
+     back to the pymedia project). Closed source and commercial apps are
+     fine as long as you provide a way to link against the latest version 
+     of pymedia.
 
      The programs in the "examples" directory are in the public domain.  
   
