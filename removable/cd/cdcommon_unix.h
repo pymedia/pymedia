@@ -38,20 +38,22 @@
 #else
 #include <mntent.h>
 #endif
- 
+
 #define CDROM_PATH "/dev/cdrom"
-#define _PATH_MOUNTED	"/etc/mtab" 
+#define _PATH_MOUNTED	"/etc/mtab"
 #define _PATH_MNTTAB	"/etc/fstab"
-#define MNTTYPE_SUPER	"supermount" 
+#define MNTTYPE_SUPER	"supermount"
 
 #ifndef MNTTYPE_CDROM
 #define MNTTYPE_CDROM	"iso9660"
-#endif 
+#endif
+
+#define MNTTYPE_AUTO	"auto"
 
 #define ERRNO_TRAYEMPTY(errno)	\
 	((errno == EIO)    || (errno == ENOENT) || \
 	 (errno == EINVAL) || (errno == ENOMEDIUM))
- 
+
 // ---------------------------------------------------
 /* Check a drive to see if it is a CD-ROM */
 static int CheckDrive(char *drive, char *mnttype, struct stat *stbuf)
@@ -60,28 +62,27 @@ static int CheckDrive(char *drive, char *mnttype, struct stat *stbuf)
 	struct cdrom_subchnl info;
 
 	/* If it doesn't exist, return -1 */
-	if ( stat(drive, stbuf) < 0 ) {
+	if ( stat(drive, stbuf) < 0 )
 		return(-1);
-	}
 
 	/* If it does exist, verify that it's an available CD-ROM */
 	is_cd = 0;
-	if ( S_ISCHR(stbuf->st_mode) || S_ISBLK(stbuf->st_mode) ) {
+	if ( S_ISCHR(stbuf->st_mode) || S_ISBLK(stbuf->st_mode) )
+	{
 		cdfd = open(drive, (O_RDONLY|O_EXCL|O_NONBLOCK), 0);
-		if ( cdfd >= 0 ) {
+		if ( cdfd >= 0 )
+		{
 			info.cdsc_format = CDROM_MSF;
 			/* Under Linux, EIO occurs when a disk is not present.
 			 */
-			if ( (ioctl(cdfd, CDROMSUBCHNL, &info) == 0) ||
-						ERRNO_TRAYEMPTY(errno) ) {
+			if ( (ioctl(cdfd, CDROMSUBCHNL, &info) == 0) || ERRNO_TRAYEMPTY(errno) )
 				is_cd = 1;
-			}
+
 			close(cdfd);
 		}
 		/* Even if we can't read it, it might be mounted */
-		else if ( mnttype && (strcmp(mnttype, MNTTYPE_CDROM) == 0) ) {
+		else if ( mnttype && (strcmp(mnttype, MNTTYPE_CDROM) == 0 || strcmp(mnttype, MNTTYPE_AUTO) == 0) )
 			is_cd = 1;
-		}
 	}
 	return(is_cd);
 }
@@ -94,62 +95,49 @@ static int CheckMounts(char sDrives[ 255 ][ 20 ], int iDrives, const char *mtab)
 	struct stat stbuf;
 
 	mntfp = setmntent(mtab, "r");
-	if ( mntfp != NULL ) {
+	if ( mntfp != NULL )
+	{
 		char *tmp;
-		char *mnt_type;
-		char *mnt_dev;
+		char mnt_type[ 1024 ];
+		char mnt_dev[ 1024 ];
 
-		while ( (mntent=getmntent(mntfp)) != NULL ) {
-			mnt_type = (char*)malloc(strlen(mntent->mnt_type) + 1);
-			if (mnt_type == NULL)
-				continue;  /* maybe you'll get lucky next time. */
-
-			mnt_dev = (char*)malloc(strlen(mntent->mnt_fsname) + 1);
-			if (mnt_dev == NULL) {
-				free(mnt_type);
-				continue;
-			}
-
+		while ( (mntent=getmntent(mntfp)) != NULL )
+		{
 			strcpy(mnt_type, mntent->mnt_type);
 			strcpy(mnt_dev, mntent->mnt_fsname);
 
 			/* Handle "supermount" filesystem mounts */
-			if ( strcmp(mnt_type, MNTTYPE_SUPER) == 0 ) {
+			if ( strcmp(mnt_type, MNTTYPE_SUPER) == 0 )
+			{
 				tmp = strstr(mntent->mnt_opts, "fs=");
-				if ( tmp ) {
-					free(mnt_type);
-					mnt_type = strdup(tmp + strlen("fs="));
-					if ( mnt_type ) {
-						tmp = strchr(mnt_type, ',');
-						if ( tmp ) {
-							*tmp = '\0';
-						}
-					}
+				if ( tmp )
+				{
+					strcpy( mnt_type, tmp + strlen("fs="));
+					tmp = strchr(mnt_type, ',');
+					if ( tmp )
+						*tmp = '\0';
 				}
 				tmp = strstr(mntent->mnt_opts, "dev=");
-				if ( tmp ) {
-					free(mnt_dev);
-					mnt_dev = strdup(tmp + strlen("dev="));
-					if ( mnt_dev ) {
-						tmp = strchr(mnt_dev, ',');
-						if ( tmp ) {
-							*tmp = '\0';
-						}
-					}
+				if ( tmp )
+				{
+					strcpy( mnt_dev, tmp + strlen("dev="));
+					tmp = strchr(mnt_dev, ',');
+					if ( tmp )
+						*tmp = '\0';
 				}
 			}
-			if ( strcmp(mnt_type, MNTTYPE_CDROM) == 0 ) 
+			if ( strcmp(mnt_type, MNTTYPE_CDROM) == 0 || strcmp(mnt_type, MNTTYPE_AUTO) == 0 )
 			{
-				if (CheckDrive(mnt_dev, mnt_type, &stbuf) > 0) 
+				if (CheckDrive(mnt_dev, mnt_type, &stbuf) > 0)
 				{
 					// Scan all previous found pathes to find a match
 					int i= 0;
 					while( i< iDrives )
-						if( !strcmp( &sDrives[ i ][ 0 ], mnt_dev )) 
+						if( !strcmp( &sDrives[ i ][ 0 ], mnt_dev ))
 							break;
-						else 
+						else
 							i++;
-					
+
 					if( i== iDrives )
 					{
 						strcpy( &sDrives[ iDrives ][ 0 ], mnt_dev);
@@ -157,14 +145,12 @@ static int CheckMounts(char sDrives[ 255 ][ 20 ], int iDrives, const char *mtab)
 					}
 				}
 			}
-			free(mnt_dev);
-			free(mnt_type);
 		}
 		endmntent(mntfp);
 	}
 	return iDrives;
 }
- 
+
 // ---------------------------------------------------
 int GetDrivesList( char sDrives[ 255 ][ 20 ] )
 {
@@ -191,7 +177,7 @@ int GetDrivesList( char sDrives[ 255 ][ 20 ] )
 * Generic CD wrapper stuff
 ***************************************************************************************/
 
-class CD 
+class CD
 {
 private:
   char sDevName[ 255 ];				// Device name
@@ -206,15 +192,15 @@ public:
 	// ---------------------------------------------------
 	inline char* GetName()	{ return &this->sDevName[ 0 ]; }
 	// ---------------------------------------------------
-	void GetLabel( char* sLabel, int iLabelLen )	
-	{ 
+	void GetLabel( char* sLabel, int iLabelLen )
+	{
 		strcpy( sLabel, "No label" );
 
 		int fd = open(this->sDevName, O_RDONLY);
-		if (fd != -1) 
+		if (fd != -1)
 		{
 			int status = lseek(fd, 32808, SEEK_SET);
-			if (status != -1) 
+			if (status != -1)
 				read(fd, sLabel, 32);
 
 			// Strip the string
@@ -228,8 +214,8 @@ public:
 		}
 	}
 	// ---------------------------------------------------
-	bool IsReady()	
-	{ 
+	bool IsReady()
+	{
 		bool bReady= false;
 		int fd= open( this->sDevName, (O_RDONLY|O_EXCL|O_NONBLOCK), 0);
 		if( fd )
@@ -247,7 +233,7 @@ public:
 		if( fd )
 		{
 			// We dont care about result of execution
-			ioctl( fd, CDROMEJECT, 0 ); 
+			ioctl( fd, CDROMEJECT, 0 );
 			close( fd );
 		}
 		return 1;
@@ -277,7 +263,7 @@ int cd_jc1(int *p1,int *p2) //nuova
 		while((n<IFRAMESIZE*(1+opt_overlap)) && memcmp(p,p2,opt_keylen))
 		  {p--;n++;};
 //		  {p-=6;n+=6;}; //should be more accurate, but doesn't work well
-		if(n>=IFRAMESIZE*(1+opt_overlap)){		// no match 
+		if(n>=IFRAMESIZE*(1+opt_overlap)){		// no match
 			return -1;
 		};
 		n=sizeof(int)*(p-p1);
