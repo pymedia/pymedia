@@ -45,7 +45,10 @@ class NodeElement:
       # Get actions variable
       if s1[ 0 ]== '%':
         s= eval( modParams[ 'actions' ] )
-        s1= s[ self.params[ 'id' ]+ '.'+ s1[ 1: ] ]
+        if s1.find( '.' )> 0:
+          s1= s[ s1[ 1: ] ]
+        else:
+          s1= s[ self.params[ 'id' ]+ '.'+ s1[ 1: ] ]
     
     exec( s1 )
     
