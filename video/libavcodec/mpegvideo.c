@@ -245,18 +245,16 @@ static int alloc_picture(MpegEncContext *s, Picture *pic, int shared){
         pic->type= FF_BUFFER_TYPE_SHARED;
     }else{
         int r;
-
         assert(!pic->data[0]);
 
         r= s->avctx->get_buffer(s->avctx, (AVFrame*)pic);
-
         if(r<0 || !pic->age || !pic->type || !pic->data[0]){
             fprintf(stderr, "get_buffer() failed (%d %d %d %p)\n", r, pic->age, pic->type, pic->data[0]);
             return -1;
         }
 
         if(s->linesize && (s->linesize != pic->linesize[0] || s->uvlinesize != pic->linesize[1])){
-            fprintf(stderr, "get_buffer() failed (stride changed)\n");
+            fprintf(stderr, "get_buffer() failed (stride changed %d %d %d )\n", s->linesize, pic->linesize[0], s->uvlinesize);
             return -1;
         }
 
@@ -293,7 +291,7 @@ static int alloc_picture(MpegEncContext *s, Picture *pic, int shared){
     //it might be nicer if the application would keep track of these but it would require a API change
     memmove(s->prev_pict_types+1, s->prev_pict_types, PREV_PICT_TYPES_BUFFER_SIZE-1);
     s->prev_pict_types[0]= s->pict_type;
-    if(pic->age < PREV_PICT_TYPES_BUFFER_SIZE && s->prev_pict_types[pic->age] == B_TYPE)
+    if( pic->age > 0 && pic->age < PREV_PICT_TYPES_BUFFER_SIZE && s->prev_pict_types[pic->age] == B_TYPE)
         pic->age= INT_MAX; // skiped MBs in b frames are quite rare in mpeg1/2 and its a bit tricky to skip them anyway
 
     return 0;
@@ -962,9 +960,9 @@ static int find_unused_picture(MpegEncContext *s, int shared){
             if(s->picture[i].data[0]==NULL && s->picture[i].type==0) break;
         }
     }else{
-        for(i=0; i<MAX_PICTURE_COUNT; i++){
+/*        for(i=0; i<MAX_PICTURE_COUNT; i++){
             if(s->picture[i].data[0]==NULL && s->picture[i].type!=0) break; //FIXME
-        }
+        }*/
         for(i=0; i<MAX_PICTURE_COUNT; i++){
             if(s->picture[i].data[0]==NULL) break;
         }

@@ -1233,7 +1233,6 @@ printf("END\n");
 return -1;
 }
 #endif
-
     if(s->msmpeg4_version==1){
         int start_code, num;
         start_code = (get_bits(&s->gb, 16)<<16) | get_bits(&s->gb, 16);
@@ -1244,6 +1243,7 @@ return -1;
 
         num= get_bits(&s->gb, 5); // frame number */
     }
+ 
 
     s->pict_type = get_bits(&s->gb, 2) + 1;
     if (s->pict_type != I_TYPE &&

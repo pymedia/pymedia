@@ -74,24 +74,6 @@ static PixFmtInfo pix_fmt_info[PIX_FMT_NB]= {
 		{ NULL, 0, 0, 0, 0, 0, 0, 0 }
 };
 
-void avcodec_get_chroma_sub_sample(int pix_fmt, int *h_shift, int *v_shift)
-{
-    *h_shift = pix_fmt_info[pix_fmt].x_chroma_shift;
-    *v_shift = pix_fmt_info[pix_fmt].y_chroma_shift;
-}
-
-char *av_strdup(const char *s)
-{
-    char *ptr;
-    int len;
-    len = strlen(s) + 1;
-    ptr = av_malloc(len);
-    if (!ptr)
-        return NULL;
-    memcpy(ptr, s, len);
-    return ptr;
-}
-
 
 /* allocation of static arrays - do not use for normal allocation */
 static unsigned int last_static = 0;
@@ -113,9 +95,29 @@ typedef struct InternalBuffer{
     int last_pic_num;
     uint8_t *base[4];
     uint8_t *data[4];
+		int ref;
+		AVFrame *pic;
 }InternalBuffer;
 
-#define INTERNAL_BUFFER_SIZE 32
+#ifndef _STATIC
+
+void avcodec_get_chroma_sub_sample(int pix_fmt, int *h_shift, int *v_shift)
+{
+    *h_shift = pix_fmt_info[pix_fmt].x_chroma_shift;
+    *v_shift = pix_fmt_info[pix_fmt].y_chroma_shift;
+}
+
+char *av_strdup(const char *s)
+{
+    char *ptr;
+    int len;
+    len = strlen(s) + 1;
+    ptr = av_malloc(len);
+    if (!ptr)
+        return NULL;
+    memcpy(ptr, s, len);
+    return ptr;
+}
 
 int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
     int i;
@@ -136,6 +138,11 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
         sizeof(InternalBuffer)*FFMAX(99,  s->internal_buffer_count+1)/*FIXME*/
         );
 #endif
+		if( s->internal_buffer_count== INTERNAL_BUFFER_SIZE )
+		{
+			fprintf( stderr, "get_buffer(): maximum number %d of buffers reached\n", s->internal_buffer_count );
+			return -1;
+		}
 
     buf= &((InternalBuffer*)s->internal_buffer)[s->internal_buffer_count];
 
@@ -201,9 +208,53 @@ int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
         pic->data[i]= buf->data[i];
     }
     s->internal_buffer_count++;
+//printf( "inc buffs %d\n", s->internal_buffer_count );
+		buf->pic= pic;
 
     return 0;
 }
+
+//-----------------------------------------------------------------------------------
+// Added by BORS
+// Need to be able to lock the buffer regardless the pictures stored in CodecContext
+void avcodec_default_incref_buffer(AVCodecContext *s, void* p ){
+	InternalBuffer *buf;
+	int i;
+  for(i=0; i<s->internal_buffer_count; i++){ //just 3-5 checks so is not worth to optimize
+      buf= &((InternalBuffer*)s->internal_buffer)[i];
+      if(buf->data[0] == p)
+			{
+				buf->ref++;
+				break;
+			}
+  }
+}
+
+void avcodec_default_decref_buffer(AVCodecContext *s, void *p ){
+  InternalBuffer *buf= NULL, *last, temp;
+	int i;
+  for(i=0; i<s->internal_buffer_count; i++){ //just 3-5 checks so is not worth to optimize
+      buf= &((InternalBuffer*)s->internal_buffer)[i];
+      if(buf->data[0] == p)
+			{
+				buf->ref--;
+				break;
+			}
+  }
+//printf( ">>dec ref %d %p\n", buf->ref, buf->pic );
+	if( buf && !buf->ref && !buf->pic )
+	{
+		assert(i < s->internal_buffer_count);
+		s->internal_buffer_count--;
+//printf( "dec buffs1 %d\n", s->internal_buffer_count );
+		last = &((InternalBuffer*)s->internal_buffer)[s->internal_buffer_count];
+
+		temp= *buf;
+		*buf= *last;
+		*last= temp;
+	}
+}
+//-----------------------------------------------------------------------------------
 
 void avcodec_default_release_buffer(AVCodecContext *s, AVFrame *pic){
     int i;
@@ -217,13 +268,22 @@ void avcodec_default_release_buffer(AVCodecContext *s, AVFrame *pic){
         if(buf->data[0] == pic->data[0])
             break;
     }
-    assert(i < s->internal_buffer_count);
-    s->internal_buffer_count--;
-    last = &((InternalBuffer*)s->internal_buffer)[s->internal_buffer_count];
+		// Added by BORS
+		// Make sure referenced frames are not released
+//printf( ">>dec rel %d\n", buf->ref );
+		if( !buf->ref )
+		{
+			assert(i < s->internal_buffer_count);
+			s->internal_buffer_count--;
+//printf( "dec buffs %d\n", s->internal_buffer_count );
+			last = &((InternalBuffer*)s->internal_buffer)[s->internal_buffer_count];
 
-    temp= *buf;
-    *buf= *last;
-    *last= temp;
+			temp= *buf;
+			*buf= *last;
+			*last= temp;
+		}
+		else
+			buf->pic= NULL;
 
     for(i=0; i<3; i++){
         pic->data[i]=NULL;
@@ -265,6 +325,8 @@ void avcodec_get_context_defaults(AVCodecContext *s){
     s->intra_quant_bias= FF_DEFAULT_QUANT_BIAS;
     s->inter_quant_bias= FF_DEFAULT_QUANT_BIAS;
 }
+
+#endif /* _STATIC */
 
 /**
  * allocates a AVCodecContext and set it to defaults.

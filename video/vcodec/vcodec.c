@@ -312,13 +312,6 @@ int SetCodecParams( PyCodecObject* obj, PyObject* cObj )
 
 
 // ---------------------------------------------------------------------------------
-static int VCString_Size( PyObject* str ){ return ((PyVCStringObject*)str)->iLen; }
-// ---------------------------------------------------------------------------------
-static void* VCString_AsBase( PyObject* str ){ return ((PyVCStringObject*)str)->pBase; }
-// ---------------------------------------------------------------------------------
-static void* VCString_AsData( PyObject* str ){ return ((PyVCStringObject*)str)->pData; }
-
-// ---------------------------------------------------------------------------------
 static PyObject *VCString_New( PyCodecObject* obj, int iPlane )
 {
 	PyVCStringObject* cStr= (PyVCStringObject*)PyObject_New( PyVCStringObject, &VCStringType );
@@ -803,7 +796,7 @@ static PyObject* PyNewVFrame( PyTypeObject *type, PyObject *args, PyObject *kwds
 		return NULL;
 
 	// Zeroing out frame
-	memset( &cFrame->cData[ 0 ], 0, sizeof( cFrame->cData ) );
+	//memset( &cFrame->cData[ 0 ], 0, sizeof( cFrame->cData ) );
 
 	// Store
 	cFrame->cData[ 0 ]= y;
@@ -1476,8 +1469,9 @@ initvcodec(void)
 		return;
 
  	PyModule_AddStringConstant( cModule, "__doc__", (char*)PYDOC );
-	PyModule_AddStringConstant( cModule, "version", (char*)PYVERSION );
+	PyModule_AddStringConstant( cModule, "version", (char*)PYVERSION ); 
 	PyModule_AddIntConstant( cModule, "build", PYBUILD );
+	PyModule_AddIntConstant( cModule, "MAX_BUFFERS", INTERNAL_BUFFER_SIZE );
 	g_cErr= PyErr_NewException(MODULE_NAME".VCodecError", NULL, NULL);
 	if( g_cErr )
 		PyModule_AddObject( cModule, "VCodecError", g_cErr );

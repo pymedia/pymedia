@@ -650,7 +650,6 @@ retry:
         else
             s->next_p_frame_damaged=0;
     }
-
     if(MPV_frame_start(s, avctx) < 0)
         return -1;
 

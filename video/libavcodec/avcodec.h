@@ -23,6 +23,7 @@ extern "C" {
 #define AV_STRINGIFY(s)	AV_TOSTRING(s)
 #define AV_TOSTRING(s) #s
 #define LIBAVCODEC_IDENT	"FFmpeg" LIBAVCODEC_VERSION "b" AV_STRINGIFY(LIBAVCODEC_BUILD)
+#define INTERNAL_BUFFER_SIZE 32
 
 enum CodecID {
     CODEC_ID_NONE, 
@@ -1545,6 +1546,9 @@ AVFrame *avcodec_alloc_frame(void);
 int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic);
 void avcodec_default_release_buffer(AVCodecContext *s, AVFrame *pic);
 void avcodec_default_free_buffers(AVCodecContext *s);
+
+void avcodec_default_decref_buffer(AVCodecContext *s, void *p );
+void avcodec_default_incref_buffer(AVCodecContext *s, void* p );
 
 /**
  * opens / inits the AVCodecContext.
