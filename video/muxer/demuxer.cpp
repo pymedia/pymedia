@@ -201,6 +201,10 @@ bool SetAttribute( PyObject* cDict, char* sKey, PyObject* cVal )
 }
 
 // ---------------------------------------------------------------------------------
+extern "C"
+{
+
+// ---------------------------------------------------------------------------------
 PyObject* GetStreams( PyDemuxerObject* obj )
 {
 	// Freeup previous formats data
@@ -283,7 +287,7 @@ Demuxer_Reset( PyDemuxerObject* obj)
 
 
 // ---------------------------------------------------------------------------------
-static PyObject *
+PyObject *
 Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 {
 	unsigned char* sData;
@@ -390,7 +394,7 @@ DemuxerClose( PyDemuxerObject *obj )
 }
 
 // ---------------------------------------------------------------------------------
-static PyObject *
+PyObject *
 DemuxerNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
 	char* s;
@@ -443,7 +447,7 @@ static PyGetSetDef demuxer_getsetlist[] =
 };
 
 // ----------------------------------------------------------------
-static PyTypeObject DemuxerType =
+PyTypeObject DemuxerType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
@@ -494,9 +498,6 @@ static PyMethodDef pymuxer_methods[] =
 	{ NULL, NULL },
 };
 
-// ---------------------------------------------------------------------------------
-extern "C"
-{
 // ---------------------------------------------------------------------------------
 #define INT_C(name) PyModule_AddIntConstant( m, #name, name )
 
