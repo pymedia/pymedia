@@ -44,6 +44,13 @@ struct BUFFER_CHUNK
 };
 
 // -------------------------------------------------------------------
+struct CHANNEL_INFO
+{
+	int bMuted;
+	int iVolume;
+};
+
+// -------------------------------------------------------------------
 static char *dsp=PATH_DEV_DSP;
 char *mixer = PATH_DEV_MIXER;
 const int MAX_INT_BUFFERS= 20;
@@ -192,8 +199,9 @@ private:
 	int channels;
 	int rate;
 	int bps;
-	int iMute;
 	int bufsize;
+	int bPause;
+	int bStop;
 	long long bytesPlayed;
 
 	// ---------------------------------------------------------------------------------------------------
@@ -277,28 +285,36 @@ public:
 	OSoundStream( int rate, int channels, int format, int flags, int iDev ) : DeviceHandler()
 	{
 		this->iDev= iDev;
+		this->bPause= 0;
+		this->bStop= 0;
 		if( this->Init( rate, channels, format, iDev )== 0 )
 			this->bufsize= this->GetSpace();
-		printf( "bufsize=%d\n", this->bufsize );
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	~OSoundStream()
 	{
-		this->Stop();
+		this->Uninit();
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	int GetDevice(){ return this->dev;	}
 	// ---------------------------------------------------------------------------------------------------
-	int GetAudioBufSize(){ return this->bufsize;	}
+	int GetAudioBufSize(){ return this->bufsize;}
 	// ---------------------------------------------------------------------------------------------------
 	// return: how many bytes can be played without blocking
 	int GetSpace()
 	{
 		audio_buf_info zz;
-		if( ioctl( this->dev , SNDCTL_DSP_GETOSPACE, &zz)== -1 )
+		if( this->bStop )
+			return this->bufsize;
+
+		if( ioctl( this->GetDevice(), SNDCTL_DSP_GETOSPACE, &zz)== -1 )
+		{
+			this->iErr= errno;
+			sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SNDCTL_DSP_GETOSPACE");
 			return -1;
+		}
 
 		return zz.fragments*zz.fragsize;
 	}
@@ -307,127 +323,75 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	int GetChannels(){ return this->channels;	}
 	// ---------------------------------------------------------------------------------------------------
-	// return: delay in bytes between first and last sample in buffer
+	// return: delay in bytes between first and last playing samples in buffer
 	float IsPlaying()
 	{
 		int r=0;
+		if( this->bStop )
+			return 0;
+
 		if(ioctl( this->GetDevice(), SNDCTL_DSP_GETODELAY, &r)!=-1)
 			 return (float)r;
-
+		
+		this->iErr= errno;
+		sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SNDCTL_DSP_GETODELAY");
 		return -1;
 	}
 	// ---------------------------------------------------------------------------------------------------
-	int IsMute(){ return this->iMute;	}
-	// ---------------------------------------------------------------------------------------------------
-	void SetMute( bool bMute )
-	{
-		if( bMute )
-		{
-			this->iMute= this->GetVolume();
-			this->SetVolume( 0 );
-		}
-		else
-			if( this->IsMute() )
-			{
-				this->SetVolume( this->iMute );
-				this->iMute= 0;
-			}
-	}
-
-	// ---------------------------------------------------------------------------------------------------
-	int GetVolume()
-	{
-		int fd, devs, v= 0;
-		if( this->iDev )
-		{
-			char s[ 20 ];
-			sprintf( s, "%s%d", mixer, this->iDev );
-			fd= open( s, O_RDWR, 0 );
-		}
-		else
-			fd= open( mixer, O_RDWR, 0 );
-
-		if( fd== -1 )
-		{
-			this->FormatError();
-			return -1;
-		}
-		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
-		if( devs & SOUND_MASK_PCM )
-			ioctl(fd, SOUND_MIXER_READ_PCM, &v);
-		close( fd );
-		return v;
-	}
-
-	// ---------------------------------------------------------------------------------------------------
-	int SetVolume(int iVolume )
-	{
-		int fd, devs;
-		if( this->iDev )
-		{
-			char s[ 20 ];
-			sprintf( s, "%s%d", mixer, this->iDev );
-			fd= open( s, O_RDWR, 0 );
-		}
-		else
-			fd= open( mixer, O_RDWR, 0 );
-
-		if( fd== -1 )
-		{
-			this->FormatError();
-			return -1;
-		}
-
-		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
-		if( devs & SOUND_MASK_PCM )
-			ioctl( fd, SOUND_MIXER_WRITE_PCM, &iVolume);
-
-		close( fd );
-		return 0;
-	}
-
-	// ---------------------------------------------------------------------------------------------------
 	int Pause()
 	{
+		// Don't care about return code much...
 		ioctl( this->dev, SNDCTL_DSP_POST, NULL);
+		this->bPause= 1;
 		return 0;
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	int Unpause()
 	{
-		this->Play( NULL, 0 );
+		this->bPause= 0;
 		return 0;
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	float GetLeft()
 	{
-		return (float)( this->IsPlaying() )/ ((double)( 2* this->channels* this->rate ));
+		float f= this->IsPlaying();
+		if( f< 0 )
+			return f;
+
+		return f/((double)( 2* this->channels* this->rate ));
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	int Stop()
 	{
-		this->Uninit();
+		this->bStop= 1;
+		this->bPause= 0;
 		return 0;
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	float Play( unsigned char *buf, int iLen )
 	{
-		if( this->GetDevice()== -1 )
-			this->Init( this->rate, this->channels, this->format, this->iDev );
-
 		// See how many bytes playing right now and add them to the pos
+		if( this->bStop )
+			this->bStop= 0;
+
 		while( iLen )
 		{
 			int iAvail= this->GetSpace();
-			if( iAvail== 0 )
+			if( iAvail== 0 || this->bPause )
 			{
 				usleep( 5 );
 				continue;
 			}
+			if( this->bStop )
+			{
+				ioctl( this->dev, SNDCTL_DSP_POST, NULL);
+				break;
+			}
+
 			int i= write( this->GetDevice(), buf, ( iAvail> iLen ) ? iLen: iAvail );
 			if( i< 0 )
 			{
@@ -449,13 +413,7 @@ public:
 	// Return position in s
 	double GetPosition()
 	{
-		int r=0;
-		if(ioctl( this->GetDevice(), SNDCTL_DSP_GETODELAY, &r)==-1)
-		{
-			this->FormatError();
-			return -1;
-		}
-
+		int r= this->IsPlaying();
 		return ((double)( this->bytesPlayed- r ))/((double)( 2* this->channels* this->rate ));
 	}
 
@@ -623,6 +581,7 @@ class Mixer : public DeviceHandler
 {
 private:
 	char sName[ 512 ];
+	CHANNEL_INFO aiChannel[ 32 ];
 	int dev;
 
 	int devmask;
@@ -692,6 +651,8 @@ public:
 		else
 			this->dev= open( mixer, O_RDWR, 0 );
 
+		memset( this->aiChannel, 0, sizeof( this->aiChannel ) );
+
 		if( this->dev< 0 )
 			this->FormatError();
 		else
@@ -741,7 +702,8 @@ public:
 	int GetControlsCount( int iDest, int iConn )
 	{
 		// It looks like OSS does not support mutliple lines attached to the connection
-		return 1;
+		// Just hardcode the number of controls for Volume is 2, for Record is 1
+		return ( iDest ) ? 1: 2;
 	}
 	// ----------------------------------------------
 	// Return control value
@@ -752,11 +714,22 @@ public:
 		if( i!= -1 )
 		{
 			int iVal, status;
-			status = ioctl(this->dev, MIXER_READ(i), &iVal);
-			if (status == -1)
+			if( iControl )
 			{
-				this->FormatError();
-				return -1;
+				piValues[ 0 ]= this->aiChannel[ i ].bMuted;
+				return 1;
+			}
+
+			if( this->aiChannel[ i ].bMuted )
+				iVal= this->aiChannel[ i ].iVolume;
+			else
+			{
+				status = ioctl(this->dev, MIXER_READ(i), &iVal);
+				if (status == -1)
+				{
+					this->FormatError();
+					return -1;
+				}
 			}
 
 			iRet++;
@@ -786,10 +759,10 @@ public:
 		// Get values normalized to 0xffff
 		if( i!= -1 )
 		{
-			int iVal, iNewVal, status;
+			int iVal, iNewVal, status= 0;
 			iNewVal= (int)( (float)iValue/ 655.35 ) & 0xff;
 
-			if( iChannel== -1 )
+			if( iChannel== -1 && !iControl )
 				// loop through all channels
 				iVal= iNewVal | ( iNewVal << 8 );
 			else
@@ -801,12 +774,36 @@ public:
 					return false;
 				}
 
-				iVal= iChannel ?  
-					( iVal & 0xff ) | ( iNewVal << 8 ):
-					( iVal & 0xff00 ) | iNewVal;
+				// Save previous value in case if there was mute on channel
+				// Not thread safe !!!
+				if( iControl )
+					if( iValue== 1 )
+					{
+						if( iChannel== -1 && !this->aiChannel[ i ].bMuted )
+						{
+							this->aiChannel[ i ].bMuted= 1;
+							this->aiChannel[ i ].iVolume= iVal;
+							iVal= 0;
+						}
+					}
+					else if( iValue== 0 )
+					{
+						this->aiChannel[ i ].bMuted= 0;
+						iVal= this->aiChannel[ i ].iVolume;
+					}
+				else
+					iVal= iChannel ?  
+						( iVal & 0xff ) | ( iNewVal << 8 ):
+						( iVal & 0xff00 ) | iNewVal;
+
 			}
+			// If channel is muted but trying to adjust, just adjust the logical value
+			if( !iControl && this->aiChannel[ i ].bMuted )
+				this->aiChannel[ i ].iVolume= iVal;
+			else
+				status = ioctl( this->dev, MIXER_WRITE(i), &iVal );
+
 			/* set gain */
-			status = ioctl( this->dev, MIXER_WRITE(i), &iVal);
 			if (status == -1) 
 			{
 				this->FormatError();
@@ -818,9 +815,9 @@ public:
 
 	// ----------------------------------------------
 	// Return control name
-	char* GetControlName( int iDest, int iConn, int iControl )
+	const char* GetControlName( int iDest, int iConn, int iControl )
 	{
-		return "Volume";
+		return iControl ? "Mute": "Volume";
 	}
 	// ----------------------------------------------
 	// Return control selection

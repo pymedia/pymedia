@@ -96,7 +96,7 @@ private:
 
 public:
 	// ----------------------------------------------
-	InputDevices()
+	InputDevices() : DeviceHandler()
 	{
 		this->iDevs= waveInGetNumDevs();
 	}
@@ -150,31 +150,12 @@ public:
 // *****************************************************************************************************
 // Output device enumerator
 // *****************************************************************************************************
-class OutputDevices
+class OutputDevices : DeviceHandler
 {
 private:
 	UINT iDevs;
 	char sName[ 512 ];
-	char sErr[ 512 ];
 	WAVEOUTCAPS pCaps;
-
-	// ----------------------------------------------
-	void FormatError()
-	{
-		LPVOID lpMsgBuf;
-		FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				GetLastError(),
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-				(LPTSTR) &lpMsgBuf,
-				0,
-				NULL
-		);
-		strcpy( this->sErr, (char*)lpMsgBuf );
-	}
 
 	// ----------------------------------------------
 	bool RefreshDevice( int i )
@@ -195,7 +176,7 @@ private:
 
 public:
 	// ----------------------------------------------
-	OutputDevices()
+	OutputDevices() : DeviceHandler()
 	{
 		this->iDevs= waveOutGetNumDevs();
 	}
@@ -607,17 +588,14 @@ private:
 	// Buffers to be freed by the stop op
 	WAVEHDR headers[ MAX_HEADERS ];
 	HWAVEOUT dev;
-	HANDLE hSem;
 	char sBuf[ BUFFER_SIZE ];
 	int format;
 	int iProcessed;
+	__int64 iBytesProcessed;
 	int iChannels;
 	int iRate;
 	int iBuffers;
 	int iErr;
-	unsigned int iLastPos;
-	unsigned int iCurrentBufferPos;
-	int iCorrection;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -645,13 +623,6 @@ public:
 		this->iErr= 0;
 		InitializeCriticalSection(&this->cs);
 
-		this->hSem= CreateSemaphore( NULL, MAX_HEADERS- 1, MAX_HEADERS, NULL );
-		if( !this->hSem )
-		{
-			this->iErr= ::GetLastError();
-			return;
-		}
-
 		// No error is set, just do it manually
 		if(rate == -1)
 		{
@@ -668,7 +639,8 @@ public:
 
 		this->iRate= rate;
 		this->format= format;
-		this->iCorrection= this->iLastPos= this->iBuffers= this->iProcessed= 0;
+		this->iBuffers= this->iProcessed= 0;
+		this->iBytesProcessed= 0;
 		this->bStopFlag= false;
 
 		outFormatex.wFormatTag =
@@ -744,8 +716,6 @@ public:
 	~OSoundStream()
 	{
 		this->Stop();
-		if( this->hSem )
-			CloseHandle( this->hSem );
 
 		if(this->dev)
 		{
@@ -772,18 +742,13 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	void CompleteBuffer( WAVEHDR *wh )
 	{
-		LONG p;
-		MMTIME stTime;
-		stTime.wType= TIME_MS;
-
-		ReleaseSemaphore( this->hSem, 1, &p );
 		if( !this->bStopFlag )
-			waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-
- 	  EnterCriticalSection( &this->cs );
-		this->iBuffers--;
-		this->iCurrentBufferPos= stTime.u.ms;
-	  LeaveCriticalSection( &this->cs );
+		{
+	 	  EnterCriticalSection( &this->cs );
+			this->iBuffers--;
+			this->iBytesProcessed+= wh->dwBufferLength;
+		  LeaveCriticalSection( &this->cs );
+		}
 	}	
 	// ---------------------------------------------------------------------------------------------------
 	int Pause()	{	 return ( waveOutPause( this->dev ) ) ? -1: 0; }
@@ -792,8 +757,8 @@ public:
 	int Stop()
 	{
 		EnterCriticalSection( &this->cs );
-		this->iCorrection= this->iLastPos= this->iCurrentBufferPos= 0;
 		this->bStopFlag= true;
+		this->iBytesProcessed= this->iProcessed= this->iBuffers= 0;
 		LeaveCriticalSection( &this->cs );
 
 		if( this->dev )
@@ -812,17 +777,24 @@ public:
 	float Play(unsigned char *buf,int len)
 	{
 		// Try to fit chunk in remaining buffers
-//printf( ">\n" );
+		this->bStopFlag= false;
 		while( len> 0 )
 		{
-			WaitForSingleObject( this->hSem, INFINITE );
+			// See if we need to wait until buffers are available
+			if( this->iBuffers== MAX_HEADERS )
+			{
+				Sleep( 1 );
+				continue;
+			}
+
 			int i= this->iProcessed % MAX_HEADERS;
 			int l= ( len> BUFFER_SIZE ) ? BUFFER_SIZE: len;
 
-//printf( "!\n" );
 			EnterCriticalSection( &this->cs );
 			memcpy( this->headers[ i ].lpData, buf, l );
 			this->headers[ i ].dwBufferLength = l;
+			this->iProcessed++;
+			this->iBuffers++;
 			LeaveCriticalSection( &this->cs );
 
 			buf+= l;
@@ -832,55 +804,42 @@ public:
 				this->iErr= ::GetLastError();
 				return -1;
 			}
-
-//printf( ".\n" );
-			EnterCriticalSection( &this->cs );
-			this->iProcessed++;
-			this->iBuffers++;
-			LeaveCriticalSection( &this->cs );
 		}
-//printf( ">\n" );
-//		this->GetPosition();
-//printf( "!\n" );
 		return (float)0;
 	}
 
 	// ---------------------------------------------------------------------------------------------------
 	double GetPosition()
 	{
+		// Get number of seconds already played
+		double fPos= ((double)this->iBytesProcessed) / ((float)( 2* this->iChannels* this->iRate ));
+
+		// Adjust position using the correction factor 
 		MMTIME stTime;
 		stTime.wType= TIME_MS;
 
 		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		if( (int)stTime.u.ms< (int)this->iLastPos- 10000 )
-		{
-			EnterCriticalSection( &this->cs );
-			this->iCorrection+= 0x7FFFFFF;
-			this->iLastPos= stTime.u.ms+ this->iCorrection;
-			LeaveCriticalSection( &this->cs );
-		}
+		double fPosRes= ((double)stTime.u.ms)/ this->iRate;
+		while( fPosRes< fPos )
+			fPosRes+= ((double)0x7FFFFFF)/ this->iRate;
 
-		return ((double)stTime.u.ms+ this->iCorrection )/ this->iRate;
+		return fPosRes;
 	}
 	// ---------------------------------------------------------------------------------------------------
 	float GetLeft()
 	{
-		MMTIME stTime;
-		float f= ((float)( this->iBuffers- 1 )* BUFFER_SIZE )/ ((float)( 2* this->iChannels* this->iRate ));
-		float f1;
-		if( !this->iBuffers )
-			return 0;
-
-		stTime.wType= TIME_MS;
-		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		f1= this->headers[ ( this->iProcessed-this->iBuffers) % MAX_HEADERS ].dwBufferLength / ((float)(2* this->iChannels));
-		return f+ ( f1+ this->iCurrentBufferPos- (float)stTime.u.ms )/ this->iRate;
+		// Get physical position for the end of the buffer
+		float fPos= ((float)this->iBytesProcessed)/ ((float)( 2* this->iChannels* this->iRate ));
+		float fPos1= this->GetPosition();
+		for( int i= 0; i< this->iBuffers; i++ )
+			fPos+= ((float)this->headers[ ( this->iProcessed+ i ) % MAX_HEADERS ].dwBufferLength )/ ((float)( 2* this->iChannels* this->iRate ));
+		return ( fPos- fPos1 ) < 0 ? 0: ( fPos- fPos1 );
 	}
 	// ---------------------------------------------------------------------------------------------------
 	int GetSpace()
 	{
 		// We have fixed number of buffers, just get the size of it
-		return ( MAX_HEADERS- this->iBuffers- 1 )* BUFFER_SIZE;
+		return ( MAX_HEADERS- this->iBuffers )* BUFFER_SIZE;
 	}
 };
 

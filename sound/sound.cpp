@@ -22,9 +22,9 @@
 
 #include <Python.h>
 #include <structmember.h>
-
+ 
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "audio_win.h"
+#include "audio_win.h" 
 #else
 #include "audio_unix.h"
 #endif
@@ -387,10 +387,13 @@ static PyObject *
 ISoundNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
 	int iFreqRate, iChannels, iFormat, iId= 0;
+	ISoundStream* cStream;
 	if (!PyArg_ParseTuple(args, "iii|i:"INPUT_NAME, &iFreqRate, &iChannels, &iFormat, &iId ))
 		return NULL;
 
-	ISoundStream* cStream= new ISoundStream( iFreqRate, iChannels, iFormat, 0, iId );
+  Py_BEGIN_ALLOW_THREADS
+	cStream= new ISoundStream( iFreqRate, iChannels, iFormat, 0, iId );
+	Py_END_ALLOW_THREADS
 	if( cStream->GetLastError()!= 0 )
 	{
 		// Raise an exception when the sampling rate is not supported by the module
@@ -469,7 +472,7 @@ Sound_Play( PyOSoundObject* obj, PyObject *args)
   Py_BEGIN_ALLOW_THREADS
 	f= obj->cObj->Play( sData, iLen );
   Py_END_ALLOW_THREADS
-  if( f== -1 )
+  if( f< 0 )
 	{
  		PyErr_Format( g_cErr, "Cannot play sound because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() );
 		return NULL;
@@ -492,7 +495,9 @@ Sound_Pause( PyOSoundObject* obj)
 static PyObject *
 Sound_Stop( PyOSoundObject* obj)
 {
+  Py_BEGIN_ALLOW_THREADS
   obj->cObj->Stop();
+  Py_END_ALLOW_THREADS
 	RETURN_NONE
 }
 
@@ -532,22 +537,51 @@ Sound_GetChannels( PyOSoundObject* obj)
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_IsPlaying( PyOSoundObject* obj)
-{
-	return PyInt_FromLong( (int)obj->cObj->IsPlaying() );
+{ 
+	int d;
+  Py_BEGIN_ALLOW_THREADS
+	d= obj->cObj->IsPlaying();
+  Py_END_ALLOW_THREADS 
+  if( d< 0 )
+	{
+ 		PyErr_Format( g_cErr, "isPlaying() failed because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() );
+		return NULL;
+	}
+  return PyInt_FromLong( d );
+
 }
 
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_GetLeft( PyOSoundObject* obj)
 {
-  return PyFloat_FromDouble( obj->cObj->GetLeft() );
+	double d;
+  Py_BEGIN_ALLOW_THREADS
+	d= obj->cObj->GetLeft();
+  Py_END_ALLOW_THREADS 
+  if( d< -0.01 )
+	{
+		printf( GET_LEFT_NAME"() failed because of %d:%s( %f )", obj->cObj->GetLastError(), obj->cObj->GetErrorString(), d ); 
+ 		PyErr_Format( g_cErr, GET_LEFT_NAME"() failed because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() ); 
+		return NULL;
+	}
+  return PyFloat_FromDouble( d );
 }
 
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_GetSpace( PyOSoundObject* obj)
 {
-  return PyInt_FromLong( obj->cObj->GetSpace() );
+	int i;
+  Py_BEGIN_ALLOW_THREADS
+	i= obj->cObj->GetSpace();
+  Py_END_ALLOW_THREADS
+  if( i< 0 )
+	{
+ 		PyErr_Format( g_cErr, GET_SPACE_NAME"() failed because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() );
+		return NULL;
+	}
+  return PyInt_FromLong( i );
 }
 
 // ---------------------------------------------------------------------------------
@@ -584,22 +618,23 @@ static PyObject *
 SoundNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
 	int iFreqRate, iChannels, iFormat, iId= 0;
+	OSoundStream* cStream;
 	if (!PyArg_ParseTuple(args, "iii|i:"OUTPUT_NAME, &iFreqRate, &iChannels, &iFormat, &iId ))
 		return NULL;
 
-	OSoundStream* cStream= new OSoundStream( iFreqRate, iChannels, iFormat, 0, iId );
+	PyOSoundObject* cSnd= (PyOSoundObject*)type->tp_alloc(type, 0);
+	if( !cSnd )
+		return NULL;
+
+  Py_BEGIN_ALLOW_THREADS
+	cStream= new OSoundStream( iFreqRate, iChannels, iFormat, 0, iId );
+  Py_END_ALLOW_THREADS
 	if( cStream->GetLastError()!= 0 )
 	{
 		// Raise an exception when the sampling rate is not supported by the module
 		PyErr_Format( g_cErr, "Cannot create sound object. Error text is: %d, %s", cStream->GetLastError(), cStream->GetErrorString() );
 		delete cStream;
-		return NULL;
-	}
-
-	PyOSoundObject* cSnd= (PyOSoundObject*)type->tp_alloc(type, 0);
-	if( !cSnd )
-	{
-		delete cStream;
+		Py_DECREF( cSnd );
 		return NULL;
 	}
 
@@ -1510,6 +1545,10 @@ res= a.asBands( 3, s1 )
 import pymedia.audio.sound as sound
 mixer= sound.Mixer()
 c= mixer.getControls()
+mm= c[ 0 ]['control']
+m= c[ 1 ]['control']
+m.setValue(1)
+
 print [ x[ 'connection' ] for x in c ]
 
 	*/
