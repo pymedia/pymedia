@@ -29,6 +29,8 @@ VOLUME_DELTA= 0x7ff
 LEFT_C=(0,0)
 FRAME_SIZE= 4
 HEADER_CHUNK_SIZE= 32000
+RECURSIVE= 1
+SINGLE_FILE= 2
 PARENT_DIR= [
   { 'name': '..',
     'title': '< .. >',
@@ -124,7 +126,7 @@ def refreshFiles( area ):
   fileWrapper.setChanged( 1 )
 
 # ------------------------------------------------------------------------------------------------------
-def addToPlayList( files, filter, recursive ):
+def addToPlayList( files, filter, flag ):
   """
     Add file/directory to the playlist. If the file already exists, then do nothing.
   """
@@ -134,19 +136,18 @@ def addToPlayList( files, filter, recursive ):
   plAdd= player.getPlayList()[ 0 ].addFile
   for file in files:
     if file[ 'isDir' ]:
-      if recursive:
+      if flag & RECURSIVE:
         try:
           children= file[ 'children' ]
         except:
           # refresh children list for the selected dir
-          print 'ERROR: Error in prefetch when adding directory to the playlist'
-          return
+          continue
         
-        addToPlayList( children, filter, recursive )
+        addToPlayList( children, filter, flag )
     else:
-      plAdd( file )
-      if player.isPlaying()== 0:
-        player.setCurrentFileIndex( player.getPlayList()[ 0 ].getFilesCount()- 1 )
+      res, index= plAdd( file )
+      if player.isPlaying()== 0 or ( flag & SINGLE_FILE and res== 0 ):
+        player.setCurrentFileIndex( index )
         player.startPlayback()
 
 # -----------------------------------------------------------------
@@ -218,7 +219,7 @@ class AudioFileHelper( menu.MenuHelper ):
     """
     menu.MenuHelper.__init__( self, rect, params )
     # Load fonts and icons
-    self.folderIcons= self.loadIcon( 'folderIcons', ( 'folder_0.gif', 'folder_1.gif',  ) )
+    self.folderIcons= self.loadIcon( 'folderIcons', ( 'folder_0.gif', 'folder_1.gif' ) )
     self.fileIcons= self.loadIcon( 'fileIcons', ( 'file_0.bmp', 'file_1.bmp' ) )
     self.cddaIcon= self.loadIcon( 'cddaIcon', 'audio.gif' )
     self.emptyIcon= self.loadIcon( 'emptyIcon', 'empty.gif' )
@@ -280,7 +281,7 @@ class AudioFileHelper( menu.MenuHelper ):
       device= file[ 'device' ]
       if device.isReady()== 0:
         print 'Device %s is not ready to read' % cache.getPathName( file )
-        file[ 'title' ]= 'No disc'
+        file[ 'title' ]= 'No disc( %s )' % cache.getPathName( file )
         file[ 'processing' ]= 0
         return
       else:
@@ -782,7 +783,7 @@ class AudioFileFolderItem( AudioFileHelper ):
     except:
       try:
         i= file[ 'removable' ]
-        title= u'Removable device'
+        title= u'Removable device( %s )' % cache.getPathName( file )
       except:
         title= translate( file[ 'name' ] )
       
@@ -875,7 +876,7 @@ class AudioFileFolderItem( AudioFileHelper ):
           if time.time()- startTime> 1:
             return
         
-        self.history.append( ( self.itemsWrapper.items(), pos, item[ 'name' ] ) )
+        self.history.append( ( self.itemsWrapper.items(), pos, item[ 'title' ] ) )
         children= cache.getChildren( item )
         if children== None:
           children= []
@@ -883,7 +884,7 @@ class AudioFileFolderItem( AudioFileHelper ):
         self.itemsWrapper.setItems( PARENT_DIR+ children, self.getFilter() )
         activeItem= 0
       else:
-        addToPlayList( ( item, ), None, None )
+        addToPlayList( ( item, ), None, SINGLE_FILE )
         # Set changed for the whole screen
         self.setChanged( 2 )
     elif key== pygame.K_BACKSPACE:
@@ -894,6 +895,50 @@ class AudioFileFolderItem( AudioFileHelper ):
     
     self.execute( 'onKeyPress', key, item )
     return activeItem
+
+# ****************************************************************************************************
+class PlayListItem( menu.MenuItem ):
+  """
+    Regular playlist item renderer for a menu purposes
+  """
+  # -----------------------------------------------------------------
+  def __init__( self, rect, params ):
+    """
+      ctor( rect, params ) -> PlayListItem
+      
+      Create basic renderer for a plain list of files in a playlist
+    """
+    menu.MenuItem.__init__( self, rect, params )
+  
+  # -----------------------------------------------------------------
+  def processKey( self, itemPos, key ):
+    """
+      processKey( itemPos, key ) ->
+    """
+    item= self.itemsWrapper.items()[ itemPos ]
+    paramName= 'onKeyPress'
+    if key== pygame.K_RETURN:
+      paramName= 'onEnter'
+    
+    self.execute( paramName, key, item )
+  
+  # -----------------------------------------------------------------
+  def drawItem( self, itemPos, isFocused ):
+    item= self.itemsWrapper.items()[ itemPos ]
+    # See if current playlist item is a default. If it is then, write * at the end
+    s= item[ 'caption' ]
+    pl= player.getPlayList()
+    if playLists.getName( pl[ 0 ] )== s:
+      s= '*'+ s
+      
+    # Find out whether it is a directory or file
+    res= []
+    # Select current item if needed
+    if isFocused== 1:
+      res.append( ( self.stripeIcon, LEFT_C ) )
+    
+    res.append( ( self.font[ 0 ].render( s, 1 , self.font[ 1 ] ), LEFT_C ) )
+    return res
 
 # ****************************************************************************************************
 class PlaylistPlainItem( AudioFileFolderItem ):
