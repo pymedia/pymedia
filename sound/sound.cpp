@@ -175,9 +175,10 @@ Here is the simple player for a pcm file\n\
 #define ANALYZER_NAME "SpectrAnalyzer"
 
 #define ANALYZER_DOC \
-	  ANALYZER_NAME"( samples_in, frequencies ) -> SpectAnalyzer\n" \
-		"Allow to analyze audio stream for frequencies. It will convert mono audio samples \n" \
-	  "into list of integers where every item represnts each frequency in 0..sample_rate/4 interval.\n" \
+	  ANALYZER_NAME"( channels, samples_in, frequencies ) -> SpectAnalyzer\n" \
+		"Allow to analyze audio stream for frequencies. It will convert audio samples with specified \n" \
+	  "number of channels into list of integers where every item represnts each frequency \n" \
+		"in 0..sample_rate/4 interval.\n" \
 		"For instance if you want 10 frequencies for 44100 KHz, the frequencies will be:\n" \
 		"~1KHz ~2KHz ~3KHz ~4KHz ~5KHz ~6KHz ~7KHz ~8KHz ~9KHz ~10Khz\n" \
 		"Also note that bass takes frequencies: 200-800 Hz, treble: 1400-10Khz\n" \
@@ -1509,7 +1510,7 @@ res= a.asBands( 3, s1 )
 import pymedia.audio.sound as sound
 mixer= sound.Mixer()
 c= mixer.getControls()
-cc= c[ 7 ]
+print [ x[ 'connection' ] for x in c ]
 
 	*/
 
