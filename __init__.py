@@ -24,4 +24,4 @@ Some of the classes allows you to define your own behaviors and configuration fi
 __all__= [ 'pypower', 'menu' ]
 import pypower, menu, parser
 
-__version__= "1.0"
+__version__= "1.2"

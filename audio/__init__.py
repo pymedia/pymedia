@@ -27,4 +27,4 @@ from cache import *
 __version__= "1.0.0.0"
 
 pycdda.init()
-pysound.stop()
+pysound.init()

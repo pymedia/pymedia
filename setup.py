@@ -10,7 +10,7 @@ modules to work with a numerous types of files. """
 
 METADATA = {
     "name":             "pymedia",
-    "version":          "1.0",
+    "version":          "1.1",
     "license":          "LGPL",
     "url":              "http://www.pymedia.org",
     "author":           "Dmitry Borisov",
