@@ -29,6 +29,7 @@ VOLUME_DELTA= 0x7ff
 LEFT_C=(0,0)
 FRAME_SIZE= 4
 HEADER_CHUNK_SIZE= 32000
+DEFAULT_MAIN_AREA_POS= ( 200,10,260,160 )
 RECURSIVE= 1
 SINGLE_FILE= 2
 PARENT_DIR= [
@@ -42,6 +43,11 @@ PARENT_DIR= [
     'author': None,
     'tracknum': None,
     'children': None},]
+
+TITLE_FONT= 'titleFont'
+ALBUM_FONT= 'albumFont'
+ARTIST_FONT= 'artistFont'
+LENGTH_FONT= 'lengthFont'
 
 playLists= aplayer.PlayLists()
 player= aplayer.Player()
@@ -68,9 +74,9 @@ def processUniKeys( key ):
       pysound.setMute( pysound.isMute()== 0 )
 
 # ------------------------------------------------------------------------------------------------------
-def getVolumeLabel( deviceName, default ):
+def getDeviceLabel( deviceName, default ):
   """
-    Return drive's volume. Supported only on NT clone oses.
+    Return device's label. Supported only on NT clone oses.
   """
   if os.name in ( 'nt', 'dos' ): 
     volInfo= os.popen( 'dir %s' % deviceName ).readlines()
@@ -133,15 +139,13 @@ def addToPlayList( files, filter, flag ):
   if files== None:
     return
   
+  # Some speedup may happen here
   plAdd= player.getPlayList()[ 0 ].addFile
   for file in files:
     if file[ 'isDir' ]:
       if flag & RECURSIVE:
-        try:
-          children= file[ 'children' ]
-        except:
-          # refresh children list for the selected dir
-          continue
+        try: children= file[ 'children' ]
+        except: continue
         
         addToPlayList( children, filter, flag )
     else:
@@ -181,21 +185,6 @@ def processWholeDir( file, extensions ):
       
       f= cache.addFile( file, line, 0 )
 
-# -----------------------------------------------------------------
-def clipIcon( icons, size ):
-  """
-    Clip all icons in a list to a size passed
-  """
-  res= []
-  for icon in icons:
-    size1= [ size[ 0 ]- icon[ 1 ][ 0 ], size[ 1 ]- icon[ 1 ][ 1 ] ]
-    if size1[ 0 ]> icon[ 0 ].get_width():
-      size1[ 0 ]= icon[ 0 ].get_width()
-    if size1[ 1 ]> icon[ 0 ].get_height():
-      size1[ 1 ]= icon[ 0 ].get_height()
-    res+= [ ( icon[ 0 ].subsurface( LEFT_C+ tuple(size1) ), icon[ 1 ] ) ]
-  return res
-
 # ****************************************************************************************************
 class AudioFileHelper( menu.MenuHelper ):
   """
@@ -215,7 +204,7 @@ class AudioFileHelper( menu.MenuHelper ):
   def __init__( self, rect, params ):
     """
       Generic class constructor.
-      Accepts parameters and rectangle where it should appear on a screen.
+      Accepts parameters and rectangle where it should appear on a screen( relative ).
     """
     menu.MenuHelper.__init__( self, rect, params )
     # Load fonts and icons
@@ -225,9 +214,9 @@ class AudioFileHelper( menu.MenuHelper ):
     self.emptyIcon= self.loadIcon( 'emptyIcon', 'empty.gif' )
     self.playingIcon= self.loadIcon( 'playingIcon', 'playing.gif' )
     self.playlistIcon= self.loadIcon( 'playlistIcon', 'playlist.gif' )
-    self.extensions= map( lambda x: string.lower( x ), self.params[ 'extensions' ] )
+    self.extensions= pympg.extensions
     self.titleFont, self.albumFont, self.artistFont, self.lengthFont= \
-      map( lambda x: self.loadFont( x ), ( 'titleFont', 'albumFont', 'artistFont', 'lengthFont' ) )
+      map( lambda x: self.loadFont( x ), ( TITLE_FONT, ALBUM_FONT, ARTIST_FONT, LENGTH_FONT ) )
   
   # -----------------------------------------------------------------
   def getFilter( self ):
@@ -302,7 +291,7 @@ class AudioFileHelper( menu.MenuHelper ):
           return
         else:
           # get volume info
-          file[ 'title' ]= getVolumeLabel( cache.getPathName( file ), 'No volume' )
+          file[ 'title' ]= getDeviceLabel( cache.getPathName( file ), 'No volume' )
     
     # Just data disk
     processWholeDir( file, self.extensions )
@@ -331,22 +320,19 @@ class AudioFileHelper( menu.MenuHelper ):
     
     if f!= None:
       dec= pympg.Decoder( cache.getExtension( file ) )
-      s= ' '
-      while len( s )> 0:
-        s= f.read( HEADER_CHUNK_SIZE )
-        kbPerSec, iFreqRate, sampleRate, channels, processedChunk= dec.convert2PCM( s )
-        if len( processedChunk )> 0 or dec.hasHeader()> 0:
-          # Assign parameters to the file
-          file[ 'frequency' ]= iFreqRate
-          file[ 'channels' ]= channels
-          file[ 'bitrate' ]= kbPerSec
-          
-          # Hardcoding for mp3
-          if not dec.getInfo().has_key( 'title' ) and cache.getExtension( file )== 'mp3':
-            f.seek( -128, 2 )
-            dec.convert2PCM( f.read( 128 ) )
-          
-          break
+      s= f.read( HEADER_CHUNK_SIZE )
+      kbPerSec, iFreqRate, sampleRate, channels, processedChunk= dec.convert2PCM( s )
+      if len( processedChunk )> 0 or dec.hasHeader()> 0:
+        # Assign parameters to the file
+        file[ 'frequency' ]= iFreqRate
+        file[ 'channels' ]= channels
+        file[ 'bitrate' ]= kbPerSec
+        
+        # Hardcoding for mp3
+        if not dec.hasHeader() and cache.getExtension( file )== 'mp3':
+          f.seek( -128, 2 )
+          dec= pympg.Decoder( 'mp3' )
+          dec.convert2PCM( f.read( 128 ) )
         
       info= dec.getInfo()
       if kbPerSec== 0:
@@ -357,28 +343,25 @@ class AudioFileHelper( menu.MenuHelper ):
       
       f.close()
       
-      try:
+      if info[ 'title' ]!= '':
         title= info[ 'title' ]
-        # Parse only when title is set
-        if info.has_key( 'tracknum' ) and info[ 'tracknum' ]!= '':
-          trackNum= info[ 'tracknum' ]
-        else:
-          # Try to extract track number from the file name( first two symbols )
-          trackNum= file[ 'name' ][ :2 ]
-          
-        try:
-          # Remove some redundant chars and split by space
-          m= re.search( '\d*', trackNum )
-          trackNum= int( m.group( 0 ) )
-        except:
-          trackNum= None
+        
+      # Parse only when title is set
+      if info.has_key( 'tracknum' ) and info[ 'tracknum' ]!= '':
+        trackNum= info[ 'tracknum' ]
+      else:
+        # Try to extract track number from the file name( first two symbols )
+        trackNum= file[ 'name' ][ :2 ]
+        
+      try:
+        # Remove some redundant chars and split by space
+        m= re.search( '\d*', trackNum )
+        trackNum= int( m.group( 0 ) )
       except:
-        pass
+        trackNum= None
       
-      try: album= info[ 'album' ]
-      except: pass
-      try: artist= info[ 'artist' ]
-      except: pass
+      album= info[ 'album' ]
+      artist= info[ 'artist' ]
    
     file[ 'title' ]= translate( title )
     file[ 'album' ]= translate( album )
@@ -427,7 +410,6 @@ class BgPlayerDisplay( menu.GenericDisplay ):
   # -----------------------------------------------------------------
   def __init__( self, rect, params, renderClass ):
     menu.GenericDisplay.__init__( self, rect, params, renderClass )
-    self.font= self.loadFont( 'font' )
     self.currPos= -1
   
   # -----------------------------------------------------------------
@@ -463,11 +445,9 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     """
     menu.GenericDisplay.__init__( self, rect, params, renderClass )
     # Load fonts and icons
-    self.titleFont= self.loadFont( 'titleFont' )
-    self.albumFont= self.loadFont( 'albumFont' )
-    self.artistFont= self.loadFont( 'artistFont' )
-    self.lengthFont= self.loadFont( 'lengthFont' )
-    self.mainArea= self.getParamList( 'mainArea', ( 200,10,260,160 ) )
+    self.titleFont, self.albumFont, self.artistFont, self.lengthFont= \
+      map( lambda x: self.loadFont( x ), ( TITLE_FONT, ALBUM_FONT, ARTIST_FONT, LENGTH_FONT ) )
+    self.mainArea= self.getParamList( 'mainArea', DEFAULT_MAIN_AREA_POS )
     self.auxArea= self.getParamList( 'auxArea', ( 10,10,180,160 ) )
     self.itemSize= self.mainArea[ 2: ]
     self.loadControls( ( 'prev', 'play', 'pause', 'stop', 'next' ) )
@@ -578,7 +558,7 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
         track= playingFile[ 'tracknum' ]
       
       height, res1= self.getNameIcon( title, album, artist, track )
-      res1= clipIcon( res1, self.mainArea[ 2: ] )
+      res1= menu.clipIcon( res1, self.mainArea[ 2: ] )
     
     res+= self.adjustPos( res1, self.mainArea[ :2 ] )
     return res
@@ -753,9 +733,9 @@ class AudioFileFolderItem( AudioFileHelper ):
     
     # Draw icons at the left side of the list
     resIcon= [ ( icon[ isFocused ], LEFT_C ) ]
-    yOffset= 3
+    yOffset= 5
     if len( icon )> 2 and icon[ 2 ]:
-      resIcon.append( ( icon[ 2 ], ( yOffset, 17 ) ) )
+      resIcon.append( ( icon[ 2 ], ( yOffset, 13 ) ) )
       yOffset+= icon[ 2 ].get_height()+ 3
     
     if file[ 'isDir' ]== 0:
@@ -817,7 +797,7 @@ class AudioFileFolderItem( AudioFileHelper ):
     
     # Center text into rect
     height, text= self.getNameIcon( file[ 'title' ], file[ 'album' ], file[ 'author' ], file[ 'tracknum' ] )
-    text= clipIcon( text, ( width, self.getItemSize()[ 1 ] ))
+    text= menu.clipIcon( text, ( width, self.getItemSize()[ 1 ] ))
     resIcon+= self.adjustPos( text, ( folderWidth, ( self.getItemSize()[ 1 ]- height )/2 ) )
     return resIcon
   
