@@ -1,4 +1,4 @@
-import string, os
+import string, os, traceback
 
 class CDDB:
   """
@@ -45,7 +45,7 @@ class CDDB:
     diskId= self.getDiskId( tracksInfo )
     hexId= '%x' % diskId
     fName= '%sto%s' % ( hexId[ :2 ], hexId[ :2 ] )
-    res= { 'DTITLE': ' Unknown artist / Unknown title' }
+    res= {}
     try:
       files= os.listdir( self.path )
     except:
@@ -69,11 +69,10 @@ class CDDB:
               if data[ index+ i+ 1 ]!= s:
                 break
             
-            # If tracks does not macth, continue searching
-            if i+ 1< len( tracksInfo ):
+            # If most of the track matches, continue searching
+            if i+ 1< ( len( tracksInfo )/ 2 ):
               continue
             
-            index+= i+ 8
             while index< len( data ):
               if data[ index ][ :9 ]== '#FILENAME':
                 break
@@ -81,7 +80,11 @@ class CDDB:
               # Save pair to the dictionary
               if data[ index ][ 0 ]!= '#':
                 tmp= string.split( data[ index ], '=' )
-                res[ tmp[ 0 ] ]= string.strip( tmp[ 1 ] )
+                if res.has_key( tmp[ 0 ] )== 0:
+                  res[ tmp[ 0 ] ]= ''
+                res[ tmp[ 0 ] ]+= string.strip( tmp[ 1 ] )
+              elif data[ index ][ :14 ]== '# Disc length:':
+                res[ 'length' ]= int( data[ index ].split( ' ' )[ 3 ] )
               
               index+= 1
             
@@ -90,6 +93,7 @@ class CDDB:
             pass
     
     # Populate unknown track names
+    res= { 'DTITLE': ' Unknown artist / Unknown title' }
     for i in xrange( len( tracksInfo ) ):
       res[ 'TTITLE%d' % i ]= '%02d - Unknown track' % i
     
