@@ -93,6 +93,9 @@ const char* PYDOC=
 #define ASPECT_RATIO "aspect_ratio"
 #define BITRATE "bitrate"
 #define RESYNC "resync"
+#define PICT_TYPE "pict_type"
+#define FRAME_NUMBER "frame_number"
+
 
 //char* FOURCC= "fourcc";
 char* TYPE= "type";
@@ -173,6 +176,8 @@ typedef struct
 	int pix_fmt;
 	int bit_rate;
 	int resync;
+	int pict_type;
+	int frame_number;
 } PyVFrameObject;
 
 
@@ -576,6 +581,7 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	cRes->height= cSrc->height;
 	cRes->width= cSrc->width;
 	cRes->pix_fmt= iFormat;
+	cRes->pict_type= cSrc->pict_type;
 
 	// Copy string(s)
 	for( i= 0; i< iPlanes; i++ )
@@ -606,6 +612,8 @@ static PyMemberDef frame_members[] =
 	{FRAME_RATE_B_ATTR, T_INT, offsetof(PyVFrameObject,frame_rate_base), 0, "Frame rate base"},
 	{ASPECT_RATIO, T_FLOAT, offsetof(PyVFrameObject,aspect_ratio), 0, "Picture default aspect ratio."},
 	{RESYNC, T_INT, offsetof(PyVFrameObject,resync), 0, "Flag is set if resync still in place"},
+	{PICT_TYPE, T_INT, offsetof(PyVFrameObject,pict_type), 0, "Type of the frame( 1-I, 2-P, 3-B ) "},
+	{FRAME_NUMBER, T_INT, offsetof(PyVFrameObject,frame_number), 0, "Frame number in a stream"},
 	{NULL},
 };
  
@@ -817,6 +825,8 @@ static PyObject* Frame_New_LAVC( PyCodecObject* obj )
 	cRes->height= obj->cCodec->height;
 	cRes->bit_rate= obj->cCodec->bit_rate;
 	cRes->resync= obj->cCodec->resync;
+	cRes->pict_type= obj->frame.pict_type;
+	cRes->frame_number= obj->cCodec->frame_number;
 	return (PyObject*)cRes;
 }
 
@@ -1319,6 +1329,7 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 				# Save file as RGB24
 				if d:
 					if d.data:
+						print d.rate, d.rate_base, float(d.rate_base)/d.rate
 						frames+= 1
 						if dummy== 0:
 							dd= d.convert( fmt )
@@ -1337,7 +1348,7 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 	f.close()
 	return frames
 
-frames= dumpVideo( 'c:\\movies\\AVSEQ01.DAT', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
+frames= dumpVideo( 'c:\\movies\\Who.Framed.Roger.Rabbit\\Who.Framed.Roger.Rabbit.1988.XviD-CD2.avi', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
 
 t= time.time()
 try: t= time.time()- t
