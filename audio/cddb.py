@@ -30,7 +30,7 @@ class CDDB:
     return ((checkSum % 0xff) << 24 | int( totalTime/75 ) << 8 | len( tracksInfo ) )
   
   # ---------------------------------------------------
-  def getDiscInfo( self, tracksInfo ):
+  def getDiskInfo( self, tracksInfo ):
     """
       Obtain cddb information for particular disc based on 
       a discInfo which is list of pairs ( track_start, track_length )\n

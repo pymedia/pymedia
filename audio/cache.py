@@ -21,7 +21,8 @@
 ##
 ##    Dmitry Borisov
 
-import Queue, os, string, threading, time, pycdda, traceback
+import Queue, os, string, threading, time, traceback
+import cd
 from __main__ import *
 
 MIN_CHUNKS_IN_CACHE= 3
@@ -47,7 +48,6 @@ PARENT_DIR= [
     PROCESSED_KEY: 2,
     DIR_KEY: 1,
     PARENT_KEY: None,
-    ROOT_KEY: 0,
     CHILDREN_KEY: None},]
 
 # ****************************************************************************************************
@@ -340,7 +340,7 @@ class FileCache:
     self.totalSize= 0
     res= []
     # Get cdroms
-    self.cdroms= [ pycdda.CD( x ) for x in range( pycdda.getCount() )]
+    self.cdroms= [ cd.CD( x ) for x in range( cd.getCount() )]
     # Get cdrom names
     self.cdromNames= [ x.getName() for x in self.cdroms ]
     for rootDir in self.rootDirs:
@@ -421,6 +421,10 @@ class FileCache:
     if file:
       # Remove its children
       try:
+        # Wait until file is completely processed
+        while file[ DIR_KEY ]== 1 and file[ PROCESSED_KEY ]!= 2:
+          time.sleep( .01 )
+        
         children= file[ CHILDREN_KEY ]
         for child in children:
           self.delFile( cache.getPathName( child ), file )
@@ -618,7 +622,7 @@ cache= FileCache()
 # **********************************************************************************************
 if __name__ == "__main__":
   import traceback, time
-  pycdda.init()
+  pymedia.cd.init()
   urgentEventQueue= Queue.Queue()
 
   # -------------------------------------

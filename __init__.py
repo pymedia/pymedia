@@ -21,7 +21,8 @@ It provides with the complete framework for building menu driven inetrfaces.
 Some of the classes allows you to define your own behaviors and configuration files.
 """
 
-__all__= [ 'pypower', 'menu' ]
-import pypower, menu, parser
+__all__= [ 'menu' ]
+import menu
+from parser import *
 
 __version__= "1.2"

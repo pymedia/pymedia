@@ -18,15 +18,16 @@
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 ##    Dmitry Borisov
-import string, pyRXP
-from __main__ import *
+import string, pyRXP, pygame
 from pymedia import *
+from __main__ import *
 
 currentModule= None
 currentApp= None
 
+
 # ****************************************************************************************************
-class NodeElement:
+class NodeElement( menu.ModuleHelper ):
   """
     Base class that gives some basic conversion functions to all elements  
   """
@@ -37,28 +38,9 @@ class NodeElement:
     self.params= {}
   
   # -----------------------------------------------------------------
-  def execute( self, action, key, item ):
-    from __main__ import *
-    try:
-      s1= self.attributes[ action ]
-    except:
-      return
-    
-    if self.attributes.has_key( 'module' ):
-      modAtts= self.attributes[ 'module' ].attributes
-      # Get actions variable
-      if s1[ 0 ]== '%':
-        s= eval( modAtts[ 'actions' ] )
-        if s1.find( '.' )> 0:
-          s1= s[ s1[ 1: ] ]
-        else:
-          s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
-    
-    exec( s1 )
-    
-  # -----------------------------------------------------------------
   def init( self ):
     self.execute( 'onInit', None, None )
+    return self
   
   # -----------------------------------------------------------------
   def load( self ):
@@ -102,6 +84,8 @@ class NodeElement:
           atts= self.getAttributes( child )
           if atts.has_key( 'list' ) and atts[ 'list' ]== 'yes':
             vals= self.getLeavesPlain( child )
+          elif atts.has_key( 'eval' ) and atts[ 'eval' ]== 'true':
+            vals= eval( child[ 2 ][ 0 ] )
           else:
             vals= child[ 2 ][ 0 ]
           
@@ -118,7 +102,10 @@ class NodeElement:
         child= node[ 2 ][ i ]
         if child[ 0 ]== 'item':
           atts= self.getAttributes( child )
-          res.append( atts )
+          if atts.has_key( 'eval' ) and atts[ 'eval' ]== 'true':
+            res+= eval( child[ 2 ][ 0 ] )
+          else:
+            res.append( atts )
         
     return res
   
@@ -136,7 +123,7 @@ class NodeElement:
   # -----------------------------------------------------------------
   def getLeavesPlain( self, node ):
     # return nodes as list of values
-    from __main__ import *
+    exec( self.getModuleImport() )
     res= []
     for i in xrange( len( node[ 2 ] ) ):
       child= node[ 2 ][ i ]
@@ -150,7 +137,7 @@ class NodeElement:
   
   # -----------------------------------------------------------------
   def parse( self ):
-    # get areas, menuDefs and modules
+    # get areas, menus and modules
     self.attributes[ 'app' ]= currentApp
     if currentModule:
       self.attributes[ 'module' ]= currentModule
@@ -183,7 +170,7 @@ class appElement( NodeElement ):
     NodeElement.__init__( self, node )
     currentApp= self
     print 'Application %s' % ( self.attributes[ 'id' ], )
-    self.filter= ( 'areas', 'modules', 'menuDefs', 'fontDefs' )
+    self.filter= ( 'areas', 'modules', 'menus', 'fonts' )
   
   # -----------------------------------------------------------------
   def getParam( self, name, default= None ):
@@ -214,7 +201,7 @@ class areaElement( NodeElement ):
   
   # -----------------------------------------------------------------
   def load( self ):
-    from __main__ import *
+    exec( self.getModuleImport() )
     attributes= self.attributes
     params= self.params
     rect= self.getCoords( attributes[ 'coords' ] )
@@ -284,40 +271,12 @@ class moduleElement( NodeElement ):
     attributes= self.getAttributes( node )
     self.node= self.loadXMLFile( attributes[ 'file' ] )
     self.attributes= self.getAttributes( self.node )
-    self.filter= ( 'areas', 'menuDefs', 'fontDefs' )
+    self.filter= ( 'areas', 'menus', 'fonts' )
     
-    # import modules into the __main__ namespace
-    import __main__
-    s= self.attributes[ 'import' ]
-    exec( 'import %s' % s )
-    
-    mods= string.split( s, ',' )
-    modules= []
-    for mod in mods:
-      modules.append( string.split( mod, ' ' )[ -1 ] )
-    
-    for module in modules:
-      __main__.__dict__[ module ]= eval( module )
-      
-    print 'Module %s modules %s' % ( self.attributes[ 'id' ], modules )
+    # Import actions
+    self.importActions()
+    print 'Module %s imported' % ( self.attributes[ 'id' ] )
   
-  # -----------------------------------------------------------------
-  def execute( self, action ):
-    """
-      Execute action on the module level.
-      Looks up into the actions parameter to get the file name where all
-      actions are defined. If the action is not found, just ignore it.
-    """
-    from __main__ import *
-    params= self.params
-    # Get actions variable
-    s= eval( self.attributes[ 'actions' ] )
-    s1= self.attributes[ action ]
-    if s1[ 0 ]== '%':
-      s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
-    
-    exec( s1 )
-    
   # -----------------------------------------------------------------
   def load( self ):
     """
@@ -325,7 +284,7 @@ class moduleElement( NodeElement ):
       basically just executes onLoad action.
     """
     print 'Load module:', self.attributes[ 'id' ]
-    self.execute( 'onLoad' )
+    self.execute( 'onLoad', None, None )
     return self
   
   # -----------------------------------------------------------------
@@ -337,7 +296,7 @@ class moduleElement( NodeElement ):
       stop any playing devices
     """
     print 'Unload module:', self.attributes[ 'id' ]
-    self.execute( 'onUnLoad' )
+    self.execute( 'onUnLoad', None, None )
   
 # ****************************************************************************************************
 # Class that directs root elements in config file to the right place
@@ -502,10 +461,10 @@ if __name__== '__main__':
   
   # Create basic dictionaries
   apps= {}
-  fontDefs= {}
+  fonts= {}
   areas= {}
   modules= {}
-  menuDefs= {}
+  menus= {}
   
   # Pass dom model to the parser
   config= ConfigElement()
@@ -515,6 +474,6 @@ if __name__== '__main__':
   print 'Apps', apps
   print 'Modules', modules
   print 'Areas', areas
-  print 'Menus', menuDefs
-  print 'Fonts', fontDefs
+  print 'Menus', menus
+  print 'Fonts', fonts
   

@@ -20,20 +20,19 @@
 ##
 ##    Dmitry Borisov
 
-import os, Queue, threading, string, traceback, time
-import pygame
+import pygame, os, Queue, threading, string, traceback, time
 from __main__ import *
 
 DEFAULT_FONT= 'Default'
 DEFAULT_FONT_NAME= 'arialn'
 DEFAULT_FONT_SIZE= '20'
 DEFAULT_FONT_COLOR= '255, 255, 255'
-STRIPE_DEFAULT_COLOR= ( 95,166,76)
+STRIPE_DEFAULT_COLOR= 95,166,76
 DEFAULT_ALPHA= 255
 DEFAULT_FONT_ALPHA= '255'
 LEFT_C= (0,0)
 EMPTY_MESSAGE= 'There are no files here'
-DEFAULT_EXT= '.gif'
+DEFAULT_EXT= '.png'
 NAV_ICONS= ( 'down_0'+ DEFAULT_EXT, 'up_0'+ DEFAULT_EXT )
 
 CENTER=0
@@ -144,13 +143,64 @@ def clipIcon( icons, size ):
     res+= [ ( icon[ 0 ].subsurface( LEFT_C+ tuple(size1) ), icon[ 1 ] ) ]
   return res
 
+# ****************************************************************************************************
+# Generic class to support module actions
+class ModuleHelper:
+  # -----------------------------------------------------------------
+  def getModuleId( self ):
+    if self.attributes.has_key( 'module' ):
+      return self.attributes[ 'module' ].attributes[ 'id' ]
+    
+    return None
+    
+  # -----------------------------------------------------------------
+  def importActions( self ):
+    if self.attributes.has_key( 'actions' ):
+      exec( 'import %s' % self.attributes[ 'actions' ] )
+      actions[ self.attributes[ 'id' ] ]= eval( '%s.actions' % self.attributes[ 'actions' ] )
+  
+  # -----------------------------------------------------------------
+  def getModuleImport( self ):
+    if self.attributes.has_key( 'module' ):
+      if self.attributes[ 'module' ].attributes.has_key( 'import' ):
+        return 'import '+ self.attributes[ 'module' ].attributes[ 'import' ]
+    
+    return ''
+    
+  # -----------------------------------------------------------------
+  def execute( self, action, key, item ):
+    moduleId= self.getModuleId()
+    params= self.params
+    try:
+      s1= self.attributes[ action ]
+    except:
+      if moduleId:
+        s1= '%'+ action
+      else:
+        return
+    
+    if moduleId:
+      # Get actions variable
+      exec( self.getModuleImport() )
+      if s1[ 0 ]== '%':
+        s= actions[ moduleId ]
+        try:
+          if s1.find( '.' )> 0:
+            s1= s[ s1[ 1: ] ]
+          else:
+            s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
+        except:
+          # No action found, bail out
+          return
+    
+    exec( s1 )
 
 # ****************************************************************************************************
 # Generic class to support menu items rendering
 # Provides basic set of functions such as:
 #   getItemSize() -> ( width, height )
 #     etc
-class MenuHelper:
+class MenuHelper( ModuleHelper ):
   # -----------------------------------------------------------------
   # Constructor
   def __init__( self, rect, attributes, params ):
@@ -237,7 +287,7 @@ class MenuHelper:
       alpha= int( font.getParam( 'alpha', DEFAULT_FONT_ALPHA ) )
       color= eval( font.getParam( 'color', DEFAULT_FONT_COLOR ) )
       shadow= eval( font.getParam( 'shadow', 'None' ) )
-      shadowOffset= eval( font.getParam( 'offset', '-1,-1' ) )
+      shadowOffset= eval( font.getParam( 'offset', '1,1' ) )
       path= self.getPath( 'fontPath' )
       fontObj= pygame.font.Font( os.path.join( path, fontName )+ '.ttf', int( size ) )
       if font.getParam( 'bold', 'no' )== 'yes':
@@ -246,9 +296,9 @@ class MenuHelper:
       return fontObj, color, alpha, shadow, shadowOffset
     
     if type( paramName )== str:
-      return loadSingleFont( fontDefs[ self.getParam( paramName, DEFAULT_FONT ) ] )
+      return loadSingleFont( fonts_( self.getParam( paramName, DEFAULT_FONT ) ) )
     elif type( paramName )== list or type( paramName )== tuple:
-      return [ loadSingleFont( fontDefs[ self.getParam( x, DEFAULT_FONT ) ] ) for x in paramName ]
+      return [ loadSingleFont( fonts_( self.getParam( x, DEFAULT_FONT ) ) ) for x in paramName ]
   
   # -----------------------------------------------------------------
   def loadIcon( self, paramName, default, alpha= -1 ):
@@ -257,33 +307,15 @@ class MenuHelper:
     
     path= self.getPath( 'iconPath' )
     if type( icons )== str:
-      icons1= pygame.image.load( os.path.join( path, icons ) ).convert()
+      icons1= pygame.image.load( os.path.join( path, icons ) )
       if alpha!= -1:
         icons1.set_alpha( alpha )
     elif type( icons )== list or type( icons )== tuple:
-      icons1= map( lambda x: pygame.image.load( os.path.join( path, x ) ).convert(), icons )
+      icons1= map( lambda x: pygame.image.load( os.path.join( path, x ) ), icons )
       if alpha!= -1:
         map( lambda x: x.set_alpha( alpha ), icons1 )
     
     return icons1
-
-  # -----------------------------------------------------------------
-  def execute( self, action, key, item ):
-    from __main__ import *
-    try:
-      s1= self.attributes[ action ]
-    except:
-      return
-    
-    if self.attributes.has_key( 'module' ):
-      modAtts= self.attributes[ 'module' ].attributes
-      # Get actions variable
-      if s1[ 0 ]== '%':
-        s= eval( modAtts[ 'actions' ] )
-        s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
-    
-    exec( s1 )
-    
 
 # ****************************************************************************************************
 # Class to draw basic menu items
@@ -319,7 +351,7 @@ class MenuItem( MenuHelper ):
   def drawItem( self, itemPos, isFocused ):
     item= self.itemsWrapper.items()[ itemPos ]
     # Find out whether it is a directory or file
-    text= drawText( self.font, item[ 'caption' ] )
+    text= drawText( self.font, item[ 'title' ] )
 
     # Center text into rect
     if isFocused== 1:
@@ -462,6 +494,14 @@ class ListDisplay( GenericDisplay ):
     self.lastActiveItem= -1
     self.setItems( self.activeItem )
     self.moveTo( activeItem )
+    if self.attributes.has_key( 'bgcolor' ):
+      self.bgbox= drawRoundedBox(
+        self.getSize(),
+        eval( self.attributes[ 'bgcolor' ] ),
+        eval( self.attributes[ 'bgalpha' ] ),
+        radius= eval( self.attributes[ 'rounded' ] ) )
+    else:
+      self.bgbox= None
   
   # -----------------------------------------------------------------
   def getWrapper( self ):
@@ -683,10 +723,10 @@ class ListDisplay( GenericDisplay ):
     res= [ ( text, ( self.rect[ 2 ]- ICON_OFFSET* 3- iWidth* 2- text.get_width(), yPos )) ]
     if self.startFrom!= 0:
       # Draw up arrow
-      res.append( ( self.navIcons[ 0 ], ( self.rect[ 2 ]- ICON_OFFSET* 2- iWidth* 2, yPos )) )
+      res.append( ( self.navIcons[ 1 ], ( self.rect[ 2 ]- ICON_OFFSET* 2- iWidth* 2, yPos )) )
     if self.getLastOnScreen()!= self.getItemsCount()- 1:
       # Draw down arrow
-      res.append( ( self.navIcons[ 1 ], ( self.rect[ 2 ]- ICON_OFFSET- iWidth, yPos )) )
+      res.append( ( self.navIcons[ 0 ], ( self.rect[ 2 ]- ICON_OFFSET- iWidth, yPos )) )
     
     return res
   
@@ -749,10 +789,15 @@ class ListDisplay( GenericDisplay ):
     
     itemSize= self.getRenderer().getItemSize()
     
-    # Render only message when list is empty
-    yPos, res= self.renderHeader()
+    # Render header when defined
+    res= []
+    if self.bgbox:
+      res+= [ ( self.bgbox, LEFT_C ) ]
+    yPos, res1= self.renderHeader()
+    res+= res1
     if self.getItemsCount()== 0:
       self.activeItem= -1
+      # Render only message when list is empty
       res+= self.renderCustomMessage( EMPTY_MESSAGE )
     else:
       # Show items on a screen
@@ -774,6 +819,104 @@ class ListDisplay( GenericDisplay ):
     
     self.setChanged( 0 )
     return self.adjustPos( res, self.rect[ :2 ] )
+
+# **********************************************************************************************
+class AbstractList:
+  """
+    Generic class to provide list functionality for a set of files or links
+  """
+  # ---------------------------------------------------
+  def __init__( self, items, filter ):
+    self.changed= 1
+    self.setItems( items, filter )
+  
+  # ---------------------------------------------------
+  def clear( self ):
+    """
+      clear() -> None
+      
+      Clear the list
+    """
+    self.files= []
+    self.setChanged( 1 )
+  
+  # ---------------------------------------------------
+  def remove( self, filePos ):
+    """
+      remove( pos ) -> None
+      
+      Removes file from list by its position
+    """
+    if len( self.files )> filePos:
+      del( self.files[ filePos ] )
+      self.setChanged( 1 )
+  
+  # ---------------------------------------------------
+  def getFile( self, filePos ):
+    """
+      getFile( pos ) -> file | None
+      
+      Gets file from the list by its position
+    """
+    if len( self.files )> filePos:
+      return self.files[ filePos ]
+    
+    return None
+  
+  # -----------------------------------------------------------------
+  def items( self ):
+    """
+      items() -> list
+      
+      Returns items in a list as a list
+    """
+    return self.files
+
+  # -----------------------------------------------------------------
+  def getFilesCount( self ):
+    """
+      getFilesCount() -> filesCount
+      
+      Return number of files in a list
+    """
+    return len( self.files )
+
+  # ---------------------------------------------------
+  def hasChanged( self ):
+    """
+      hasChanged() -> hasChanged_flag
+      
+      Whether or not list has changed
+    """
+    return self.changed
+  
+  # ---------------------------------------------------
+  def setChanged( self, changed ):
+    """
+      setChanged( changed ) -> None
+      
+      Set whether or not list has changed
+    """
+    self.changed= changed
+  
+  # ---------------------------------------------------
+  def init( self ):
+    """
+      init() -> None
+      
+      Just a stub for ListDisplay completeness
+    """
+    pass
+
+  # ---------------------------------------------------
+  def setItems( self, items, filter ):
+    """
+      setItems( items, filter ) -> None
+        
+      Set items into the list and filter them out using filter criteria
+    """
+    self.files= items
+    self.setChanged( 1 )
 
 # ***********************************************************************
 # Run some tests against basic list functionality

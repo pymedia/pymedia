@@ -17,14 +17,13 @@
 ##
 __all__ = [ 'aaudio', 'player', 'cddb', 'cache', 'pycdda', 'pympg', 'pysound' ]
 
-import pycdda, pympg, pysound
+import cd, mpg, sound
 
 from aaudio import *
 from aplayer import *
 from cddb import *
 from cache import *
 
-__version__= "1.0.0.0"
+__version__= "2.0"
 
-pycdda.init()
-pysound.init()
+cd.init()

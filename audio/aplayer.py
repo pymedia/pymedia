@@ -21,9 +21,9 @@
 
 # length in seconds: $this->filesize / ($this->bitrate * 125); 
 
-import threading, traceback, time, os, string, random, glob
-import pympg, pysound, pygame, aaudio, cache
-
+import threading, traceback, time, os, string, random, glob, pygame
+import sound, mpg, aaudio, cache
+import pymedia.audio
 from __main__ import *
 from pymedia import menu
 
@@ -43,7 +43,7 @@ def getFileName( fullName ):
   return string.join( s[ : len( s )- 1 ], '.' )
 
 # **********************************************************************************************
-class AbstractFileList:
+class AbstractFileList( menu.AbstractList ):
   """
     Generic class to provide list functionality for a set of files or links
   """
@@ -100,18 +100,6 @@ class AbstractFileList:
       del( self.files[ filePos ] )
       del( self.fileNames[ fullName ] )
       self.setChanged( 1 )
-  
-  # ---------------------------------------------------
-  def getFile( self, filePos ):
-    """
-      getFile( pos ) -> file | None
-      
-      Gets file from the list by its position
-    """
-    if len( self.files )> filePos:
-      return self.files[ filePos ]
-    
-    return None
   
   # ---------------------------------------------------
   def getFileNum( self, file ):
@@ -185,48 +173,12 @@ class AbstractFileList:
       else:
         self.files= [ cache.cache.getFile( x ) for x in names ]
         if hasParent== 1:
-          self.files= aaudio.PARENT_DIR+ self.files
+          self.files= cache.PARENT_DIR+ self.files
       
       self.setChanged( 1 )
     
     return self.items()
 
-  # -----------------------------------------------------------------
-  def items( self ):
-    """
-      items() -> list
-      
-      Returns items in a list as a list
-    """
-    return self.files
-
-  # -----------------------------------------------------------------
-  def getFilesCount( self ):
-    """
-      getFilesCount() -> filesCount
-      
-      Return number of files in a list
-    """
-    return len( self.files )
-
-  # ---------------------------------------------------
-  def hasChanged( self ):
-    """
-      hasChanged() -> hasChanged_flag
-      
-      Whether or not list has changed
-    """
-    return self.changed
-  
-  # ---------------------------------------------------
-  def setChanged( self, changed ):
-    """
-      setChanged( changed ) -> None
-      
-      Set whether or not list has changed
-    """
-    self.changed= changed
-  
 # ****************************************************************************************************
 class FileWrapper( AbstractFileList ):
   """
@@ -266,15 +218,6 @@ class FileWrapper( AbstractFileList ):
               self.files.append( file )
       
     self.setChanged( 1 )
-  
-  # ---------------------------------------------------
-  def init( self ):
-    """
-      init() -> None
-      
-      Just a stub for ListDisplay completeness
-    """
-    pass
 
 # **********************************************************************************************
 # *
@@ -404,7 +347,7 @@ class PlayLists:
   
   # ---------------------------------------------------
   def items( self ):
-    return [ { 'caption': x[ 0 ] } for x in self.lists ]
+    return [ { cache.TITLE_KEY: x[ 0 ] } for x in self.lists ]
   
   # ---------------------------------------------------
   def getPlayListPos( self, list ):
@@ -488,6 +431,7 @@ class Player:
   # --------------------------------------------------------
   def __init__( self ):
     self.thread= None
+    self.sound= None
   
   # --------------------------------------------------------
   def start( self ):
@@ -526,11 +470,10 @@ class Player:
   # --------------------------------------------------------
   def stopPlayback( self ):
     """ Stop playing all streams """
-    res= pysound.isOpen()
+    res= ( self.sound!= None )
     self.stopFlag= 1
     self.startOffset= self.paused= 0
-    pysound.stop()
-    pysound.close()
+    self.sound= None
     return res
     
   # --------------------------------------------------------
@@ -559,8 +502,8 @@ class Player:
     self.fileChanged= 1
     self.stopFlag= 0
     self.paused= 0
-    pysound.stop()
-    return 1
+    if self.sound:
+      self.sound= None
   
   # --------------------------------------------------------
   def skipTime( self, secs ):
@@ -568,17 +511,42 @@ class Player:
     self.startOffset= secs
     self.fileChanged= 1
     self.stopFlag= 0
-    pysound.stop()
+    if self.sound:
+      self.sound= None
   
   # --------------------------------------------------------
   def isPaused( self ):
     return self.paused
   
   # --------------------------------------------------------
+  def isMute( self ):
+    if self.sound:
+      return self.sound.isMute()
+    
+    return 0
+  
+  # --------------------------------------------------------
+  def setMute( self, m ):
+    if self.sound:
+      return self.sound.setMute( m )
+    
+  # --------------------------------------------------------
+  def getVolume( self ):
+    if self.sound:
+      return self.sound.getVolume()
+    
+    return 0
+  
+  # --------------------------------------------------------
+  def setVolume( self, vol ):
+    if self.sound:
+      self.sound.setVolume( vol )
+  
+  # --------------------------------------------------------
   def pausePlayback( self ):
     """ Pause playing current stream """
-    if pysound.isOpen():
-      pysound.pause()
+    if self.sound:
+      self.sound.pause()
       self.paused= 1
     
     return self.paused
@@ -586,8 +554,8 @@ class Player:
   # --------------------------------------------------------
   def unpausePlayback( self ):
     """ Resume playing current stream """
-    if pysound.isOpen():
-      pysound.unpause()
+    if self.sound:
+      self.sound.unpause()
       self.paused= 0
       return 1
     
@@ -603,11 +571,11 @@ class Player:
   
   # --------------------------------------------------------
   def getPosition( self ):
-    if pysound.isOpen()== 0:
-      return -1
+    if self.sound:
+      return ( self.sound.getPosition()- self.startOffset )/ self.iFreqRate
     
-    return ( pysound.getPosition()- self.startOffset )/ self.iFreqRate
-    
+    return -1
+  
   # --------------------------------------------------------
   def getCurrentFileIndex( self ):
     if self.stopFlag:
@@ -626,6 +594,8 @@ class Player:
     return self.stopFlag== 0
     
   # --------------------------------------------------------
+  # This whole thing is awkward !!!
+  # Consider to rewrite this piece
   def readerLoop( self ):
     initFlag= 1
     reminder= ''
@@ -650,8 +620,8 @@ class Player:
         if initFlag:
           initFlag= 0
         else:
-          if pysound.isOpen():
-            pysound.close()
+          if self.sound:
+            self.sound= None
           if self.exitFlag:
             break
           
@@ -659,10 +629,8 @@ class Player:
         
         continue
       
-      # If no chunk is playing right now, get the next file to play
-      chunk1= pysound.getChunkNum()
       # Update currently playing file number
-      if chunk1== -1:
+      if self.sound== None:
         # Set current file into the beginning
         if self.fileChanged== 1:
           initFlag= 1
@@ -674,11 +642,13 @@ class Player:
         
         # Initialize list of chunks
         self.startOffset= 0
-      elif chunk1!= chunk and len( chunks )> 0 and chunk1== chunks[ 0 ]:
-        self.startOffset= pysound.getPosition()
+        chunk= -1
+      elif self.sound.getPlayingChunk()!= chunk and len( chunks )> 0 and self.sound.getPlayingChunk()== chunks[ 0 ]:
+        self.startOffset= self.sound.getPosition()
         del chunks[ 0 ]
-      
-      chunk= chunk1
+        chunk= self.sound.getPlayingChunk()
+      else:
+        chunk= -1
       
       if len( unprocessedChunk )== 0:
         # Get the next file to play
@@ -697,7 +667,7 @@ class Player:
             continue
           elif not playlistFile.has_key( cache.CDDA_KEY ):
             try:
-              dec= pympg.Decoder( cache.cache.getExtension( playlistFile ) )
+              dec= mpg.Decoder( cache.cache.getExtension( playlistFile ) )
             except:
               # No appropriate extension filter
               traceback.print_exc()
@@ -705,11 +675,12 @@ class Player:
               continue
         
         # If no files have left and no data is playing, just stop
-        if playlistFile== None:
-          if pysound.getChunkNum()== -1:
+        if playlistFile== None and self.sound:
+          if self.sound.getPlayingChunk()== -1:
             self.stopFlag= 1
+          else:
+            time.sleep( 0.1 )
           
-          time.sleep( 0.1 )
           continue
       
       # Process data from the file into pcm
@@ -733,22 +704,22 @@ class Player:
             playlistFile= None
           
           if len( unprocessedChunk )> 0:
-            kbPerSec, self.iFreqRate, sampleRate, self.channels, processedChunk= dec.convert2PCM( unprocessedChunk )
-            f.getFile()[ 'bitrate' ]= kbPerSec
+            kbPerSec, self.iFreqRate, sampleRate, self.channels, processedChunk= dec.decode( unprocessedChunk )
+            f.getFile()[ aaudio.BITRATE_KEY ]= kbPerSec
         
         if len( unprocessedChunk )== 0:
           f.close()
         
-        if pysound.getRate()!= self.iFreqRate or pysound.getChannels()!= self.channels:
-          pysound.stop()
-          pysound.close()
+        if self.sound and ( self.sound.getRate()!= self.iFreqRate or self.sound.getChannels()!= self.channels ):
+          # dctor may not be called immediatelly in psyco !!!
+          self.sound= None
         
-        if pysound.isOpen()== 0:
-          pysound.open( self.iFreqRate, self.channels )
+        if self.sound== None:
+          self.sound= sound.output( self.iFreqRate, self.channels, sound.AFMT_S16_LE )
       else:
         try:
           # Commit chunk for playing
-          tmpChunk= pysound.play( processedChunk )
+          tmpChunk= self.sound.play( processedChunk )
           processedChunk= ''
           if newFile== 1:
             chunks.append( tmpChunk )
@@ -758,7 +729,8 @@ class Player:
           # Too many chunks submitted already for playing
           time.sleep( 0.05 )
       
-    pysound.stop()
+    # dctor may not be called immediatelly in psyco !!!
+    self.sound= None
     self.thread= None
     print 'Player stopped'
 
@@ -777,21 +749,21 @@ pl.startPlayback()
 pl.stopPlayback()
 
 
-import pysound
-pysound.open( 44100, 1 )
+import sound
+sound.open( 44100, 1 )
 f= open( 'c:\\rr.pcm', 'rb' )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 s= f.read( 400000 )
-pysound.play( s )
+sound.play( s )
 
 
 

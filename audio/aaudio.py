@@ -19,8 +19,8 @@
 ##
 ##    Dmitry Borisov
 
-import cddb, copy, aplayer, cache, re
-import pygame, pycdda, pysound, pympg
+import cddb, copy, aplayer, cache, re, pygame
+import pymedia, mpg
 
 from __main__ import *
 from pymedia import menu
@@ -43,26 +43,31 @@ ALBUM_KEY= 'album'
 ARTIST_KEY= 'artist'
 BITRATE_KEY= 'bitrate'
 LENGTH_KEY= 'length'
+FREQUENCY_KEY= 'frequency'
+CHANNELS_KEY= 'channels'
+
+ICON_EXT= ( 'JPG', 'BMP', 'GIF' )
 
 # ------------------------------------------------------------------------------------------------------
 def processUniKeys( key ):
   """
     Process default keys for the audio module
   """
+  p= aplayer.player
   if key== pygame.K_PAUSE:
-    if aplayer.player.isPlaying():
-      aplayer.player.pausePlayBack()
-    elif aplayer.player.isPaused():
-      aplayer.player.unpausePlayBack()
+    if p.isPlaying():
+      p.pausePlayBack()
+    elif p.isPaused():
+      p.unpausePlayBack()
   elif key== pygame.K_F2:
-    if ( aplayer.player.isPlaying() or aplayer.player.isPaused() ) and pysound.isMute()== 0 and pysound.getVolume()> VOLUME_DELTA:
-      pysound.setVolume( pysound.getVolume()- VOLUME_DELTA )
+    if ( p.isPlaying() or p.isPaused() ) and p.isMute()== 0 and p.getVolume()> VOLUME_DELTA:
+      p.setVolume( p.getVolume()- VOLUME_DELTA )
   elif key== pygame.K_F4:
-    if ( aplayer.player.isPlaying() or aplayer.player.isPaused() ) and pysound.isMute()== 0 and pysound.getVolume()< MAX_VOLUME- VOLUME_DELTA:
-      pysound.setVolume( pysound.getVolume()+ VOLUME_DELTA )
+    if ( p.isPlaying() or p.isPaused() ) and p.isMute()== 0 and p.getVolume()< MAX_VOLUME- VOLUME_DELTA:
+      p.setVolume( p.getVolume()+ VOLUME_DELTA )
   elif key== pygame.K_F3:
-    if aplayer.player.isPlaying() or aplayer.player.isPaused():
-      pysound.setMute( pysound.isMute()== 0 )
+    if p.isPlaying() or p.isPaused():
+      p.setMute( p.isMute()== 0 )
 
 # ------------------------------------------------------------------------------------------------------
 def getDeviceLabel( deviceName, default ):
@@ -76,50 +81,6 @@ def getDeviceLabel( deviceName, default ):
       return volInfo[ 0 ][ i+ 4: ].strip()
   
   return default
-
-# ------------------------------------------------------------------------------------------------------
-def refreshFiles( area ):
-  """
-    Refresh files specified in the area.
-    It may refresh root(s) directory or anything below the root directory as well.
-  """
-  # Do we have something to refresh ?
-  fileWrapper= area.getWrapper()
-  items= fileWrapper.items()
-  if len( items )== 0:
-    return
-  
-  if items[ 0 ][ cache.NAME_KEY ]== '..':
-    del( items[ 0 ] )
-  
-  try:
-    # If we are in the root, just refresh the root
-    dirs= [ x[ cache.ROOT_KEY ] for x in items ]
-    parent= None
-    isRoot= 1
-  except:
-    # Just process regular files
-    dirs= [ x[ cache.NAME_KEY ] for x in items ]
-    parent= items[ 0 ][ cache.PARENT_KEY ]
-    isRoot= 0
-    
-  # Remove all items in the list
-  for d in dirs:
-    cache.cache.delFile( d, parent )
-    
-  # If we are in the root, just refresh the root
-  filter= area.getRenderer().getFilter()
-  if isRoot:
-    items= cache.cache.setRoot( dirs )
-    fileWrapper.setItems( items, filter )
-  else:
-    processWholeDir( parent, filter )
-    items= parent[ cache.CHILDREN_KEY ]
-    items= cache.PARENT_DIR+ items
-    
-    fileWrapper.setItems( items, filter )
-  
-  fileWrapper.setChanged( 1 )
 
 # ------------------------------------------------------------------------------------------------------
 def addToPlayList( files, filter, flag ):
@@ -148,7 +109,8 @@ def addToPlayList( files, filter, flag ):
 def processWholeDir( file, extensions ):
   # Scan all disk info into the cache
   lastDir= None
-  lines= os.popen( u'dir /S /N "%s"' % cache.cache.getPathName( file ) ).readlines()
+  s= ( u'dir /S /N "%s"' % cache.cache.getPathName( file ) ).encode( 'cp1251' )
+  lines= os.popen( s ).readlines()
   for line in lines:
     # Convert from DOS into unicode
     line= translate( line, [ 'cp866' ] )
@@ -192,10 +154,6 @@ def processWholeDir( file, extensions ):
     if os.path.isdir( os.path.join( cache.getPathName( file ), line )):
       # Process dir
       f= cache.addFile( file, line, 1 )
-      f[ ALBUM_KEY ]= None
-      f[ ARTIST_KEY ]= None
-      f[ cache.TRACK_KEY ]= None
-      f[ 'processing' ]= 0
       processWholeDir( f, extensions )
     else:
       # We have a file here
@@ -251,7 +209,7 @@ class AudioFileHelper( menu.MenuHelper ):
     self.emptyIcon= self.loadIcon( 'emptyIcon', 'empty'+ menu.DEFAULT_EXT )
     self.playingIcon= self.loadIcon( 'playingIcon', 'playing'+ menu.DEFAULT_EXT )
     self.playlistIcon= self.loadIcon( 'playlistIcon', 'playlist'+ menu.DEFAULT_EXT )
-    self.extensions= pympg.extensions
+    self.extensions= mpg.extensions
     self.titleFont, self.albumFont, self.artistFont, self.lengthFont= \
       self.loadFont( ( TITLE_FONT, ALBUM_FONT, ARTIST_FONT, LENGTH_FONT ) )
   
@@ -284,7 +242,7 @@ class AudioFileHelper( menu.MenuHelper ):
         f[ cache.CDDA_KEY ]= 1
         f[ LENGTH_KEY ]= toc[ trackNum- 1 ][ 1 ]/ 75
         f[ BITRATE_KEY ]= 999
-        f[ 'channels' ]= 2
+        f[ CHANNELS_KEY ]= 2
   
   # -----------------------------------------------------------------
   def processDir( self, param ):
@@ -317,7 +275,7 @@ class AudioFileHelper( menu.MenuHelper ):
             # Got audio disk
             cddbobj= cddb.CDDB( self.attributes[ 'module' ].params[ 'cddb' ] )
             diskInfo= device.getTOC()
-            info= cddbobj.getDiscInfo( diskInfo )
+            info= cddbobj.getDiskInfo( diskInfo )
             text= info[ 'DTITLE' ].split( '/' )
             file[ cache.TITLE_KEY ]= text[ 1 ]
             file[ ARTIST_KEY ]= text[ 0 ]
@@ -330,10 +288,29 @@ class AudioFileHelper( menu.MenuHelper ):
             file[ cache.TITLE_KEY ]= getDeviceLabel( cache.cache.getPathName( file ), 'No volume' )
       
       # Just data disk
-      print 'Process whole dir ', file[ cache.NAME_KEY ]
+      #print 'Process whole dir ', file[ cache.NAME_KEY ]
       processWholeDir( file, self.extensions )
     finally:
       file[ cache.PROCESSED_KEY ]= 2
+  
+  # -----------------------------------------------------------------
+  def getFileParams( self, f, file ):    
+    dec= mpg.Decoder( cache.cache.getExtension( file ) )
+    s= f.read( HEADER_CHUNK_SIZE )
+    kbPerSec, iFreqRate, sampleRate, channels, processedChunk= dec.decode( s )
+    if len( processedChunk )> 0 or dec.hasHeader()> 0:
+      # Assign parameters to the file
+      file[ FREQUENCY_KEY ]= iFreqRate
+      file[ CHANNELS_KEY ]= channels
+      file[ BITRATE_KEY ]= kbPerSec
+      
+      # Hardcoding for mp3
+      if not dec.hasHeader() and cache.cache.getExtension( file )== 'mp3':
+        f.seek( -128, 2 )
+        dec= mpg.Decoder( 'mp3' )
+        dec.decode( f.read( 128 ) )
+      
+    return dec.getInfo()
   
   # -----------------------------------------------------------------
   def processFile( self, param ):
@@ -357,27 +334,11 @@ class AudioFileHelper( menu.MenuHelper ):
       traceback.print_exc()
     
     if f!= None:
-      dec= pympg.Decoder( cache.cache.getExtension( file ) )
-      s= f.read( HEADER_CHUNK_SIZE )
-      kbPerSec, iFreqRate, sampleRate, channels, processedChunk= dec.convert2PCM( s )
-      if len( processedChunk )> 0 or dec.hasHeader()> 0:
-        # Assign parameters to the file
-        file[ 'frequency' ]= iFreqRate
-        file[ 'channels' ]= channels
-        file[ BITRATE_KEY ]= kbPerSec
-        
-        # Hardcoding for mp3
-        if not dec.hasHeader() and cache.cache.getExtension( file )== 'mp3':
-          f.seek( -128, 2 )
-          dec= pympg.Decoder( 'mp3' )
-          dec.convert2PCM( f.read( 128 ) )
-        
-      info= dec.getInfo()
-      if kbPerSec== 0:
-        length= float( info[ 'frames' ] ) * 0.02609
-      else:
+      info= self.getFileParams( f, file )
+      if file.has_key( BITRATE_KEY ):
+        #length= float( info[ 'frames' ] ) * 0.02609
         f.seek( -1, 2 )
-        length= f.tell()/ ( kbPerSec* 125 )
+        length= f.tell()/ ( file[ BITRATE_KEY ]* 125 )
       
       f.close()
       
@@ -425,8 +386,10 @@ class AudioFileHelper( menu.MenuHelper ):
           title= u'Removable device( %s )' % cache.cache.getPathName( file )
     elif file[ cache.PROCESSED_KEY ]== 2:
       if file[ cache.DIR_KEY ]== 0 or file.has_key( cache.CDDA_KEY ):
-        length, album, artist= \
-          file[ LENGTH_KEY ], file[ ALBUM_KEY ], file[ ARTIST_KEY ]
+        album, artist= \
+          file[ ALBUM_KEY ], file[ ARTIST_KEY ]
+        if file.has_key( LENGTH_KEY ):
+          length= file[ LENGTH_KEY ]
         if file.has_key( BITRATE_KEY ):
           bitRate= file[ BITRATE_KEY ]
         if file.has_key( cache.TRACK_KEY ):
@@ -544,15 +507,18 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     """
       Renders bitrate icon as text
     """
-    bitRateIcon= menu.drawText( self.lengthFont, '%3d kbps' % bitRate )
-    return [( bitRateIcon, ( self.auxArea[ 0 ], self.auxArea[ 1 ]+ yOffset ) ) ]
+    try:
+      bitRateIcon= menu.drawText( self.lengthFont, '%3d kbps' % bitRate )
+      return [( bitRateIcon, ( self.auxArea[ 0 ], self.auxArea[ 1 ]+ yOffset ) ) ]
+    except:
+      return []
   
   # -----------------------------------------------------------------
   def showVolume( self, yOffset ):
     """
       Show volume icons based on current volume level
     """
-    volume= pysound.getVolume()
+    volume= aplayer.player.getVolume()
     w,h= self.volumeIcon.get_width(), self.volumeIcon.get_height()
     xOffs= self.auxArea[ 2 ]- w
     width= float(w)* volume/ MAX_VOLUME
@@ -563,10 +529,13 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     """
       Show progress for the currently playing track
     """
-    x, y, x1, y1= ( int( currPos / 60 ), currPos % 60, int( length / 60 ), length % 60 )
-    lengthIcon= menu.drawText( self.lengthFont, '%02d:%02d / %02d:%02d' % ( x, y, x1, y1 ) )
-    return [( lengthIcon, self.auxArea[ :2 ] )]
-      
+    try:
+      x, y, x1, y1= ( int( currPos / 60 ), currPos % 60, int( length / 60 ), length % 60 )
+      lengthIcon= menu.drawText( self.lengthFont, '%02d:%02d / %02d:%02d' % ( x, y, x1, y1 ) )
+      return [( lengthIcon, self.auxArea[ :2 ] )]
+    except:
+      return []
+  
   # -----------------------------------------------------------------
   def renderInfo( self ):
     """
@@ -685,13 +654,60 @@ class AudioFileFolderItem( AudioFileHelper ):
     """
     AudioFileHelper.__init__( self, rect, attributes, params )
     self.extFont= self.loadFont( 'extensionFont' )
-    self.iconSize= self.getParamList( 'iconSize', ( 72, 72 ) )
-    self.itemSize= ( rect[ 2 ], 100 )
+    self.itemSize= ( rect[ 2 ], self.folderIcons[ 0 ].get_height()+ 5 )
+    self.iconSize= self.folderIcons[ 0 ].get_size()
     # Identify max icon size
     self.maxIconSize= ( self.itemSize[ 1 ], self.itemSize[ 1 ] )
     self.itemsWrapper= None
     self.history= []
   
+  # ------------------------------------------------------------------------------------------------------
+  def setDirItems( self, params ):
+    children= cache.cache.getChildren( params[ 0 ] )
+    if children== None:
+      children= []
+    
+    # Set parent directory for the fake item
+    parent= cache.PARENT_DIR
+    parent[ 0 ][ cache.PARENT_KEY ]= params[ 0 ]
+    self.itemsWrapper.setItems( parent+ children, self.getFilter() )
+  
+  # ------------------------------------------------------------------------------------------------------
+  def refresh( self ):
+    """
+      Refresh files specified in the area.
+      It may refresh root(s) directory or anything below the root directory as well.
+    """
+    # Do we have something to refresh ?
+    items= self.itemsWrapper.items()
+    if len( items )== 0:
+      return
+    
+    try:
+      # If we are in the root, just refresh the root
+      dirs= [ x[ cache.ROOT_KEY ] for x in items ]
+      parent= None
+    except:
+      # Just process regular files
+      parent= items[ 0 ][ cache.PARENT_KEY ]
+      parent[ cache.PROCESSED_KEY ]= 0
+      dirs= [ x[ cache.NAME_KEY ] for x in items[ 1: ] ]
+      
+    # Remove all items in the list
+    for d in dirs:
+      cache.cache.delFile( d, parent )
+    
+    # If we are in the root, just refresh the root
+    if parent:
+      # Set parent as non processed and submit for processing
+      self.getFileInfo( parent )
+      eventQueue.put( ( 'EXECUTE', self.setDirItems, parent ) )
+    else:
+      items= cache.cache.setRoot( dirs )
+      self.itemsWrapper.setItems( items, self.getFilter() )
+    
+    return parent
+
   # -----------------------------------------------------------------
   def processFolderIcon( self, file ):
     """
@@ -709,7 +725,7 @@ class AudioFileFolderItem( AudioFileHelper ):
         
       for f in files:
         f1= string.split( f, '.' )
-        if len( f1 )> 1 and string.upper( f1[ -1 ] ) in( 'JPG', 'BMP', 'GIF' ):
+        if len( f1 )> 1 and string.upper( f1[ -1 ] ) in ICON_EXT:
           # pygame cannot work with unicode pathes, just pass the file object instead
           icon= pygame.image.load( open( os.path.join( fileName, f ), 'rb' ) )
           # Resize the icon
@@ -750,7 +766,6 @@ class AudioFileFolderItem( AudioFileHelper ):
       Submit request for the additional information if needed.
     """
     # Clear out the icon place
-    global eventQueue
     try:
       icon= file[ 'icon' ]
     except:
@@ -783,7 +798,6 @@ class AudioFileFolderItem( AudioFileHelper ):
       Get the properties of the generic file.
       It may submit background request if needed.
     """
-    global eventQueue
     file= self.itemsWrapper.items()[ pos ]
     title, album, artist, length, bitRate, tracknum = self.getFileInfo( file )
     # Draw icons at the left side of the item
@@ -859,11 +873,7 @@ class AudioFileFolderItem( AudioFileHelper ):
         # Wait until we process directory( may take a while )
         if item[ cache.PROCESSED_KEY ]== 2:
           self.history.append( ( self.itemsWrapper.items(), pos, item[ cache.TITLE_KEY ] ) )
-          children= cache.cache.getChildren( item )
-          if children== None:
-            children= []
-          
-          self.itemsWrapper.setItems( cache.PARENT_DIR+ children, self.getFilter() )
+          self.setDirItems( [ item ] )
           activeItem= 0
       else:
         addToPlayList( ( item, ), None, SINGLE_FILE )
@@ -899,7 +909,7 @@ class PlayListItem( menu.MenuItem ):
   def drawItem( self, itemPos, isFocused ):
     item= self.itemsWrapper.items()[ itemPos ]
     # See if current playlist item is a default. If it is then, write * at the end
-    s= item[ 'caption' ]
+    s= item[ cache.TITLE_KEY ]
     pl= aplayer.player.getPlayList()
     if aplayer.playLists.getName( pl[ 0 ] )== s:
       s= '*'+ s

@@ -16,5 +16,5 @@
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 
-ver =   '1.0.0'
-vernum = 1,0,0
+ver =   '1.0'
+vernum = 1,0
