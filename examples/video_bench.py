@@ -11,7 +11,7 @@ def videoDecodeBenchmark( inFile ):
   v= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_VIDEO, dm.streams )
   if len( v )== 0:
     raise 'There is no video stream in a file %s' % inFile
-
+  
   v_id= v[ 0 ][ 'index' ]
   print 'Assume video stream at %d index: ' % v_id
   t= time.time()
