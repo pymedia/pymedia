@@ -103,9 +103,9 @@ class GenericChoiceDialog( GenericDisplay ):
       button= self.drawButton( ( choice[ 'width' ], height ), self.buttonColors[ 0 ] )
       self.surface[ 0 ][ 0 ].blit( button, ( xPos, yPos ) )
       # Align text into the button
-      choice[ 'pos' ]= (
-        xPos+ ( choice[ 'width' ]- choice[ 'icon' ].get_width() )/ 2,
-        yPos+ height- choice[ 'icon' ].get_height()
+      choice[ 'pos' ]= ( 
+        xPos+ ( choice[ 'width' ]- choice[ 'icon' ].get_width() )/ 2, 
+        yPos+ height- choice[ 'icon' ].get_height() 
       )
       choice[ 'buttonPos' ]= ( xPos, yPos )
       xPos+= xDelta+ button.get_width()
@@ -120,6 +120,7 @@ class GenericChoiceDialog( GenericDisplay ):
     while i< len( self.choices ):
       yPos+= yDelta
       lineIcon= self.renderChoicesLine( self.choices[ i: i+ self.choicesPerLine ], yPos )
+      yPos+= self.choiceFont[ 0 ].get_linesize()
       i+= self.choicesPerLine
   
   # -------------------------------------------------------------
@@ -130,10 +131,14 @@ class GenericChoiceDialog( GenericDisplay ):
   
   # -------------------------------------------------------------
   def setText( self, text ):
-    self.textIcon= None
-    self.text= text
     if text:
-      self.textIcon= self.font[ 0 ].render( text, 1, self.font[ 1 ] )
+      textIcon= self.font[ 0 ].render( text, 1, self.font[ 1 ] )
+      if textIcon.get_width()< ( self.rect[ 2 ]- BORDER_OFFS* 2- 20 ):
+        self.textIcon= textIcon
+        self.text= text
+    else:
+      self.textIcon= None
+      self.text= text
   
   # -------------------------------------------------------------
   def getText( self ):
@@ -238,29 +243,43 @@ class TextEnterDialog( GenericChoiceDialog ):
       self.choices+= list( map( lambda x: { 'hidden': 'yes' }, range( delta ) ) )
     # Add additional choices for the control
     ctrlChoices= ( 'Ok', 'Clear', 'Cancel' )
-    self.choices+= map( lambda x: { 'caption': x, 'width': 100 }, ctrlChoices )
+    self.choices+= map( lambda x: { 'caption': x, 'width': 100, 'icon': self.choiceFont[ 0 ].render( x, 1, self.choiceFont[ 1 ] ) }, ctrlChoices )
     self.allowedSyms= self.getParam( 'allowedSyms', ( pygame.K_SPACE, pygame.K_z+ 1 ) )
   
   # -------------------------------------------------------------
+  def init( self, caption, text, returnArea, params ):
+    GenericChoiceDialog.init( self, caption, text, returnArea, params )
+    self.drawEntryBox( 0 )
+    
+  # -------------------------------------------------------------
   def renderText( self, yPos ):
     # Draw text
-    offs= self.font[ 0 ].get_linesize()
-    # Draw input border
-    i= BORDER_OFFS+ 4
-    res= [ ( pygame.Surface( ( self.rect[ 2 ]- i* 2, offs ) ), ( i, yPos+ 2 ) ) ]
+    res= []
     if self.textIcon:
-      # Draw text
-      res1= ( self.textIcon, ( i, yPos- self.textIcon.get_height()+ offs ) )
-      # Draw cursor
-      x= self.textIcon.get_width()
-    else:
-      x= 0
+      xPos= ( self.rect[ 2 ]- self.textIcon.get_width() )/ 2
+      res= [ ( self.textIcon, ( BORDER_OFFS+ 4, yPos ) ) ]
     
-    pygame.draw.rect( res[ 0 ][ 0 ], self.color, ( i, yPos+ 2, self.rect[ 2 ], offs ), 2 )
-    border= ( self.activeChoice== -1 )
-    pygame.draw.rect( self.surface, self.font[ 1 ], ( x+ i, yPos+ 2, self.font[ 0 ].size(' ')[ 0 ], offs ), border )
-    yPos+= offs
-    return yPos
+    yPos+= self.font[ 0 ].get_linesize()
+    return yPos, res
+  
+  # -------------------------------------------------------------
+  def drawEntryBox( self, fillCursor ):
+    # Put black rectangle
+    i= BORDER_OFFS+ 4
+    offs= self.font[ 0 ].get_linesize()
+    # Draw black rectangle for entry space
+    pygame.draw.rect( self.surface[ 0 ][ 0 ], (0,0,0), ( i, offs+ 2, self.rect[ 2 ]- i* 2, offs ) )
+    # Draw border
+    pygame.draw.rect( self.surface[ 0 ][ 0 ], self.color, ( i, offs+ 2, self.rect[ 2 ]- i* 2, offs ), 2 )
+    if self.textIcon:
+      width= self.textIcon.get_width()
+    else:
+      width= 0
+      
+    if fillCursor:
+      pygame.draw.rect( self.surface[ 0 ][ 0 ], self.color, ( i+ width, offs+ 2, 10, offs ) )
+    else:
+      pygame.draw.rect( self.surface[ 0 ][ 0 ], self.color, ( i+ width, offs+ 2, 10, offs ), 2 )
   
   # -------------------------------------------------------------
   def processKey( self, key ):
@@ -276,10 +295,12 @@ class TextEnterDialog( GenericChoiceDialog ):
     
     if key in range( self.allowedSyms[ 0 ], self.allowedSyms[ 1 ] ) and self.activeChoice== -1:
       self.setText( self.text+ chr( key ) )
+      self.drawEntryBox( 1 )
       self.setChanged( 1 )
     
     if key== pygame.K_BACKSPACE and self.activeChoice== -1:
       self.setText( self.text[ : len( self.text )- 1 ] )
+      self.drawEntryBox( 1 )
       self.setChanged( 1 )
       
     if key== pygame.K_DOWN:
@@ -290,12 +311,14 @@ class TextEnterDialog( GenericChoiceDialog ):
         i= self.activeChoice+ self.choicesPerLine
       if i< len( self.choices )- 1 and self.isHidden( i )== 0:
         self.activeChoice= i
+        self.drawEntryBox( 0 )
         self.setChanged( 1 )
     
     if key== pygame.K_UP:
       # See if we may move up
       i= self.activeChoice- self.choicesPerLine
       if i< 0:
+        self.drawEntryBox( 1 )
         self.activeChoice= -1
       
       if i>= 0 and self.isHidden( i )== 0:
@@ -309,6 +332,7 @@ class TextEnterDialog( GenericChoiceDialog ):
         choice= self.choices[ self.activeChoice ]
         if choice[ 'caption' ]== 'Clear':
           self.setText( '' )
+          self.drawEntryBox( 0 )
           self.setChanged( 1 )
         elif choice[ 'caption' ]== 'Cancel':
           key= pygame.K_ESCAPE
@@ -316,7 +340,11 @@ class TextEnterDialog( GenericChoiceDialog ):
           self.exitDialog( 0 )
         else:
           self.setText( self.text+ choice[ 'caption' ] )
+          self.drawEntryBox( 0 )
           self.setChanged( 1 )
+      elif key== pygame.K_RETURN:
+        self.activeChoice= 1
+        self.exitDialog( 0 )
     
     if key== pygame.K_ESCAPE:
       self.exitDialog( None )
