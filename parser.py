@@ -148,6 +148,8 @@ class NodeElement:
   def parse( self ):
     # get areas, menuDefs and modules
     self.params[ 'module' ]= currentModule
+    if self.node[ 2 ]== None:
+      return
     for i in xrange( len( self.node[ 2 ] ) ):
       curNode= self.node[ 2 ][ i ]
       if curNode[ 0 ]== 'params':
@@ -173,11 +175,17 @@ class appElement( NodeElement ):
   # -----------------------------------------------------------------
   def __init__( self, node ):
     NodeElement.__init__( self, node )
-    self.filter= ( 'areas', 'modules', 'menuDefs' )
+    self.filter= ( 'areas', 'modules', 'menuDefs', 'fontDefs' )
   
   # -----------------------------------------------------------------
-  def getParam( self, name ):
-    return self.params[ name ]
+  def getParam( self, name, default= None ):
+    try: return self.params[ name ]
+    except: return default
+
+# ****************************************************************************************************
+# Class that holds fonts
+class fontElement( appElement ):
+  pass
 
 # ****************************************************************************************************
 # Class that creates area definition based on content of current node
@@ -264,7 +272,7 @@ class moduleElement( NodeElement ):
     params= self.getAttributes( node )
     self.node= self.loadXMLFile( params[ 'file' ] )
     self.params= self.getAttributes( self.node )
-    self.filter= ( 'areas', 'menuDefs' )
+    self.filter= ( 'areas', 'menuDefs', 'fontDefs' )
     currentModule= self
     
     # import modules into the __main__ namespace
@@ -485,6 +493,7 @@ if __name__== '__main__':
   
   # Create basic dictionaries
   apps= {}
+  fontDefs= {}
   areas= {}
   modules= {}
   menuDefs= {}
@@ -498,4 +507,5 @@ if __name__== '__main__':
   print 'Modules', modules
   print 'Areas', areas
   print 'Menus', menuDefs
+  print 'Fonts', fontDefs
   
