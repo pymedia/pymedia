@@ -616,6 +616,7 @@ private:
 	int iBuffers;
 	int iErr;
 	unsigned int iLastPos;
+	unsigned int iCurrentBufferPos;
 	int iCorrection;
 
 	// ---------------------------------------------------------------------------------------------------
@@ -772,11 +773,18 @@ public:
 	void CompleteBuffer( WAVEHDR *wh )
 	{
 		LONG p;
+		MMTIME stTime;
+		stTime.wType= TIME_MS;
+
 		ReleaseSemaphore( this->hSem, 1, &p );
+		if( !this->bStopFlag )
+			waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
+
  	  EnterCriticalSection( &this->cs );
 		this->iBuffers--;
+		this->iCurrentBufferPos= stTime.u.ms;
 	  LeaveCriticalSection( &this->cs );
-	}
+	}	
 	// ---------------------------------------------------------------------------------------------------
 	int Pause()	{	 return ( waveOutPause( this->dev ) ) ? -1: 0; }
 
@@ -784,7 +792,7 @@ public:
 	int Stop()
 	{
 		EnterCriticalSection( &this->cs );
-		this->iCorrection= this->iLastPos= 0;
+		this->iCorrection= this->iLastPos= this->iCurrentBufferPos= 0;
 		this->bStopFlag= true;
 		LeaveCriticalSection( &this->cs );
 
@@ -803,11 +811,6 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	float Play(unsigned char *buf,int len)
 	{
-		MMTIME stTime;
-		stTime.wType= TIME_MS;
-		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		double dPos= (double)stTime.u.ms/ this->iRate;
-
 		// Try to fit chunk in remaining buffers
 		while( len> 0 )
 		{
@@ -828,21 +831,13 @@ public:
 				return -1;
 			}
 
-			dPos+= l / ((double)( 2* this->iChannels* this->iRate ));
-
 			EnterCriticalSection( &this->cs );
 			this->iProcessed++;
 			this->iBuffers++;
 			LeaveCriticalSection( &this->cs );
 		}
-		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-
-		EnterCriticalSection( &this->cs );
-		this->iLastPos= stTime.u.ms+ this->iCorrection;
-		LeaveCriticalSection( &this->cs );
-
-		double dPos1= (double)stTime.u.ms/ this->iRate;
-		return (float)( dPos- dPos1);
+		this->GetPosition();
+		return (float)0;
 	}
 
 	// ---------------------------------------------------------------------------------------------------
@@ -865,7 +860,16 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	float GetLeft()
 	{
-		return ((float)this->iBuffers* BUFFER_SIZE )/ ((float)( 2* this->iChannels* this->iRate ));
+		MMTIME stTime;
+		float f= ((float)( this->iBuffers- 1 )* BUFFER_SIZE )/ ((float)( 2* this->iChannels* this->iRate ));
+		float f1;
+		if( !this->iBuffers )
+			return 0;
+
+		stTime.wType= TIME_MS;
+		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
+		f1= this->headers[ ( this->iProcessed-this->iBuffers) % MAX_HEADERS ].dwBufferLength / ((float)( 2* this->iChannels ));
+		return f+ ( f1+ this->iCurrentBufferPos- (float)stTime.u.ms )/ this->iRate;
 	}
 
 };

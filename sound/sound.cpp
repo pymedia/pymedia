@@ -20,7 +20,7 @@
  * Dmitry Borisov
 */
 
-#include <Python.h>
+#include <Python.h> 
 #include <structmember.h>
  
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
@@ -558,7 +558,10 @@ static PyMethodDef sound_methods[] =
 static void
 SoundClose( PyOSoundObject *sound )
 {
+  Py_BEGIN_ALLOW_THREADS
 	delete sound->cObj;
+  Py_END_ALLOW_THREADS
+
 	PyObject_Free( sound );
 }
 
@@ -937,7 +940,7 @@ static PyObject* Resampler_Resample( PyResamplerObject* obj, PyObject *args)
 	// Create output buffer
 	iNewSamples= iSamples;
 	if( obj->resample_ctx->ratio< 1.0 || obj->resample_ctx->ratio > 1.0 )
-		iNewSamples= iSamples* obj->resample_ctx->ratio;
+		iNewSamples= (int)( iSamples* obj->resample_ctx->ratio );
 
 	cRes= PyString_FromStringAndSize( NULL, iNewSamples* sizeof( short )* obj->resample_ctx->output_channels );
 	if( !cRes )
@@ -1449,18 +1452,23 @@ pysound.stop()
 playFile( 'c:\\Bors\\hmedia\\pympg\\test_1_320.pcm', 44100 )
 
 
-import pymedia.audio.sound as sound
+import pymedia.audio.sound as sound, time
 snd1= sound.Output( 44100, 2, 0x10 )
-f= open( 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\test.pcm', 'rb' )
-s= f.read( 400000 )
+f= open( 'c:\\music\\roots.pcm', 'rb' )
+s= f.read( 399983 )
 snd1.play( s )
-print snd1.isPlaying()
+snd1= None
+while snd1.isPlaying():
+  time.sleep(.001)
+  print snd1.getLeft(),
 
-# oss test
+
+
+# oss test 
 import ossaudiodev
 snd= ossaudiodev.open( 'w' )
 f= open( 'test.pcm', 'rb' )
-s= f.read( 400000 )
+s= f.read( 399983 )
 snd.setparameters( 0x10, 2, 44100 )
 snd.writeall( s )
 
