@@ -29,7 +29,7 @@ DEFAULT_FONT_SIZE= 20
 DEFAULT_FONT_COLOR= ( 255, 255, 255 )
 LEFT_C= (0,0)
 EMPTY= 0
-NAV_ICONS= ( 'up_0.gif', 'down_0.gif' )
+NAV_ICONS= ( 'down_0.gif', 'up_0.gif' )
 
 # ****************************************************************************************************
 # Generic class to support menu items rendering
@@ -106,14 +106,18 @@ class MenuHelper:
     return font, fontColor
   
   # -----------------------------------------------------------------
-  def loadIcon( self, paramName, default ):
+  def loadIcon( self, paramName, default, alpha= -1 ):
     icons= self.getParam( paramName, default )
     icons1= None
     
     if type( icons )== str:
       icons1= pygame.image.load( 'icons/'+ icons )
+      if alpha!= -1:
+        icons1.set_alpha( alpha )
     elif type( icons )== list or type( icons )== tuple:
       icons1= map( lambda x: pygame.image.load( 'icons/'+ x ), icons )
+      if alpha!= -1:
+        map( lambda x: x.set_alpha( alpha ), icons1 )
     
     return icons1
 
