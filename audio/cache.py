@@ -24,54 +24,54 @@
 import Queue, os, string, threading, time, pycdda, traceback
 from __main__ import *
 
+MIN_CHUNKS_IN_CACHE= 3
 CHUNK_SIZE= 500000
-SECTORS_PER_READ= 40 
-MISSING= '<missing> '
 
+CHILDREN_KEY= 'children'
+PARENT_KEY= 'parent'
+NAME_KEY= 'name'
+ROOT_KEY= 'root'
+TITLE_KEY= 'title'
+DEVICE_KEY= 'device'
+CDDA_KEY= 'isCDDA'
+TRACK_KEY= 'tracknum'
+DIR_KEY= 'dir'
+
+CDDA_EXT= 'cdda'
+MISSING= '<missing> '
+PROCESSED_KEY= 'processed'
+
+PARENT_DIR= [
+  { NAME_KEY: '..',
+    TITLE_KEY: '[ .. ]',
+    PROCESSED_KEY: 2,
+    DIR_KEY: 1,
+    PARENT_KEY: None,
+    ROOT_KEY: 0,
+    CHILDREN_KEY: None},]
+
+# ****************************************************************************************************
+class CacheException( Exception ):
+  def __init__(self, value):
+    self.value = value
+  def __str__(self):
+    return repr(self.value)
+
+# ****************************************************************************************************
 class CachedFile:
   """
     Original file object replacement to allow dynamic caching
   """
   # ---------------------------------------------------
-  def __init__( self, cache, file ):
+  def __init__( self, file ):
     """
       Constructor which takes original file object and cache where the data will be stored
     """
-    self.size= 0
-    self.data= []
-    self.cache= cache
+    self.size= self.status= 0
+    # data is a dictionary of { offset: data }
+    self.data= {}
     self.file= file
-    self.complete= 0
     self.close()
-  
-  # ---------------------------------------------------
-  def read( self, bytes ):
-    """
-      Read certain amoun of bytes from cache. If not vailable, try to read from file.
-    """
-    if self.pos== -1:
-      raise 'File %s cannot be read because its closed' % self.cache.getPathName( self.file )
-    
-    res= []
-    while bytes> 0:
-      res1= ''
-      if self.chunk< len( self.data ):
-        res1= self.data[ self.chunk ][ self.offset: self.offset+ bytes ]
-        bytes-= len( res1 )
-        res.append( res1 )
-        self.offset+= len( res1 )
-        if self.offset>= len( self.data[ self.chunk ] ):
-          self.chunk+= 1
-          self.offset= 0
-      
-      if len( res1 )== 0 or self.chunk>= len( self.data ):
-        if self.complete== 1:
-          break
-        else:
-          # The file is being read by background process, wait until completes
-          time.sleep( .001 )
-    
-    return string.join( res, '' )
   
   # ---------------------------------------------------
   def getFile( self ):
@@ -81,22 +81,6 @@ class CachedFile:
     return self.file
   
   # ---------------------------------------------------
-  def release( self ):
-    """
-      Release cahed file from the memory and close all handles
-    """
-    self.data= []
-    del self.file[ 'object' ]
-    self.close()
-  
-  # ---------------------------------------------------
-  def open( self ):
-    """
-      Open cached file for reading either from cache or from the physical placement
-    """
-    self.pos= self.offset= self.chunk= 0
-  
-  # ---------------------------------------------------
   def isClosed( self ):
     """
       Whether cached file is closed
@@ -104,34 +88,220 @@ class CachedFile:
     return self.pos== -1
   
   # ---------------------------------------------------
+  def getSize( self ):
+    return self.size
+    
+  # ---------------------------------------------------
+  def setSize( self, size ):
+    self.size= size
+    
+  # ---------------------------------------------------
+  def getCachedSize( self ):
+    """
+      Get the size of cached files
+    """
+    return reduce( lambda x,y: x+ len( self.data[ y ] ), self.data, 0 )
+  
+  # ---------------------------------------------------
+  def setStatus( self, status ):
+    """
+      Set status for the physical read op
+    """
+    self.status= status
+  
+  # ---------------------------------------------------
+  def getStatus( self ):
+    """
+      Get status for the physical read op
+    """
+    return self.status
+    
+  # ---------------------------------------------------
+  def release( self, size= 0 ):
+    """
+      Release cached file or its part from the memory and close all handles when no other chunks are left
+    """
+    # Apply filter only for opened file which is currently being read
+    #print 'Trying to release %d' % size
+    offsets= self.data.keys()
+    released= 0
+    if size and self.isClosed()== 0:
+      offsets= filter( lambda x: (( x+ len( self.data[ x ] ) )<= self.pos ), self.data )
+      offsets.sort()
+    
+    for i in offsets:
+      j= len( self.data[ i ] )
+      released+= j
+      cache.deallocate( j )
+      del( self.data[ i ] )
+      if size:
+        size-= j
+        if size== 0:
+          break
+    
+    # Scan all data
+    if self.getCachedSize()== 0:
+      self.data= {}
+      self.offset= 0
+      
+    #print 'Released %d out of %d' % ( released, size )
+    return released
+  
+  # ---------------------------------------------------
+  def open( self ):
+    """
+      Open cached file for reading either from cache or from the physical placement
+    """
+    self.pos= self.offset= 0
+    if self.getSize()== -1:
+      try:
+        if self.file.has_key( CDDA_KEY ):
+          f= self.file[ DEVICE_KEY ].open( self.file[ TRACK_KEY ]- 1 )
+        else:
+          f= open( cache.getPathName( self.file ), 'rb' )
+      except:
+        traceback.print_exc()
+        self.file[ TITLE_KEY ]= MISSING+ self.file[ NAME_KEY ]
+        return None
+      
+      # Get the file size
+      f.seek( 0, 2 )
+      self.setSize( f.tell() )
+      f.close()
+    
+    return self
+  
+  # ---------------------------------------------------
   def close( self ):
     """
       Close cached file logically
     """
-    self.pos= self.offset= -1
-    self.chunk= 0
+    if len( self.data ):
+      if min( self.data )!= 0:
+        # Free up the file if the file is partially read.
+        #print 'File is closed'
+        self.release()
+    
+    self.pos= self.offset= self.size= -1
   
   # ---------------------------------------------------
-  def getSize( self ):
+  def appendChunk( self, offset, chunk ):
     """
-      Get the size of cached files
+      Internal function to add a file chunk to the cache
     """
-    return self.size
+    offset1= offset+ len( chunk )
+    # See if we have chunks intersected( it shouldn't be a case )
+    s= filter(
+      lambda x: ( x>= offset and x+ len( self.data[ x ] )< offset1 ),
+      self.data )
+    if len( s )> 0:
+      raise CacheException( 'Cannot add the same buffer to cache twice for %s:%d' % \
+        ( cache.getPathName( self.file ), offset ) )
+    self.data[ offset ]= chunk
   
   # ---------------------------------------------------
-  def _appendChunk( self, chunk ):
-    """
-      Internal function to add a chunk of file to the cache
-    """
-    self.data.append( chunk )
-    self.size+= len( chunk )
+  def getOffsets( self ):
+    offsets= filter( lambda x: ( x+ len( self.data[ x ] )> self.pos ), self.data )
+    offsets.sort()
+    return offsets
   
   # ---------------------------------------------------
-  def _setComplete( self ):
+  def read( self, bytes ):
     """
-      Set completeness for the physical read op
+      Read certain amount of bytes from cache. If not available, try to read from file.
     """
-    self.complete= 1
+    global urgentEventQueue
+    if self.pos== -1:
+      raise CacheException( 'File %s cannot be read because its closed' % cache.getPathName( self.file ) )
+    
+    # Just a check for a real size
+    if bytes+ self.pos> self.size:
+      bytes= self.size- self.pos
+    
+    # Start getting data into the buffer
+    res= []
+    while bytes> 0:
+      try:
+        offsets= self.getOffsets()
+      except RuntimeError:
+        # Ignore error due to contention
+        offsets= []
+      
+      if len( offsets )< MIN_CHUNKS_IN_CACHE and \
+         self.getStatus()== 0 and \
+         self.offset< self.size:
+        self.setStatus( 1 )
+        #print 'Try to load some chunks ', self.getCachedSize(), self.size, bytes, self.pos
+        urgentEventQueue.put( ( 'EXECUTE', self.readFile, None ) )
+      
+      if len( offsets ):
+        offs= self.pos- offsets[ 0 ]
+        s= self.data[ offsets[ 0 ] ][ offs: offs+ bytes ]
+        if len( s )<= bytes:
+          del offsets[ 0 ]
+        
+        self.pos+= len( s )
+        bytes-= len( s )
+        res.append( s )
+      elif self.getStatus()== 1:
+        #print 'Waiting for read to complete '
+        time.sleep( .1 )
+      else:
+        raise CacheException( 'File %s is corrupted.' % cache.getPathName( self.file ) )
+    
+    return string.join( res, '' )
+  
+  # ---------------------------------------------------
+  def readFileChunks( self, f ):
+    """
+      Read file from external device
+      Each file is read by even chunks with default CHUNK_SIZE size.
+    """
+    # Set status that data is about to be read
+    s= ' '
+    offset= self.offset
+    while len( s ):
+      try:
+        # Read the whole file into the cache
+        s= f.read( CHUNK_SIZE )
+      except:
+        traceback.print_exc()
+        break
+      
+      if len( s )> 0:
+        if cache.canAllocate( len( s ) )== 0 and cache.cleanUpLRU( len(s) )== 0:
+          # No cache space available
+          break
+        
+        cache.allocate( len( s ) )
+        self.appendChunk( offset, s )
+        offset+= len( s )
+      
+      # Exit immediately if file is closed( another file is requested )
+      if self.isClosed():
+        break
+      
+      # Let other processes run
+      time.sleep( .01 )
+    
+    # Data can be taken from cache
+    self.offset= offset
+    self.setStatus( 0 )
+  
+  # ---------------------------------------------------
+  def readFile( self, param ):
+    """
+      Background file read. Supports for 2 type of files: _raw_ and os file.
+      When raw mode enabled it reads data directly from the device without using OSes file objects.
+    """
+    if self.file.has_key( CDDA_KEY ):
+      f= self.file[ DEVICE_KEY ].open( self.file[ TRACK_KEY ]- 1 )
+    else:
+      f= open( cache.getPathName( self.file ), 'rb' )
+    
+    f.seek( self.offset, 0 )
+    self.readFileChunks( f )
+    f.close()
 
 # **********************************************************************************************
 # *
@@ -151,8 +321,7 @@ class FileCache:
   # ---------------------------------------------------
   def setCacheSize( self, cacheSize ):
     """
-      Set maximum allowed cache size for files. This amount may be exceeded if there is
-      a big file needs to be read.
+      Set maximum allowed cache size allowed for files.
     """
     self.cacheSize= long( cacheSize )
   
@@ -171,14 +340,11 @@ class FileCache:
     self.totalSize= 0
     res= []
     # Get cdroms
-    pycdda.init()
-    self.cdroms= map( lambda x: pycdda.CD( x ), range( pycdda.getCount() ))
+    self.cdroms= [ pycdda.CD( x ) for x in range( pycdda.getCount() )]
     # Get cdrom names
-    self.cdromNames= map( lambda x: x.getName(), self.cdroms )
-    for rootDir in rootDirs:
+    self.cdromNames= [ x.getName() for x in self.cdroms ]
+    for rootDir in self.rootDirs:
       res.append( self.addFile( None, rootDir, 1 ))
-    
-    pycdda.init()
     
     return res
   
@@ -187,21 +353,30 @@ class FileCache:
     """
       Returns dummy file when file cannot be opened.
     """
-    return { 'name': filePath, 'isDir': 0, 'root': None, 'parent': None }
+    return { TITLE_KEY: translate( filePath ),
+             NAME_KEY: translate( filePath ),
+             DIR_KEY: 0,
+             ROOT_KEY: None,
+             PARENT_KEY: None,
+             PROCESSED_KEY: 0 }
   
   # ---------------------------------------------------
   def getExtension( self, file ):
     """
       Return file extension
     """
-    s= str.split( file[ 'name' ], '.' )
-    return string.lower( s[ -1 ] )
+    if file.has_key( CDDA_KEY ):
+      return CDDA_EXT
+    
+    s= file[ NAME_KEY ].split( '.' )
+    return s[ -1 ].lower()
   
   # ---------------------------------------------------
   def getFile( self, filePath, parent= None ):
     """
       Return the file from the internal list of files. If does not exists- return None.
     """
+    filePath= translate( filePath )
     if parent== None:
       # No parent, find by name only
       if filePath in self.rootDirs:
@@ -209,17 +384,18 @@ class FileCache:
       
       path, fileName= os.path.split( filePath )
       if fileName== '' and path not in self.rootDirs:
-        raise 'Wrong file name %s. Cannot find the root for it.' % filePath
+        raise CacheException( 'Wrong file name %s. Cannot find the root for it.' % filePath )
       
       parent= self.getFile( path )
     else:
       fileName= filePath
       
-    children= map( lambda x: x[ 'name' ], parent[ 'children' ] )
+    fileName= translate( fileName )
+    children= [ x[ NAME_KEY ] for x in parent[ CHILDREN_KEY ] ]
     if fileName in children:
-      return parent[ 'children' ][ children.index( fileName ) ]
+      return parent[ CHILDREN_KEY ][ children.index( fileName ) ]
     
-    raise 'No file %s in folder %s' % ( str( filePath ), str( self.getPathName( parent )) )
+    raise CacheException( 'No file %s in folder %s' % ( str( filePath ), str( self.getPathName( parent )) ) )
   
   # ---------------------------------------------------
   # params is a ( file )
@@ -228,27 +404,24 @@ class FileCache:
       Background check for a file type. If it is cdda audio, just set the isAudio parameter.
     """
     file= params[ 0 ]
-    #file[ 'device' ].init()
-    #tracks= map( lambda x: file[ 'device' ].get_track_audio( x ), range( file[ 'device' ].get_numtracks() ))
-    #file[ 'device' ].quit()
     if file[ 'device' ].isReady():
       # The device is ready, try to read files from it
+      # file[ 'isAudio' ]= file[ 'device' ].isAudio()
       s= os.popen( 'dir /S /N "%s"' % self.getPathName( file ) ).readlines()
-      file[ 'isAudio' ]= ( string.strip( s[ 0 ][ 19: ] )== 'is Audio CD' )
-    else:
-      file[ 'isAudio' ]= 0
+      if string.strip( s[ 0 ][ 19: ] )== 'is Audio CD':
+        file[ CDDA_KEY ]= 1
   
   # ---------------------------------------------------
   def delFile( self, filePath, parent= None ):
     """
       Delete file from the cache. Free up all the resources it occupies.
     """
-    global cache
+    filePath= translate( filePath )
     file= self.getFile( filePath, parent )
     if file:
       # Remove its children
       try:
-        children= file[ 'children' ]
+        children= file[ CHILDREN_KEY ]
         for child in children:
           self.delFile( cache.getPathName( child ), file )
       except:
@@ -256,14 +429,15 @@ class FileCache:
         pass
     
     # Remove parent's reference
-    parent= file[ 'parent' ]
+    parent= file[ PARENT_KEY ]
     if parent!= None:
       # Should have children
-      children= parent[ 'children' ]
+      children= parent[ CHILDREN_KEY ]
       for i in xrange( len( children )):
-        if children[ i ][ 'name' ]== file[ 'name' ]:
+        if children[ i ][ NAME_KEY ]== file[ NAME_KEY ]:
           break
       
+      # Remove cached object
       del children[ i ]
   
   # ---------------------------------------------------
@@ -272,6 +446,7 @@ class FileCache:
       Add new file to the cache or return existing one.
     """
     global eventQueue
+    filePath= translate( filePath )
     # Verify whether file already exists
     try:
       fileObj= self.getFile( filePath, parent )
@@ -285,7 +460,7 @@ class FileCache:
       # Process root
       parentPath, fileName= os.path.split( filePath )
       if filePath in self.rootDirs:
-        file= { 'name': translate( fileName ), 'isDir': isDir, 'root': filePath, 'parent': None }
+        file= { TITLE_KEY: fileName, NAME_KEY: fileName, DIR_KEY: isDir, ROOT_KEY: filePath, PARENT_KEY: None, PROCESSED_KEY: 0 }
         if filePath in self.cdromNames:
           print 'Removable ', filePath
           # Set properties to the new file in a cache
@@ -298,13 +473,13 @@ class FileCache:
       
       # Verify the file can be added and exists under the root dir
       if fileName== '':
-        raise 'The folder %s cannot be cached unless it is a root. Check your file name.' % filePath
+        raise CacheException( 'The file or folder "%s" cannot be cached. It does not belong to the root tree. Check your file name.' % parentPath )
       
       # Get parent for the current file
       parent= self.addFile( None, parentPath, 1 )
     
     # Create new file
-    file= { 'name': fileName, 'isDir': isDir, 'parent': parent }
+    file= { TITLE_KEY: fileName, NAME_KEY: fileName, DIR_KEY: isDir, PARENT_KEY: parent, PROCESSED_KEY: 0 }
     
     # Add child to the parent
     self.addChild( parent, file, order )
@@ -317,12 +492,12 @@ class FileCache:
     """
     # Assume the parent is a dir, otherwise raise an exception
     try:
-      childrenList= parent[ 'children' ]
+      childrenList= parent[ CHILDREN_KEY ]
     except:
       childrenList= []
-      parent[ 'children' ]= childrenList
+      parent[ CHILDREN_KEY ]= childrenList
     
-    if child[ 'name' ] not in map( lambda x: x[ 'name' ], filter( lambda x: x!= None, childrenList )):
+    if child[ NAME_KEY ] not in [ x[ NAME_KEY ] for x in filter( lambda x: x!= None, childrenList )]:
       # Verify the order. If set, use it
       if order== -1:
         childrenList.append( child )
@@ -337,23 +512,19 @@ class FileCache:
     """
       Return list of children for the file or None if not exists.
     """
-    try:
-      return file[ 'children' ]
-    except:
-      return None
+    try: return file[ CHILDREN_KEY ]
+    except: return None
   
   # ---------------------------------------------------
   def getPathName( self, file ):
     """
       Return full path name to a file
     """
-    if file[ 'parent' ]== None:
-      if file[ 'root' ]:
-        return file[ 'root' ]
-      else:
-        return file[ 'name' ]
-    
-    return os.path.join( self.getPathName( file[ 'parent' ] ), file[ 'name' ] )
+    if file[ PARENT_KEY ]== None:
+      if file[ ROOT_KEY ]: return file[ ROOT_KEY ]
+      else: return file[ NAME_KEY ]
+      
+    return os.path.join( self.getPathName( file[ PARENT_KEY ] ), file[ NAME_KEY ] )
   
   # ---------------------------------------------------
   def setProperty( self, file, propName, propValue ):
@@ -376,137 +547,83 @@ class FileCache:
       It may be opened as regular file or cached file.
     """
     # Just return a file object when no caching is needed
-    global eventQueue
     if noCache== 1:
       return open( self.getPathName( file ), 'rb' )
     
-    try:
-      # Verify we have cache already
-      f= file[ 'object' ]
-      f.open()
-    except:
-      f= CachedFile( self, file )
-      f1= None
-      if not file.has_key( 'isCDDA' ):
-        try:
-          # Try to open the file first
-          f1= open( self.getPathName( file ), 'rb' )
-        except:
-          traceback.print_exc()
-          
-          if file.has_key( 'processing' ):
-            file[ 'title' ]= MISSING+ file[ 'name' ]
-          
-          return None
-      
-      # Submit read for the file
+    # Verify if we have cache already
+    try: f= file[ 'object' ]
+    except: f= CachedFile( file )
+    
+    f= f.open()
+    # Place accessed file in the beginning of the LRU list
+    if f:
+      try: self.lruList.remove( f )
+      except: pass
+      self.lruList.append( f )
       file[ 'object' ]= f
-      f.open()
-      eventQueue.put( ( 'EXECUTE', self._readFile, file, f1 ) )
     
     return f
 
   # ---------------------------------------------------
-  def cleanUpLRU( self ):
+  def allocate( self, size ):
+    """
+    """
+    self.totalSize+= size
+  
+  # ---------------------------------------------------
+  def deallocate( self, size ):
+    """
+    """
+    self.totalSize-= size
+    
+  # ---------------------------------------------------
+  def canAllocate( self, size ):
+    """
+      Return whether cache can allocate needed amount of memory
+    """
+    return ( self.totalSize+ size ) < self.cacheSize
+    
+  # ---------------------------------------------------
+  def releaseFileCache( self, file, size= 0 ):
+    """
+      Release cache file
+    """
+    removed= file.release( size )
+    if file.getCachedSize()== 0:
+      try:
+        del( self.lruList[ self.lruList.index( file ) ] )
+        #print 'File released...'
+      except: print 'File not released...'; pass;
+      del file.getFile()[ 'object' ]
+    
+    return removed
+    
+  # ---------------------------------------------------
+  def cleanUpLRU( self, size= 0 ):
     """
       Cleanup LRU lists to free up some space if needed.
     """
     # See if total size exceeds the allowed size, remove some file from the cache
-    totalRemoved= 0
-    while self.totalSize> self.cacheSize and len( self.lruList )> 0:
-      if len( self.lruList )> 0:
-        f1= self.lruList[ 0 ]
-        self.totalSize-= f1.getSize()
-        totalRemoved+= f1.getSize()
-        f1.release()
-        del self.lruList[ 0 ]
+    #print self.totalSize, size, self.cacheSize
+    while ( self.totalSize+ size )> self.cacheSize and len( self.lruList )> 0:
+      if self.releaseFileCache( self.lruList[ 0 ], size )== 0:
+        break
     
-    return totalRemoved
-  
-  # ---------------------------------------------------
-  def readOSFile( self, fileObj, f ):
-    """
-      Start reading file from the filesystem into the cache.
-      Each file is read by even chunks with default CHUNK_SIZE size.
-    """
-    s= ' '
-    while len( s ):
-      try:
-        # Read the whole file into the cache
-        s= f.read( CHUNK_SIZE )
-      except:
-        traceback.print_exc()
-        return 0
-      
-      if len( s )> 0:
-        fileObj._appendChunk( s )
-      
-      # Exit immediately if file is closed
-      if fileObj.isClosed():
-        return 0 
-      
-      # Let other processes run
-      time.sleep( .001 )
-    
-    return 1
-  
-  # ---------------------------------------------------
-  def _readFile( self, param ):
-    """
-      Background file read. Supports for 2 type of files: _raw_ and standard.
-      When raw mode enabled it read data directly from the device without using OS's file objects.
-    """
-    file, f= param
-    bytesRead= 0
-    fileObj= self.getProperty( file, 'object' )
-    
-    # Whether current file is an audio file
-    if file.has_key( 'isCDDA' ):
-      sectors= file[ 'sectors' ]
-      iFrom= sectors[ 0 ]
-      iTo= sectors[ 0 ]+ sectors[ 1 ]- 1
-      for i in xrange( iFrom, iTo, SECTORS_PER_READ ):
-        try:
-          if i+ SECTORS_PER_READ> iTo:
-            s= file[ 'device' ].read( i, iTo )
-          else:
-            s= file[ 'device' ].read( i, i+ SECTORS_PER_READ )
-        except:
-          traceback.print_exc()
-          fileObj.release()
-          return
-        
-        # Exit immediately if file is closed
-        if fileObj.isClosed():
-          fileObj.release()
-          return
-        
-        fileObj._appendChunk( s )
-        # Let other processes run
-        time.sleep( .001 )
-    else:
-      # Process file
-      try:
-        if self.readOSFile( fileObj, f )== 0:
-          fileObj.release()
-          return
-      finally:
-        # Close physical file
-        f.close()
-    # 
-    self.totalSize+= fileObj.getSize()
-    self.cleanUpLRU()
-    
-    # Add to the lru list
-    self.lruList.append( fileObj )
-    fileObj._setComplete()
-  
+    return ( self.totalSize+ size )<= self.cacheSize
+
+cache= FileCache()
+
 # **********************************************************************************************
-# test scripts  
+# test scripts
 # **********************************************************************************************
 if __name__ == "__main__":
   import traceback, time
-  eventQueue= Queue.Queue()
+  pycdda.init()
+  urgentEventQueue= Queue.Queue()
+
+  # -------------------------------------
+  def translate( s ):
+    return s
   
   # Start queue processor
   # -------------------------------------
@@ -526,12 +643,13 @@ if __name__ == "__main__":
   
   # -------------------------------------
   def fileCacheTest():
-    ROOT= ( 'c:\\bors', 'c:\\temp', 'd:\\' )
-    cache= FileCache()
+    global cache
+    ROOT= ( 'c:\\music', 'c:\\temp', 'd:\\' )
     cache.setRoot( ROOT )
+    cache.setCacheSize( 20000000 )
     
     # This call should succeed and should create 4 entries in a cache
-    file= 'c:\\bors\\music\\Neil Landstrumm\\Pro Audio\\Down On E.mp3'
+    file= 'c:\\music\\ftv2.mp2'
     print 'Add file %s to the empty hierarchy' % file, '->',
     try:
       f= cache.addFile( None, file, 0 )
@@ -552,7 +670,7 @@ if __name__ == "__main__":
       print 'succeeded'
     
     # This call should succeed
-    file= 'c:\\bors'
+    file= 'c:\\music'
     print 'Get root folder %s should succeed' % file, '->',
     try:
       print cache.getFile( file )
@@ -562,7 +680,7 @@ if __name__ == "__main__":
       print 'failed'
     
     # This call should succeed
-    file= 'c:\\bors\\music\\Neil Landstrumm\\Pro Audio\\Down On E.mp3'
+    file= 'c:\\music\\ftv2.mp2'
     print 'Get folder %s should succeed' % file, '->',
     try:
       f= cache.getFile( file )
@@ -593,7 +711,7 @@ if __name__ == "__main__":
       print 'failed'
       
     # This call should succeed and should create 4 entries in a cache
-    file= 'c:\\bors\\music'
+    file= 'c:\\music'
     print 'Try to remove folder %s' % file, '->',
     try:
       cache.delFile( file )
@@ -602,53 +720,40 @@ if __name__ == "__main__":
       traceback.print_exc()
       print 'failed'
     
-    # This call should succeed
-    file= 'c:\\bors\\music\\Neil Landstrumm\\Pro Audio\\Down On E.mp3'
-    print 'Get folder %s should not succeed' % file, '->',
-    try:
-      f= cache.getFile( file )
-      print f
-      print 'failed'
-    except:
-      traceback.print_exc()
-      print 'succeeded'
+  try:
+    thread= threading.Thread( target= bgExecutor, args= ( urgentEventQueue, ) )
+    thread.start()
+    
+    fileCacheTest()
+    f= cache.getFile( 'd:\\' )
+    time.sleep( 0.5 )
+    print 'Root removable ', f
+    
+    # Verify file cache for read
+    fileName= 'c:\\music\\ftv2.mp2'
+    print 'Try to read file %s from a cache ' % fileName
+    file= cache.getFile( fileName )
+    f= cache.open( file )
+    # Get timing for the first read
+    t1= time.time()
+    totRead= 0
+    s= ' '
+    while len( s ):
+      s= f.read( 200000 )
+      totRead+= len( s )
+    
+    print 'Total read %d bytes out of %d in %f secs' % ( totRead, f.getSize(), time.time()- t1 )
       
-    file= 'c:\\bors\\music\\Neil Landstrumm\\Pro Audio\\Down On E.mp3'
-    f= cache.addFile( None, file, 0 )
+    # Get timing for the second read
+    t1= time.time()
+    s= ' '
+    totRead= 0
+    f= cache.open( file )
+    while len( s ):
+      s= f.read( 200000 )
+      totRead+= len( s )
     
-    return cache
-  
-  thread= threading.Thread( target= bgExecutor, args= ( eventQueue, ) )
-  thread.start()
-  
-  cache= fileCacheTest()
-  f= cache.getFile( 'd:\\' )
-  time.sleep( 0.5 )
-  print 'Root removable ', f
-  
-  # Verify file cache for read
-  fileName= 'c:\\bors\\music\\Neil Landstrumm\\Pro Audio\\Down On E.mp3'
-  file= cache.getFile( fileName )
-  f= cache.open( file )
-  # Get timing for the first read
-  t1= time.time()
-  totRead= 0
-  s= ' '
-  while len( s ):
-    s= f.read( 200000 )
-    totRead+= len( s )
-  
-  print 'Total read %d bytes out of %d in %f secs' % ( totRead, f.getSize(), time.time()- t1 )
-    
-  # Get timing for the second read
-  t1= time.time()
-  s= ' '
-  totRead= 0
-  f= cache.open( file )
-  while len( s ):
-    s= f.read( 200000 )
-    totRead+= len( s )
-  
-  print 'Total cache read %d bytes out of %d in %f secs' % ( totRead, f.getSize(), time.time()- t1 )
-  eventQueue.put( ( 'STOP', ) )
-  
+    print 'Total cache read %d bytes out of %d in %f secs' % ( totRead, f.getSize(), time.time()- t1 )
+  finally:
+    urgentEventQueue.put( ( 'STOP', ) )
+
