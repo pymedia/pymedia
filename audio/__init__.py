@@ -15,7 +15,7 @@
 ##    License along with this library; if not, write to the Free
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
-__all__ = [ 'aaudio', 'player', 'cddb', 'cache', 'actions', 'pycdda', 'pympg', 'pysound' ]
+__all__ = [ 'aaudio', 'player', 'cddb', 'cache', 'pycdda', 'pympg', 'pysound' ]
 
 import pycdda, pympg, pysound
 
@@ -23,6 +23,5 @@ from aaudio import *
 from aplayer import *
 from cddb import *
 from cache import *
-from actions import *
 
 __version__= "1.0.0.0"
