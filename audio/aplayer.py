@@ -499,6 +499,7 @@ class Player:
     self.fileChanged= 0
     self.currentFile= -1
     self.iFreqRate= -1
+    self.channels= -1
     self.paused= 0
     
     self.thread= threading.Thread( target= self.readerLoop )
@@ -706,7 +707,7 @@ class Player:
           if pysound.getChunkNum()== -1:
             self.stopFlag= 1
           
-          time.sleep( 0.001 )
+          time.sleep( 0.1 )
           continue
       
       # Process data from the file into pcm
@@ -721,6 +722,7 @@ class Player:
           
           processedChunk= unprocessedChunk
           self.iFreqRate= 44100
+          self.channels= 2
         else:
           try:
             unprocessedChunk= f.read( BUFFER_LENGTH )
@@ -729,15 +731,15 @@ class Player:
             playlistFile= None
           
           if len( unprocessedChunk )> 0:
-            kbPerSec, self.iFreqRate, sampleRate, channels, processedChunk= dec.convert2PCM( unprocessedChunk )
+            kbPerSec, self.iFreqRate, sampleRate, self.channels, processedChunk= dec.convert2PCM( unprocessedChunk )
             f.getFile()[ 'bitrate' ]= kbPerSec
         
-        if pysound.getRate()!= self.iFreqRate:
+        if pysound.getRate()!= self.iFreqRate or pysound.getChannels()!= self.channels:
           pysound.stop()
           pysound.close()
         
         if pysound.isOpen()== 0:
-          pysound.open( self.iFreqRate, 1 )
+          pysound.open( self.iFreqRate, self.channels )
       else:
         try:
           # Commit chunk for playing
