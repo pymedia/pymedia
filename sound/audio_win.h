@@ -812,12 +812,14 @@ public:
 	float Play(unsigned char *buf,int len)
 	{
 		// Try to fit chunk in remaining buffers
+//printf( ">\n" );
 		while( len> 0 )
 		{
 			WaitForSingleObject( this->hSem, INFINITE );
 			int i= this->iProcessed % MAX_HEADERS;
 			int l= ( len> BUFFER_SIZE ) ? BUFFER_SIZE: len;
 
+//printf( "!\n" );
 			EnterCriticalSection( &this->cs );
 			memcpy( this->headers[ i ].lpData, buf, l );
 			this->headers[ i ].dwBufferLength = l;
@@ -831,12 +833,15 @@ public:
 				return -1;
 			}
 
+//printf( ".\n" );
 			EnterCriticalSection( &this->cs );
 			this->iProcessed++;
 			this->iBuffers++;
 			LeaveCriticalSection( &this->cs );
 		}
-		this->GetPosition();
+//printf( ">\n" );
+//		this->GetPosition();
+//printf( "!\n" );
 		return (float)0;
 	}
 
@@ -868,10 +873,15 @@ public:
 
 		stTime.wType= TIME_MS;
 		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		f1= this->headers[ ( this->iProcessed-this->iBuffers) % MAX_HEADERS ].dwBufferLength / ((float)( 2* this->iChannels ));
+		f1= this->headers[ ( this->iProcessed-this->iBuffers) % MAX_HEADERS ].dwBufferLength / ((float)(2* this->iChannels));
 		return f+ ( f1+ this->iCurrentBufferPos- (float)stTime.u.ms )/ this->iRate;
 	}
-
+	// ---------------------------------------------------------------------------------------------------
+	int GetSpace()
+	{
+		// We have fixed number of buffers, just get the size of it
+		return ( MAX_HEADERS- this->iBuffers- 1 )* BUFFER_SIZE;
+	}
 };
 
 

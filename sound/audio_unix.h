@@ -230,7 +230,7 @@ private:
     if (fcntl(dev, F_SETFL, 0) == -1)
 		{
 			this->iErr= errno;
-			sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SET_BlOCK");
+			sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SET_BLOCK");
 			return -1;
 		}
 
@@ -279,6 +279,7 @@ public:
 		this->iDev= iDev;
 		if( this->Init( rate, channels, format, iDev )== 0 )
 			this->bufsize= this->GetSpace();
+		printf( "bufsize=%d\n", this->bufsize );
 	}
 
 	// ---------------------------------------------------------------------------------------------------
@@ -306,7 +307,7 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	int GetChannels(){ return this->channels;	}
 	// ---------------------------------------------------------------------------------------------------
-	// return: delay in seconds between first and last sample in buffer
+	// return: delay in bytes between first and last sample in buffer
 	float IsPlaying()
 	{
 		int r=0;
@@ -402,7 +403,7 @@ public:
 	// ---------------------------------------------------------------------------------------------------
 	float GetLeft()
 	{
-		return (float)( this->bufsize- this->GetSpace()- this->IsPlaying() )/ ((double)( 2* this->channels* this->rate ));
+		return (float)( this->IsPlaying() )/ ((double)( 2* this->channels* this->rate ));
 	}
 
 	// ---------------------------------------------------------------------------------------------------

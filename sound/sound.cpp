@@ -86,6 +86,7 @@ Here is the simple player for a pcm file\n\
 #define GETRATE_NAME "getRate"
 #define IS_PLAYING_NAME "isPlaying"
 #define GET_LEFT_NAME "getLeft"
+#define GET_SPACE_NAME "getSpace"
 #define GET_SIZE_NAME "getSize"
 #define GET_DATA_NAME "getData"
 #define RESAMPLE_NAME "resample"
@@ -127,6 +128,7 @@ Here is the simple player for a pcm file\n\
 #define GET_DATA_DOC GET_DATA_NAME"() -> data \n\treturns data from the sound device as string.\n"
 #define IS_PLAYING_DOC IS_PLAYING_NAME"() -> {0|1}\n\tWhether sound is playing\n"
 #define GET_LEFT_DOC GET_LEFT_NAME"() -> secs \n\tNumber of seconds left in a buffer to play\n"
+#define GET_SPACE_DOC GET_SPACE_NAME"() -> secs \n\tNumber of seconds left in a buffer to enqueue without blocking\n"
 #define RESAMPLE_DOC RESAMPLE_NAME"( data ) -> data\n\t\tstring with resampled audio samples\n"\
 				"Resamples audio stream from->to certain format."
 #define AS_FREQS_DOC AS_FREQS_NAME"( data ) -> [ ( freqs* ) ]\nList of frequency lists.\nFor every n( given as number of samples ) it returns \n"\
@@ -194,6 +196,7 @@ const char* OUTPUT_DOC=
 		"\n\t"CHANNELS_NAME"()"
 		"\n\t"GETRATE_NAME"()"
 		"\n\t"GET_LEFT_NAME"()"
+		"\n\t"GET_SPACE_NAME"()"
 		"\n\t"IS_PLAYING_NAME"()";
 
 const char* INPUT_DOC=
@@ -538,6 +541,13 @@ Sound_GetLeft( PyOSoundObject* obj)
 }
 
 // ---------------------------------------------------------------------------------
+static PyObject *
+Sound_GetSpace( PyOSoundObject* obj)
+{
+  return PyInt_FromLong( obj->cObj->GetSpace() );
+}
+
+// ---------------------------------------------------------------------------------
 // List of all methods for the mp3decoder
 static PyMethodDef sound_methods[] =
 {
@@ -551,6 +561,7 @@ static PyMethodDef sound_methods[] =
 	{ GETRATE_NAME, (PyCFunction)Sound_GetRate, METH_NOARGS,	GETRATE_DOC	},
 	{ IS_PLAYING_NAME, (PyCFunction)Sound_IsPlaying, METH_NOARGS,	IS_PLAYING_DOC	},
 	{ GET_LEFT_NAME, (PyCFunction)Sound_GetLeft, METH_NOARGS,	GET_LEFT_DOC	},
+	{ GET_SPACE_NAME, (PyCFunction)Sound_GetSpace, METH_NOARGS,	GET_SPACE_DOC	},
 	{ NULL, NULL },
 };
 
@@ -1455,12 +1466,12 @@ playFile( 'c:\\Bors\\hmedia\\pympg\\test_1_320.pcm', 44100 )
 import pymedia.audio.sound as sound, time
 snd1= sound.Output( 44100, 2, 0x10 )
 f= open( 'c:\\music\\roots.pcm', 'rb' )
-s= f.read( 399983 )
+s= f.read( 399900 )
 snd1.play( s )
-snd1= None
+#snd1= None
 while snd1.isPlaying():
   time.sleep(.001)
-  print snd1.getLeft(),
+  print '/%.2f %.2f' % ( snd1.getLeft(), snd1.getSpace() ),
 
 
 
