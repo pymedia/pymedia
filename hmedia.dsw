@@ -1,0 +1,242 @@
+Microsoft Developer Studio Workspace File, Format Version 6.00
+# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
+
+###############################################################################
+
+Project: "acodec"=.\audio\acodec.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name acodec_lib
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name aformat_lib
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name ogg_static
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vorbis_static
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name libfaad
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "acodec_lib"=.\audio\acodec_lib.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "aformat_lib"=.\audio\aformat_lib.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "ffplay"=.\tests\ffplay\ffplay.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name libavformat
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vcodec_lib
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "libavcodectest"=.\TESTS\libavcodectest\libavcodectest.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "libavformat"=.\tests\ffplay\libavformat\libavformat.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "libfaad"=.\libfaad2\libfaad\libfaad.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "muxer"=.\VIDEO\muxer.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vformat_lib
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "muxer_test"=.\TESTS\muxer_test\muxer_test.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vformat_lib
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vcodec_lib
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "ogg_static"=".\libogg-1.0\win32\ogg_static.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "pycdda"=.\cd\pycdda.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "sound"=.\sound\sound.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "vcodec"=.\VIDEO\vcodec.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vcodec_lib
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "vcodec_lib"=.\VIDEO\vcodec_lib.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "vformat_lib"=.\video\vformat_lib.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "vorbis_static"=".\libvorbis-1.0\win32\vorbis_static.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Global:
+
+Package=<5>
+{{{
+}}}
+
+Package=<3>
+{{{
+}}}
+
+###############################################################################
+
