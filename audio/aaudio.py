@@ -1,4 +1,4 @@
-##    audio - Part of the homedia package. Audio module supporting utilities.
+##    audio - Part of the pymedia package. Audio module supporting utilities.
 ##        Processes audio files and provides some rendering services
 ##    
 ##    Copyright (C) 2002-2003  Dmitry Borisov
@@ -120,6 +120,7 @@ def addToPlayList( files, filter, recursive ):
   if files== None:
     return
   
+  plAdd= player.getPlayList()[ 0 ].addFile
   for file in files:
     if file[ 'isDir' ]:
       if recursive:
@@ -132,7 +133,7 @@ def addToPlayList( files, filter, recursive ):
         
         addToPlayList( children, filter, recursive )
     else:
-      player.getPlayList()[ 0 ].addFile( file )
+      plAdd( file )
       if player.isPlaying()== 0:
         player.setCurrentFileIndex( player.getPlayList()[ 0 ].getFilesCount()- 1 )
         player.startPlayback()
