@@ -15,6 +15,12 @@
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 
+"""PyMedia is a set of Python modules designed for writing media centers.
+It uses pygame as a lower level for representing the visual information.
+It provides with the complete framework for building menu driven inetrfaces. 
+Some of the classes allows you to define your own behaviors and configuration files.
+"""
+
 __all__= [ 'pypower', 'menu' ]
 import pypower, menu, parser
 

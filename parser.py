@@ -23,10 +23,11 @@ from __main__ import *
 from pymedia import *
 
 # ****************************************************************************************************
-# Base class that gives some basic conversion functions to all elements
 class NodeElement:
+  """
+    Base class that gives some basic conversion functions to all elements  
+  """
   # -----------------------------------------------------------------
-  # Constructor
   def __init__( self, node ):
     self.node= node
     self.params= self.getAttributes( self.node )
@@ -162,8 +163,10 @@ class NodeElement:
               target[ obj.params[ 'id' ] ]= obj.load()
 
 # ****************************************************************************************************
-# Class that processes application node in config file
 class appElement( NodeElement ):
+  """
+    Class that processes app node in config file  
+  """
   # -----------------------------------------------------------------
   def __init__( self, node ):
     NodeElement.__init__( self, node )
@@ -176,6 +179,9 @@ class appElement( NodeElement ):
 # ****************************************************************************************************
 # Class that creates area definition based on content of current node
 class areaElement( NodeElement ):
+  """
+    Class that processes area node in the config file  
+  """
   # -----------------------------------------------------------------
   def __init__( self, node ):
     NodeElement.__init__( self, node )
@@ -203,6 +209,9 @@ class areaElement( NodeElement ):
 # ****************************************************************************************************
 # Class that creates area definition based on content of current node
 class menuElement( NodeElement ):
+  """
+    Class that processes menu node in the config file  
+  """
   # -----------------------------------------------------------------
   def __init__( self, node ):
     NodeElement.__init__( self, node )
@@ -239,8 +248,15 @@ class menuElement( NodeElement ):
 # ****************************************************************************************************
 # Class that processes application node in config file
 class moduleElement( NodeElement ):
+  """
+    Class that processes module node in the config file  
+  """
   # -----------------------------------------------------------------
   def __init__( self, node ):
+    """
+      Complex constructor for the module element.
+      Imports needed modules and puts them into the __main__ context.
+    """
     global currentModule
     params= self.getAttributes( node )
     self.node= self.loadXMLFile( params[ 'file' ] )
@@ -265,6 +281,11 @@ class moduleElement( NodeElement ):
   
   # -----------------------------------------------------------------
   def execute( self, action ):
+    """
+      Execute action on the module level.
+      Looks up into the actions parameter to get the file name where all
+      actions are defined. If the action is not found, just ignore it.
+    """
     from __main__ import *
     params= self.params[ 'params' ]
     # Get actions variable
@@ -277,12 +298,22 @@ class moduleElement( NodeElement ):
     
   # -----------------------------------------------------------------
   def load( self ):
+    """
+      Load module into the memory.
+      basically just executes onLoad action.
+    """
     print 'Load module:', self.params[ 'id' ]
     self.execute( 'onLoad' )
     return self
   
   # -----------------------------------------------------------------
   def unload( self ):
+    """
+      Unload module from the memory.
+      Basically just executes onUnLoad action.
+      onUnLoad action should clean up everything that were allocated and
+      stop any playing devices
+    """
     print 'Unload module:', self.params[ 'id' ]
     self.execute( 'onUnLoad' )
     params= self.params[ 'params' ]
@@ -290,6 +321,9 @@ class moduleElement( NodeElement ):
 # ****************************************************************************************************
 # Class that directs root elements in config file to the right place
 class ConfigElement( NodeElement ):
+  """
+    Class that processes root node of the config file
+  """
   # -----------------------------------------------------------------
   def __init__( self ):
     global currentModule
@@ -307,6 +341,10 @@ class ConfigElement( NodeElement ):
   
   # -----------------------------------------------------------------
   def parseFile( self, fileName ):
+    """
+      Main entry for the parsing.
+      Start from the very first child( should be app element )
+    """
     f= self.loadXMLFile( fileName )
     self.parse( f[ 2 ] )
 
