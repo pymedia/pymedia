@@ -24,12 +24,121 @@ import os, Queue, threading, string, traceback, time
 import pygame
 from __main__ import *
 
-DEFAULT_FONT= 'arialn'
-DEFAULT_FONT_SIZE= 20
-DEFAULT_FONT_COLOR= ( 255, 255, 255 )
+DEFAULT_FONT= 'Default'
+DEFAULT_FONT_NAME= 'arialn'
+DEFAULT_FONT_SIZE= '20'
+DEFAULT_FONT_COLOR= '255, 255, 255'
+STRIPE_DEFAULT_COLOR= ( 95,166,76)
+DEFAULT_ALPHA= 255
+DEFAULT_FONT_ALPHA= '255'
+FONT_DIR= 'icons/'
 LEFT_C= (0,0)
-EMPTY= 0
+EMPTY_MESSAGE= 'This folder is empty'
 NAV_ICONS= ( 'down_0.gif', 'up_0.gif' )
+CENTER=0
+LEFT=1
+RIGHT=2
+
+# -----------------------------------------------------------------
+def drawText( font, text ):
+  text1= font[ 0 ].render( text, 1, font[ 1 ] )
+  if font[ 3 ]:
+    text= font[ 0 ].render( text, 1, font[ 3 ] )
+    text.blit( text1, font[ 4 ] )
+    text1= text
+  
+  if font[ 2 ]!= 255:
+    text1.set_alpha( font[ 2 ] )
+  return text1
+
+# -----------------------------------------------------------------
+def alignSurface( parent, surf, x, y ):
+  if x== CENTER:
+    newX= ( parent[ 0 ]- surf[ 0 ] )/ 2
+  if x== LEFT:
+    newX= 0
+  if x== RIGHT:
+    newX= parent[ 0 ]- surf[ 0 ]
+  if y== CENTER:
+    newY= ( parent[ 1 ]- surf[ 1 ] )/ 2
+  if y== LEFT:
+    newY= 0
+  if y== RIGHT:
+    newY= parent[ 1 ]- surf[ 1 ]
+  return ( newX, newY )
+
+# -----------------------------------------------------------------
+# Freevo rulez. We can't do any better, but we'll try
+def drawCircle(s, color, pos, radius):
+    """
+    draws a circle to the surface s and fixes the borders
+    pygame.draw.circle has a bug: there are some pixels where
+    they don't belong. This function stores the values and
+    restores them
+    """
+    def getAt( pos ):
+      try: return s.get_at( pos )
+      except: return None
+    
+    def setAt( pos, color ):
+      if color:
+        s.set_at( pos, color )
+    
+    x, y= pos
+    p1 = [ getAt( ( z, y-radius-1 )) for z in xrange( x- 1, x+ 2 ) ]
+    p2 = [ getAt( ( z, y+radius )) for z in xrange( x- 1, x+ 2 ) ]
+    pygame.draw.circle(s, color, pos, radius)
+    [ setAt( ( z, y-radius-1 ), p1[ z- x+ 1 ]) for z in xrange( x- 1, x+ 2 ) ]
+    [ setAt( ( z, y+radius ), p2[ z- x+ 1 ]) for z in xrange( x- 1, x+ 2 ) ]
+
+# -----------------------------------------------------------------
+def drawRoundedBox( size, color, alpha, borderSize= 0, borderColor= None, radius= 0 ):
+  surf= pygame.Surface( size, pygame.SRCALPHA )
+  surf.fill( (0,0,0) )
+  surf.set_colorkey( (0,0,0) )
+  
+  x,y= 0,0
+  w,h= size
+  if borderColor== None: borderColor= color
+  while 1:
+    if radius >= 1:
+      drawCircle( surf, borderColor, ( x+ radius, y+ radius ), radius)
+      drawCircle( surf, borderColor, ( x+ w- radius, y+ radius ), radius)
+      drawCircle( surf, borderColor, ( x+ radius, y+ h-radius ), radius)
+      drawCircle( surf, borderColor, ( x+ w-radius, y+ h-radius ), radius)
+      pygame.draw.rect(surf, borderColor, (x+ radius, y, w-2*radius, h))
+    pygame.draw.rect(surf, borderColor, (x, y+radius, w, h-2*radius))
+    
+    x += borderSize
+    y += borderSize
+    h -= 2* borderSize
+    w -= 2* borderSize
+    radius -= borderSize
+    if borderSize== 0:
+      break
+    borderSize= 0
+    borderColor= color
+  
+  if alpha!= 255:
+    surf.set_alpha( alpha )
+  
+  return surf
+
+# -----------------------------------------------------------------
+def clipIcon( icons, size ):
+  """
+    Clip all icons in a list to a size passed
+  """
+  res= []
+  for icon in icons:
+    size1= [ size[ 0 ]- icon[ 1 ][ 0 ], size[ 1 ]- icon[ 1 ][ 1 ] ]
+    if size1[ 0 ]> icon[ 0 ].get_width():
+      size1[ 0 ]= icon[ 0 ].get_width()
+    if size1[ 1 ]> icon[ 0 ].get_height():
+      size1[ 1 ]= icon[ 0 ].get_height()
+    res+= [ ( icon[ 0 ].subsurface( LEFT_C+ tuple(size1) ), icon[ 1 ] ) ]
+  return res
+
 
 # ****************************************************************************************************
 # Generic class to support menu items rendering
@@ -44,6 +153,8 @@ class MenuHelper:
     self.params= params[ 'params' ]
     self.parentParams= params
     self.changed= 1
+    self.font= self.loadFont( 'font' )
+    self.alpha= self.getParam( 'alpha', DEFAULT_ALPHA )
   
   # -----------------------------------------------------------------
   # Return item size 
@@ -94,16 +205,18 @@ class MenuHelper:
   
   # -----------------------------------------------------------------
   def loadFont( self, paramName ):
-    fontName= self.getParam( paramName, DEFAULT_FONT )
-    fontSize= self.getParam( paramName+ 'Size', DEFAULT_FONT_SIZE )
-    #font= pygame.font.SysFont( fontName, int( fontSize ) )
-    font= pygame.font.Font( 'icons/'+ fontName+ '.ttf', int( fontSize ) )
-    if self.getParam( paramName+ 'Bold', 'no' )== 'yes':
-      font.set_bold( 1 )
+    font= fontDefs[ self.getParam( paramName, DEFAULT_FONT ) ]
+    fontName= font.getParam( 'name', DEFAULT_FONT_NAME )
+    size= font.getParam( 'size', DEFAULT_FONT_SIZE )
+    alpha= int( font.getParam( 'alpha', DEFAULT_FONT_ALPHA ) )
+    color= eval( font.getParam( 'color', DEFAULT_FONT_COLOR ) )
+    shadow= eval( font.getParam( 'shadow', 'None' ) )
+    shadowOffset= eval( font.getParam( 'offset', '-1,-1' ) )
+    fontObj= pygame.font.Font( FONT_DIR+ fontName+ '.ttf', int( size ) )
+    if font.getParam( 'bold', 'no' )== 'yes':
+      fontObj.set_bold( 1 )
     
-    fontColor= self.getParamList( paramName+ 'Color', DEFAULT_FONT_COLOR )
-    
-    return font, fontColor
+    return fontObj, color, alpha, shadow, shadowOffset
   
   # -----------------------------------------------------------------
   def loadIcon( self, paramName, default, alpha= -1 ):
@@ -157,28 +270,28 @@ class MenuItem( MenuHelper ):
     MenuHelper.__init__( self, rect, params )
     
     # Create font based on param passed
-    self.font= self.loadFont( 'font' )
     self.itemSize= ( rect[ 2 ], self.font[ 0 ].get_height() )
     self.itemsWrapper= None
     
     # Scale default stripe
-    self.stripeIcon= pygame.Surface( self.itemSize )
-    col= self.getParam( 'stripeColor', ( 95,166,76) )
-    self.stripeIcon.fill( col )
-    self.stripeIcon.set_alpha( 190 )
+    self.stripeIcon= drawRoundedBox(
+      size= self.itemSize,
+      color= eval( self.getParam( 'stripeColor', STRIPE_DEFAULT_COLOR )), 
+      alpha= 200,
+      radius= 8,
+      borderColor= (87,110,97),
+      borderSize= 2)
   
   # -----------------------------------------------------------------
   def drawItem( self, itemPos, isFocused ):
     item= self.itemsWrapper.items()[ itemPos ]
     # Find out whether it is a directory or file
-    text1= self.font[ 0 ].render( item[ 'caption' ], 1 , self.font[ 1 ] )
-    text= self.font[ 0 ].render( item[ 'caption' ], 1 , (0,0,0) )
-    text.blit( text1, (-1,-1))
-    
+    text= drawText( self.font, item[ 'caption' ] )
+
     # Center text into rect
-    resItem= []
     if isFocused== 1:
-      resItem.append( ( self.stripeIcon, LEFT_C ) )
+      resItem= [( self.stripeIcon, LEFT_C )]
+    else: resItem= []
     
     resItem.append( ( text, ( 10, self.font[ 0 ].get_linesize()- self.font[ 0 ].get_height() ) ) )
     return resItem
@@ -246,7 +359,9 @@ class GenericDisplay( MenuHelper ):
     
   # -----------------------------------------------------------------
   def hasChanged( self ):
-    return MenuHelper.hasChanged( self ) or ( self.getRenderer() and self.getRenderer().hasChanged() )
+    return \
+      MenuHelper.hasChanged( self ) or \
+      ( self.getRenderer() and self.getRenderer().hasChanged() )
 
 # ****************************************************************************************
 class BgTextDisplay( GenericDisplay ):
@@ -256,18 +371,14 @@ class BgTextDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
   def __init__( self, rect, params, renderClass ):
     GenericDisplay.__init__( self, rect, params, renderClass )
-    self.font= self.loadFont( 'font' )
-    self.alpha= self.getParam( 'alpha', 10 )
     self.currPos= -1
     self.textIcon= None
   
   # -----------------------------------------------------------------
   def setText( self, text ):
     if len( text )> 0:
-      self.textIcon= self.font[ 0 ].render( text, 1, self.font[ 1 ] )
-      #self.textIcon= self.font[ 0 ].render( text, 1, (0,0,0) )
-      #self.textIcon.blit( textIcon1, ( -2,-2 ))
-      self.textIcon.set_alpha( 100 )
+      self.textIcon= drawText( self.font, text )
+      self.textIcon.set_alpha( self.alpha )
     
     self.setChanged( 1 )
   
@@ -278,7 +389,7 @@ class BgTextDisplay( GenericDisplay ):
     """
     self.setChanged( 0 )
     if self.textIcon:
-      return [ ( self.textIcon, self.rect[ :2 ] ) ]
+      return [ ( self.textIcon, self.getPos() ) ]
     else:
       return []
   
@@ -297,11 +408,10 @@ class ListDisplay( GenericDisplay ):
     """
     GenericDisplay.__init__( self, rect, params, renderClass )
     self.scrollFlag= self.getParam( 'scroll', 'no' )== 'yes'
-    self.headerFont= self.loadFont( 'headerFont' )
     self.headerIcon= None
-    self.scrollFont= self.loadFont( 'scrollFont' )
-    self.messageFont= self.loadFont( 'messageFont' )
     self.navIcons= self.loadIcon( 'navIcons', NAV_ICONS )
+    self.headerFont, self.scrollFont, self.messageFont= \
+      map( lambda x: self.loadFont( x ), ( 'headerFont','scrollFont','messageFont' ))
   
   # -----------------------------------------------------------------
   def init( self, itemsWrapper, activeItem= 0 ):
@@ -459,15 +569,6 @@ class ListDisplay( GenericDisplay ):
     return self.rect
   
   # -----------------------------------------------------------------
-  def getPos( self ):
-    """
-      getPos() -> ( posX, posY )
-      
-      Returns position in a parent area
-    """
-    return self.rect[ :2 ]
-  
-  # -----------------------------------------------------------------
   def setHeader( self, title ):
     i= self.getEffectiveWidth()
     size= self.headerFont[ 0 ].size( title )
@@ -475,9 +576,9 @@ class ListDisplay( GenericDisplay ):
       title= title[ 1: ]
       size= self.headerFont[ 0 ].size( title )
     
-    self.headerIcon= self.headerFont[ 0 ].render( title, 1, self.headerFont[ 1 ] )
-    j= self.headerIcon.get_width()
-    self.headerIcon= (( self.headerIcon, ( ( i- j )/2 , 0 ) ),)
+    hIcon= drawText( self.headerFont, title )
+    j= hIcon.get_width()
+    self.headerIcon= (( hIcon, ( ( i- j )/2 , 0 ) ),)
   
   # -----------------------------------------------------------------
   def renderItem( self, i, pos ):
@@ -534,23 +635,20 @@ class ListDisplay( GenericDisplay ):
       
       Returns status items that been rendered if any.
     """
+    ICON_OFFSET= 10
     if self.isActive()== 0:
       return []
     
-    text= self.scrollFont[ 0 ].render( '%d of %d' % ( self.activeItem+ 1, self.getItemsCount() ), 1, self.scrollFont[ 1 ] )
-    totalWidth= self.navIcons[ 0 ].get_width()* 2+ text.get_width()+ 30
-    yPos= self.rect[ 3 ]- text.get_height()- 5
-    res= [ ( text, ( self.rect[ 2 ]- totalWidth, yPos )) ]
-    totalWidth-= text.get_width()+ 10
-    if self.getLastOnScreen()!= self.getItemsCount()- 1:
-      # Draw down arrow
-      res.append( ( self.navIcons[ 0 ], ( self.rect[ 2 ]- totalWidth, yPos )) )
-    
-    totalWidth-= self.navIcons[ 0 ].get_width()+ 10
-    
+    iWidth= self.navIcons[ 0 ].get_width()
+    text= drawText( self.scrollFont, '%d of %d' % ( self.activeItem+ 1, self.getItemsCount() ) )
+    yPos= self.rect[ 3 ]- text.get_height()
+    res= [ ( text, ( self.rect[ 2 ]- ICON_OFFSET* 3- iWidth* 2- text.get_width(), yPos )) ]
     if self.startFrom!= 0:
       # Draw up arrow
-      res.append( ( self.navIcons[ 1 ], ( self.rect[ 2 ]- totalWidth, yPos )) )
+      res.append( ( self.navIcons[ 0 ], ( self.rect[ 2 ]- ICON_OFFSET* 2- iWidth* 2, yPos )) )
+    if self.getLastOnScreen()!= self.getItemsCount()- 1:
+      # Draw down arrow
+      res.append( ( self.navIcons[ 1 ], ( self.rect[ 2 ]- ICON_OFFSET- iWidth, yPos )) )
     
     return res
   
@@ -558,12 +656,12 @@ class ListDisplay( GenericDisplay ):
   def hasChanged( self ):
     if self.getRenderer():
       return self.getRenderer().hasChanged()
-    
+  
   # -----------------------------------------------------------------
   def setChanged( self, changed ):
     if self.getRenderer():
       self.getRenderer().setChanged( changed )
-    
+  
   # -----------------------------------------------------------------
   def processKey( self, key ):
     # Pass the key to the helper
@@ -596,20 +694,15 @@ class ListDisplay( GenericDisplay ):
         self.init( self.itemsWrapper, activeItem )
   
   # -----------------------------------------------------------------
-  def renderMessage( self, message ):
-    text= self.messageFont[ 0 ].render( message, 1, self.messageFont[ 1 ] )
-    # Center out the message
-    x= ( self.rect[ 2 ]- text.get_width() )/ 2
-    y= ( self.rect[ 3 ]- text.get_height() )/ 2
-    return [ ( text, ( x,y ) ) ]
-  
-  # -----------------------------------------------------------------
-  def renderCustomMessage( self, messageCode ):
+  def renderCustomMessage( self, message ):
     # For most cases it would be predefined.
     # If message should be custom, just override this function
-    if messageCode== EMPTY:
-      return self.renderMessage( 'Empty' )
-    
+    mess= drawText( self.messageFont, message )
+    return [
+      ( mess,
+        alignSurface(
+          parent= self.rect[ 2: ], surf= mess.get_size(), x= CENTER, y= CENTER )) ]
+  
   # -----------------------------------------------------------------
   def render( self ):
     # Start showing the menu if there was a change
@@ -622,7 +715,7 @@ class ListDisplay( GenericDisplay ):
     yPos, res= self.renderHeader()
     if self.getItemsCount()== 0:
       self.activeItem= -1
-      res+= self.renderCustomMessage( EMPTY )
+      res+= self.renderCustomMessage( EMPTY_MESSAGE )
     else:
       # Show items on a screen
       iInitial= yPos
@@ -647,4 +740,4 @@ class ListDisplay( GenericDisplay ):
 # ***********************************************************************
 # Run some tests against basic list functionality
 if __name__== '__main__':
-  print 'This module cannot run. It should be used in pymedia library only.'
+  print 'This module cannot run idividually. It should be used in pymedia library only.'

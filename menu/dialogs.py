@@ -86,7 +86,7 @@ class GenericChoiceDialog( GenericDisplay ):
     self.choices= map( lambda x:
       { 'caption': x,
         'width': int( self.getParam( 'width', 70 )),
-        'icon': self.choiceFont[ 0 ].render( x, 1, self.choiceFont[ 1 ] )
+        'icon': drawText( self.choiceFont, x )
       }, self.choiceTexts )
     
     # Draw choice buttons
@@ -127,12 +127,12 @@ class GenericChoiceDialog( GenericDisplay ):
   def setCaption( self, caption ):
     if caption:
       # Set caption with bgColor in it...
-      self.captionIcon= self.font[ 0 ].render( caption, 1, self.font[ 1 ], self.bgColor )
+      self.captionIcon= drawText( self.font, caption )
   
   # -------------------------------------------------------------
   def setText( self, text ):
     if text:
-      textIcon= self.font[ 0 ].render( text, 1, self.font[ 1 ] )
+      textIcon= drawText( self.font, text )
       if textIcon.get_width()< ( self.rect[ 2 ]- BORDER_OFFS* 2- 20 ):
         self.textIcon= textIcon
         self.text= text
@@ -201,7 +201,7 @@ class GenericChoiceDialog( GenericDisplay ):
 
 # ****************************************************************************************
 # Yes/No dialog area as the simple dialog 
-class YesNoDialog( GenericChoiceDialog ):
+class SimpleDialog( GenericChoiceDialog ):
   # -------------------------------------------------------------
   def __init__( self, rect, params, renderClass ):
     GenericChoiceDialog.__init__( self, rect, params, renderClass )
@@ -243,7 +243,7 @@ class TextEnterDialog( GenericChoiceDialog ):
       self.choices+= list( map( lambda x: { 'hidden': 'yes' }, range( delta ) ) )
     # Add additional choices for the control
     ctrlChoices= ( 'Ok', 'Clear', 'Cancel' )
-    self.choices+= map( lambda x: { 'caption': x, 'width': 100, 'icon': self.choiceFont[ 0 ].render( x, 1, self.choiceFont[ 1 ] ) }, ctrlChoices )
+    self.choices+= map( lambda x: { 'caption': x, 'width': 100, 'icon': drawText( self.choiceFont, x ) }, ctrlChoices )
     self.allowedSyms= self.getParam( 'allowedSyms', ( pygame.K_SPACE, pygame.K_z+ 1 ) )
   
   # -------------------------------------------------------------
