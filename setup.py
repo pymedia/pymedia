@@ -3,6 +3,28 @@
 import sys, config
 from distutils.core import setup, Extension
 
+def disable_fPIC():
+  """Disable -fPIC in the c compiler command line.
+
+  Some unix setups need -fPIC turned off to successfully compile
+  video/libavcodec/i386/dsputil_mmx.c (and other files).  Distutils
+  gets the flag by parsing python2.3/config/Makefile and storing the
+  result in a cache.
+
+  This function is a hack that depends on that internal distutils
+  behavior, so it may someday stop working or corrupt distutils in an
+  unexpected way."""
+
+  import distutils.sysconfig
+  distutils.sysconfig.get_config_vars() # parse Makefile and fill the _config_vars cache
+  cv = distutils.sysconfig._config_vars
+  for var in "CCSHARED","GCCSHARED":
+    if var in cv:
+      cv[var] = cv[var].replace('-fPIC','')
+  for var in ("CXX",):
+    if var in cv:
+      cv[var] = cv[var].replace('gcc','g++')
+
 MODULE_NAME= 'pymedia'
 MMX_FILES= [
 			'i386/cputest.c',
@@ -20,6 +42,25 @@ NONMMX_FILES= [
 			'mdct.c',
 ]
 
+
+CLE266_HW= {
+	'video.ext_codecs.cle266':
+	{
+		'#dir': 'video',
+		'':
+		(
+			'mem.c',
+			'common.c'
+		),
+		'vcodec':
+		[
+			'hw_vcodec.c',
+			'hw_mpeg.c',
+			'cle266/cle266_hw_dec.c',
+		],
+	},
+}
+
 FILES={
 	'audio.acodec':
 	{
@@ -35,6 +76,7 @@ FILES={
 			'raw.c',
 			'avienc.c',
 			'asf.c',
+			'mov.c',
 			'aviobuf.c',
 			'ogg.c',
 			'wav.c',
@@ -179,11 +221,12 @@ if sys.platform == 'win32':
 			'libmp3lame\\Release',
 			'libfaad\\Release',
 			'VisualC\\SDL\Release']
-		DEFINES.append( ('WIN32', None ) )
+		DEFINES+= [ ('WIN32', None ) ]
 		LIBS= [ 'winmm' ]
 		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= NONMMX_FILES
 else:
 		print 'Using UNIX configuration...\n'
+		disable_fPIC()
 		dep= config.Dependency_unix
 		inc_hunt = [ 
 			'/usr/include', 
@@ -197,9 +240,19 @@ else:
 			('_FILE_OFFSET_BITS',64),
 			('ACCEL_DETECT',1),	
 			('HAVE_MMX', '1' ),
-			('HAVE_LINUX_DVD_STRUCT', '1' ),
-			('DVD_STRUCT_IN_LINUX_CDROM_H', '1' ),
 		] 
+		if sys.platform== 'cygwin':
+			DEFINES+= [	
+				('SYS_CYGWIN', '1' ),
+			]
+			LIBS= [ 'winmm' ]
+		else:
+			DEFINES+= [
+				('HAVE_LINUX_DVD_STRUCT', '1' ),
+				('DVD_STRUCT_IN_LINUX_CDROM_H', '1' ),
+			]
+			FILES.update( CLE266_HW )
+
 		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= MMX_FILES
 
 DEPS = [
@@ -213,7 +266,7 @@ DEPS = [
 DEPS= filter( lambda x: x.found, DEPS )
 INC_DIRS= [ x.inc_dir for x in DEPS ]
 LIB_DIRS= [ x.lib_dir for x in DEPS ]
-DEFINES+= [ ( x.define, None ) for x in DEPS ]+ [ ( 'HAVE_AV_CONFIG_H', None ) ]
+DEFINES+= [ ( x.define, None ) for x in DEPS ]+ [ ( 'HAVE_AV_CONFIG_H', None ), ( 'UDF_CACHE', 1 ) ]
 LIBS+= [ x.lib for x in DEPS ]
 
 choice = raw_input('Continue building '+MODULE_NAME+' ? [Y,n]:')
@@ -223,18 +276,18 @@ if choice== 'n':
 
 METADATA = {
 		"name":             "pymedia",
-		"version":          "1.2.2",
+		"version":          "1.2.3.0",
 		"license":          "LGPL",
 		"url":              "http://pymedia.sourceforge.net/",
 		"author":           "Dmitry Borisov",
-		"author_email":     "jbors@users.sourceforge.net",
+		"author_email":     "jbors@pymedia.org",
 		"description":      "Pymedia library for mutlimedia easy experience"
 }
 
 PACKAGEDATA = {
-				"packages":    ['pymedia','pymedia.audio','pymedia.video', 'pymedia.removable'],
+				"packages":    ['pymedia','pymedia.audio','pymedia.video', 'pymedia.video.ext_codecs', 'pymedia.removable'],
 				"package_dir": 
-					{'pymedia': 'inst_lib','pymedia.audio': 'inst_lib/audio','pymedia.video': 'inst_lib/video','pymedia.removable': 'inst_lib/removable'},
+					{'pymedia': 'inst_lib','pymedia.audio': 'inst_lib/audio','pymedia.video.ext_codecs': 'inst_lib/video/ext_codecs','pymedia.video': 'inst_lib/video','pymedia.removable': 'inst_lib/removable'},
 				"ext_modules": config.extensions( MODULE_NAME, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
 }
 
