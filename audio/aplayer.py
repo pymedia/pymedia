@@ -22,13 +22,13 @@
 # length in seconds: $this->filesize / ($this->bitrate * 125); 
 
 import threading, traceback, time, os, string, random, glob
-import pympg, pysound, pygame, aaudio
+import pympg, pysound, pygame, aaudio, cache
 
 from __main__ import *
 from pymedia import menu
 
 BUFFER_LENGTH= 20000
-CDDA_BUFFER_LENGTH= 2000000
+CDDA_BUFFER_LENGTH= 1000000
 EXT= 'm3u'
 LEFT_C= (0,0)
 
@@ -59,12 +59,12 @@ class AbstractFileList:
       
       Adds or inserts file into the list by the object
     """
-    fullName= aaudio.cache.getPathName( file )
+    fullName= cache.cache.getPathName( file )
     if self.fileNames.has_key( fullName ):
       return 0, self.fileNames[ fullName ]
     
     self.files.append( file )
-    self.fileNames[ aaudio.cache.getPathName( file ) ]= len( self.files )- 1
+    self.fileNames[ cache.cache.getPathName( file ) ]= len( self.files )- 1
     return 1, len( self.fileNames )- 1
   
   # ---------------------------------------------------
@@ -74,7 +74,7 @@ class AbstractFileList:
       
       Adds or inserts file into the list by the full system name
     """
-    file= aaudio.cache.getFile( filePath )
+    file= cache.cache.getFile( filePath )
     self.addFile( file, pos )
   
   # ---------------------------------------------------
@@ -96,7 +96,7 @@ class AbstractFileList:
       Removes file from list by its position
     """
     if len( self.files )> filePos:
-      fullName= aaudio.cache.getPathName( self.files[ filePos ] )
+      fullName= cache.cache.getPathName( self.files[ filePos ] )
       del( self.files[ filePos ] )
       del( self.fileNames[ fullName ] )
       self.setChanged( 1 )
@@ -120,7 +120,7 @@ class AbstractFileList:
       
       Returns file from list by its position
     """
-    fName= aaudio.cache.getPathName( file )
+    fName= cache.cache.getPathName( file )
     if self.fileNames.has_key( fName ):
       return self.fileNames[ fName ]
     
@@ -148,7 +148,7 @@ class AbstractFileList:
     while len( self.files )> 0:
       j= int( random.random()* len( self.files ))
       tmpList.append( self.files[ j ] )
-      tmpNames[ aaudio.cache.getPathName( self.files[ j ] ) ]= len( tmpList )- 1 
+      tmpNames[ cache.cache.getPathName( self.files[ j ] ) ]= len( tmpList )- 1 
       del self.files[ j ]
     
     self.files= tmpList
@@ -171,7 +171,7 @@ class AbstractFileList:
         del( self.files[ 0 ] )
         hasParent= 1
       
-      names= map( lambda x: aaudio.cache.getPathName( x ), self.files )
+      names= [ cache.cache.getPathName( x ) for x in self.files ]
       names.sort()
       if self.sorted== 0:
         self.sorted= 3
@@ -181,9 +181,9 @@ class AbstractFileList:
         names.reverse()
         
       if isDummy:
-        self.files= map( lambda x: aaudio.cache.getDummyFile( x ), names )
+        self.files= [ cache.cache.getDummyFile( x ) for x in names ]
       else:
-        self.files= map( lambda x: aaudio.cache.getFile( x ), names )
+        self.files= [ cache.cache.getFile( x ) for x in names ]
         if hasParent== 1:
           self.files= aaudio.PARENT_DIR+ self.files
       
@@ -253,10 +253,10 @@ class FileWrapper( AbstractFileList ):
       Set items into the list and filter them out using filter criteria
     """
     self.files= []
-    filterLower= map( lambda x: string.lower( x ), filter )
+    filterLower= [ x.lower() for x in filter ]
     if items:
       for file in items:
-        if file[ 'isDir' ] or file.has_key( 'isCDDA' ):
+        if file[ cache.DIR_KEY ] or file.has_key( cache.CDDA_KEY ):
           self.files.append( file )
         else:
           fName= string.split( file[ 'name' ], '.' )
@@ -301,8 +301,9 @@ class PlayList( AbstractFileList ):
     f= open( fileName, 'w' )
     for file in self.files:
       # If it is an audio file, do not save it to the playlist
-      if not file.has_key( 'isCDDA' ):
-        f.write( aaudio.cache.getPathName( file )+ '\n' )
+      if not file.has_key( cache.CDDA_KEY ):
+        s= cache.cache.getPathName( file )+ '\n'
+        f.write( s.encode( 'utf-8' ) )
     
     f.close()
     print 'Playlist saved to ', fileName
@@ -320,10 +321,11 @@ class PlayList( AbstractFileList ):
       return 0
     
     for file in files:
+      file= unicode( file.strip(), 'utf-8' )
       try:
-        f= aaudio.cache.getFile( string.strip( file ))
+        f= cache.cache.getFile( file )
       except:
-        f= aaudio.cache.getDummyFile( string.strip( file ))
+        f= cache.cache.getDummyFile( file )
       
       self.addFile( f )
     
@@ -354,7 +356,7 @@ class PlayLists:
   
   # ---------------------------------------------------
   def removeAllFiles( self ):
-    map( lambda x: os.remove( x ), glob.glob( self.dir+ os.sep+ '*.'+ EXT ) )
+    [ os.remove( x ) for x in glob.glob( self.dir+ os.sep+ '*.'+ EXT ) ]
   
   # ---------------------------------------------------
   def reload( self ):
@@ -393,7 +395,7 @@ class PlayLists:
   
   # ---------------------------------------------------
   def getIndexByList( self, list ):
-    lists= map( lambda x: x[ 2 ], self.lists )
+    lists= [ x[ 2 ] for x in self.lists ]
     try:
       index= lists.index( list )
       return index
@@ -402,7 +404,7 @@ class PlayLists:
   
   # ---------------------------------------------------
   def items( self ):
-    return map( lambda x: { 'caption': x[ 0 ] }, self.lists )
+    return [ { 'caption': x[ 0 ] } for x in self.lists ]
   
   # ---------------------------------------------------
   def getPlayListPos( self, list ):
@@ -420,7 +422,7 @@ class PlayLists:
       # Assign the name automatically
       name= 'Playlist_%02d' % len( self.lists )
     try:
-      names= map( lambda x: x[ 0 ], self.lists )
+      names= [ x[ 0 ] for x in self.lists ]
       index= names.index( name )
       if self.lists[ index ][ 2 ]!= None:
         return self.lists[ index ][ 2 ], self.lists[ index ][ 1 ]
@@ -467,10 +469,10 @@ class PlayLists:
   # ---------------------------------------------------
   def savePositions( self ):
     # Get the default playlist name
-    pl= aaudio.player.getPlayList()
+    pl= player.getPlayList()
     self.default= self.getName( pl[ 0 ] )
     # If found, then save it in the positions.dat file
-    posData= map( lambda x: '%s\t%d' % ( x[ 0 ], x[ 1 ] ), self.lists )
+    posData= [ '%s\t%d' % ( x[ 0 ], x[ 1 ] ) for x in self.lists ]
     f= open( os.path.join( self.dir, 'positions.dat' ), 'w' )
     f.write( self.default+ '\n' )
     f.write( string.join( posData, '\n' ) )
@@ -683,19 +685,19 @@ class Player:
         playlistFile= self.playList.getFile( readFileNum )
         if playlistFile!= None:
           # Open file depending on its type
-          aaudio.playLists.setPosition( self.getPlayList() )
+          playLists.setPosition( self.getPlayList() )
           
           self.currentFile= readFileNum
           readFileNum+= 1
           newFile= 1
           
-          f= aaudio.cache.open( playlistFile )
+          f= cache.cache.open( playlistFile )
           if f== None:
             playlistFile= None
             continue
-          elif not playlistFile.has_key( 'uncompressed' ):
+          elif not playlistFile.has_key( cache.CDDA_KEY ):
             try:
-              dec= pympg.Decoder( aaudio.cache.getExtension( playlistFile ) )
+              dec= pympg.Decoder( cache.cache.getExtension( playlistFile ) )
             except:
               # No appropriate extension filter
               traceback.print_exc()
@@ -713,7 +715,7 @@ class Player:
       # Process data from the file into pcm
       if len( processedChunk )== 0:
         unprocessedChunk= ''
-        if f.getFile().has_key( 'uncompressed' ):
+        if f.getFile().has_key( cache.CDDA_KEY ):
           try:
             unprocessedChunk= f.read( CDDA_BUFFER_LENGTH )
           except:
@@ -733,6 +735,9 @@ class Player:
           if len( unprocessedChunk )> 0:
             kbPerSec, self.iFreqRate, sampleRate, self.channels, processedChunk= dec.convert2PCM( unprocessedChunk )
             f.getFile()[ 'bitrate' ]= kbPerSec
+        
+        if len( unprocessedChunk )== 0:
+          f.close()
         
         if pysound.getRate()!= self.iFreqRate or pysound.getChannels()!= self.channels:
           pysound.stop()
@@ -756,7 +761,9 @@ class Player:
     pysound.stop()
     self.thread= None
     print 'Player stopped'
-    
+
+playLists= PlayLists()
+player= Player()
 
 if __name__ == "__main__":
   print 'The aplayer module is a part of pymedia package.\nIt cannot be executed separately.'
