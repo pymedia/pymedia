@@ -32,7 +32,7 @@
 //#include "libavformat/avformat.h"
 
 #ifndef BUILD_NUM
-#define BUILD_NUM 1 
+#define BUILD_NUM 1
 #endif
 
 const int PYBUILD= BUILD_NUM;
@@ -212,7 +212,7 @@ PyObject* GetStreams( PyDemuxerObject* obj )
 	{
 		PyObject* cFormat= Py_None;
 		AVCodecContext *cCodec= &obj->ic.streams[ i ]->codec;
- //printf( "Duration: %I64d\n",obj->ic.streams[ i ]->duration ); 
+ //printf( "Duration: %I64d\n",obj->ic.streams[ i ]->duration );
 
 		if( cCodec->codec_id )
 		{
@@ -236,7 +236,7 @@ PyObject* GetStreams( PyDemuxerObject* obj )
 
 		PyTuple_SetItem( cFormats, i, cFormat );
 	}
-	return cFormats; 
+	return cFormats;
 }
 
 // ---------------------------------------------------------------------------------
@@ -312,7 +312,7 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 	// Create new list with possible formats
 	StartStreams( obj );
 	while( iRet>= 0 )
-	{ 
+	{
 		obj->pkt.size= 0;
 
 		// more correct than obj->ic.iformat->read_packet( &obj->ic, &obj->pkt );
@@ -399,7 +399,7 @@ DemuxerNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 		return NULL;
 
 	// Have extension and match the codec first
-	for( fmt= first_iformat; fmt != NULL; fmt = fmt->next) 
+	for( fmt= first_iformat; fmt != NULL; fmt = fmt->next)
 		if ( (fmt->extensions) && (strstr( fmt->extensions, s )))
 		{
 			// Create new decoder
@@ -429,7 +429,7 @@ DemuxerNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 
 			return (PyObject*)demuxer;
 		}
-	
+
 
 	PyErr_Format(g_cErr, "No registered demuxer for the '%s' extension", s );
 	return NULL;
@@ -510,14 +510,14 @@ initmuxer(void)
 
 	Py_Initialize();
 	m= Py_InitModule("muxer", pymuxer_methods);
-	
+
 	// Formats
 	avidec_init();
 	mov_init();
 	asf_init();
 	mpegts_init();
 	mpegps_init();
-	
+
 	cExtensions = PyList_New(0);
   for(fmt = first_iformat; fmt != NULL; fmt = fmt->next)
 	{
@@ -551,22 +551,22 @@ initmuxer(void)
 	INT_C(CODEC_TYPE_VIDEO);
 	PyModule_AddObject( m, "extensions", cExtensions );
 
-	g_cErr = PyErr_NewException("pymedia.video.muxer.Error", NULL, NULL);
+	g_cErr = PyErr_NewException("pymedia.video.muxer.MuxerError", NULL, NULL);
 	if( g_cErr )
-		PyModule_AddObject( m, "error", g_cErr );
+		PyModule_AddObject( m, "MuxerError", g_cErr );
 
 	DemuxerType.ob_type = &PyType_Type;
-	Py_INCREF((PyObject *)&DemuxerType); 
+	Py_INCREF((PyObject *)&DemuxerType);
 	PyModule_AddObject(m, "Demuxer", (PyObject *)&DemuxerType);
 
 	MuxerType.ob_type = &PyType_Type;
-	Py_INCREF((PyObject *)&MuxerType); 
+	Py_INCREF((PyObject *)&MuxerType);
 	PyModule_AddObject(m, "Muxer", (PyObject *)&MuxerType);
 }
 };
 
 /*
- 
+
 import pymedia.video.muxer as muxer
 dm= muxer.Demuxer( 'avi' )
 f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
@@ -577,4 +577,3 @@ dm.streams
 
 
 */
- 

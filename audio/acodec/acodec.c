@@ -28,7 +28,7 @@
 
 #include <Python.h>
 #include <structmember.h>
- 
+
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
@@ -146,7 +146,7 @@ Return all information known by the codec as a dictionary. Predefined dictionary
 #define GET_CODEC_ID_DOC \
 	GET_CODEC_ID"(name) - returns internal numerical codec id for its name"
 
-#define RETURN_NONE return (Py_INCREF(Py_None), Py_None); 
+#define RETURN_NONE return (Py_INCREF(Py_None), Py_None);
 
 PyObject *g_cErr;
 
@@ -384,7 +384,7 @@ frame_get_data(PyAFrameObject *obj)
 }
 
 // ----------------------------------------------------------------
-static PyMemberDef frame_members[] = 
+static PyMemberDef frame_members[] =
 {
 	{SAMPLE_RATE,	T_INT, offsetof(PyAFrameObject,sample_rate), 0, "frame sample rate."},
 	{BITRATE,	T_INT, offsetof(PyAFrameObject,bit_rate), 0, "frame bitrate."},
@@ -392,7 +392,7 @@ static PyMemberDef frame_members[] =
 	{CHANNELS,	T_INT, offsetof(PyAFrameObject,channels), 0, "number of channels."},
 	{NULL}	/* Sentinel */
 };
- 
+
 // ----------------------------------------------------------------
 static PyGetSetDef frame_getsetlist[] =
 {
@@ -661,17 +661,17 @@ static PyMethodDef decoder_methods[] =
 };
 
 // ---------------------------------------------------------------------------------
-static int GetFrameSize(PyACodecObject* obj ) 
+static int GetFrameSize(PyACodecObject* obj )
 {
 
 	int frame_size =0;
 
 	/* ugly hack for PCM codecs (will be removed ASAP with new PCM
 	 *        support to compute the input frame size in samples */
-	if (obj->cCodec->frame_size <= 1) 
+	if (obj->cCodec->frame_size <= 1)
 	{
 		frame_size = ENCODE_OUTBUF_SIZE / obj->cCodec->channels;
-		switch(obj->cCodec->codec_id) 
+		switch(obj->cCodec->codec_id)
 		{
 			case CODEC_ID_PCM_S16LE:
 			case CODEC_ID_PCM_S16BE:
@@ -682,8 +682,8 @@ static int GetFrameSize(PyACodecObject* obj )
 			default:
 				break;
 		}
-	} 
-	else 
+	}
+	else
 	{
 		frame_size = obj->cCodec->frame_size;
 
@@ -702,7 +702,7 @@ static PyObject* ACodec_GetFrameSize( PyACodecObject* obj)
 static PyObject* ACodec_Mux( PyACodecObject* obj, PyObject *args)
 {
 	PyObject* cInfo = NULL;
-	PyObject *cData; 
+	PyObject *cData;
 	int iCount, i;
 	if (!PyArg_ParseTuple(args, "O:"MUX_NAME, &cData ))
 		return NULL;
@@ -756,7 +756,7 @@ static PyObject* ACodec_Mux( PyACodecObject* obj, PyObject *args)
 static PyObject* ACodec_SetInfo( PyACodecObject* obj, PyObject *args)
 {
 	PyObject* cInfo = NULL;
-	PyObject* cTmp; 
+	PyObject* cTmp;
 	if (!PyArg_ParseTuple(args, "O!:"SET_INFO, &PyDict_Type, &cInfo ))
 		return NULL;
 
@@ -816,7 +816,7 @@ static PyObject* ACodec_SetInfo( PyACodecObject* obj, PyObject *args)
 		strncpy( obj->ic.comment, PyString_AsString( cTmp ), i );
 		obj->ic.comment[ ++i ]= 0;
 	}
-	
+
 	obj->ic.has_header= 1;
 	obj->iTriedHeader= 0;
 	RETURN_NONE
@@ -834,16 +834,16 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s#:encode", &sData,&iLen))
 		return NULL;
 
-	if (!(obj->cCodec || obj->cCodec->codec)) 
+	if (!(obj->cCodec || obj->cCodec->codec))
 	{
 		PyErr_SetString(g_cErr, "Encode error:codec not initialized" );
 		return NULL;
 	}
-	if( !fill_mem_buffer( &obj->stInBuf, sData, iLen ) ) 
+	if( !fill_mem_buffer( &obj->stInBuf, sData, iLen ) )
 		return NULL;
 
 	cRes = PyList_New(0);
-	if (!cRes) 
+	if (!cRes)
 		return NULL;
 
 /*	printf ("frame size:%d, in buffer:%d\n",
@@ -859,7 +859,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 				(short*)obj->stInBuf.buf_ptr);
 
 		obj->stInBuf.buf_ptr+=GetFrameSize(obj)*2*obj->cCodec->channels;
-		if (iLen >ENCODE_OUTBUF_SIZE) 
+		if (iLen >ENCODE_OUTBUF_SIZE)
 		{
 			fprintf (stderr, "Codec output size greated than "
 			"%d bytes! Increase ENCODE_OUTBUF_SIZE in acodec/acodec.c"
@@ -869,7 +869,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 			PyErr_SetString(g_cErr, "Encode error: internal buffer too small!");
 			return NULL;
 		}
-		if (iLen > 0) 
+		if (iLen > 0)
 		{
 			cFrame = PyString_FromStringAndSize((const char*)sOutbuf, iLen );
 			PyList_Append(cRes,cFrame);
@@ -1123,7 +1123,7 @@ DecoderNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 		}
 		return NULL;
 	}
-	else 
+	else
 		return CodecByParamsNew( cObj, 1 );
 }
 
@@ -1281,9 +1281,9 @@ initacodec(void)
 	PyModule_AddStringConstant(m, "version", PYVERSION );
 	PyModule_AddIntConstant(m, "build", PYBUILD );
 
-	g_cErr = PyErr_NewException(MODULE_NAME".Error", NULL, NULL);
+	g_cErr = PyErr_NewException(MODULE_NAME".ACodecError", NULL, NULL);
 	if( g_cErr != NULL)
-	  PyModule_AddObject(m, "error", g_cErr );
+	  PyModule_AddObject(m, "ACodecError", g_cErr );
 
 	cExtensions = PyList_New(0);
   for(fmt = first_iformat; fmt != NULL; fmt = fmt->next)
@@ -1371,14 +1371,14 @@ def encode( codec ):
 		frames= enc.encode( s )
 		f1.write( enc.mux( frames ) )
 		s= f.read( 30000 )
-	
+
 	print 'Done in %.02f seconds' % ( time.time()- t )
 	f1.write( enc.flush() )
 	f.close()
 	f1.close()
 
 encode( 'mp3' )
- 
+
 def aplayer( name ):
 	import pymedia.audio.acodec as acodec
 	import pymedia.audio.sound as sound
@@ -1394,13 +1394,13 @@ def aplayer( name ):
 				print 'Opening sound with %d channels' % r.channels
 				snd= sound.Output( r.sample_rate, r.channels, sound.AFMT_S16_LE )
 				print dec.hasHeader(), dec.getInfo()
-			
+
 			snd.play( r.data )
-			#f.seek( 5* r.bitrate/ 8, 1 ) 
+			#f.seek( 5* r.bitrate/ 8, 1 )
 			#dec.reset()
-		
+
 		s= f.read( 512 )
-	
+
 	while snd.isPlaying():
 	  time.sleep( .05 )
 

@@ -11,7 +11,7 @@
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details. 
+ * Library General Public License for more details.
  *
  * You should have received a copy of the GNU Library General Public
  * License along with this library; if not, write to the Free
@@ -20,22 +20,22 @@
  * Dmitry Borisov
 */
 
-#include <Python.h> 
+#include <Python.h>
 #include <structmember.h>
- 
+
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "audio_win.h"   
+#include "audio_win.h"
 #else
 #include "audio_unix.h"
 #endif
 
 #include "resample.h"
 #include "fft.h"
- 
+
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
- 
+
 #define MODULE_NAME "pymedia.audio.sound"
 
 #define RETURN_NONE	Py_INCREF( Py_None ); return Py_None;
@@ -144,7 +144,7 @@ Here is the simple player for a pcm file\n\
 				"If there is no enough data to fullfill the n samples, it will be right padded with zeroes.\n"\
 				"IMPORTANT: Please note that only mono signals are supported at this time."
 #define GET_CONTROLS_DOC "get controls in a list.\n"\
-													"Returned list contains dictionary with the following ietms:\n."\
+													"Returned list contains dictionary with the following items:\n."\
 													"'destination' - destination name( playback or recording )\n"\
 													"'connection' - name of connection for the control\n"\
 													"'name' - name of the control( Line-In, Volume, etc )\n"\
@@ -231,7 +231,7 @@ typedef struct
 } PyResamplerObject;
 
 // ---------------------------------------------------------------------------------
-typedef struct    
+typedef struct
 {
 	PyObject_HEAD
 
@@ -307,7 +307,7 @@ ISound_Stop( PyISoundObject* obj)
 static PyObject *
 ISound_GetPosition( PyISoundObject* obj)
 {
-  return PyFloat_FromDouble( obj->cObj->GetPosition() );     
+  return PyFloat_FromDouble( obj->cObj->GetPosition() );
 }
 
 // ---------------------------------------------------------------------------------
@@ -327,7 +327,7 @@ ISound_GetChannels( PyISoundObject* obj)
 // ---------------------------------------------------------------------------------
 static PyObject *
 ISound_GetSize( PyISoundObject* obj)
-{ 
+{
   return PyInt_FromLong( obj->cObj->GetSize() );
 }
 
@@ -467,11 +467,11 @@ Sound_Play( PyOSoundObject* obj, PyObject *args)
 
   Py_BEGIN_ALLOW_THREADS
 	f= obj->cObj->Play( sData, iLen );
-  Py_END_ALLOW_THREADS   
+  Py_END_ALLOW_THREADS
   if( f== -1 )
 	{
  		PyErr_Format( g_cErr, "Cannot play sound because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() );
-		return NULL;  
+		return NULL;
 	}
 	// Return how many samples are queued
 	return PyFloat_FromDouble( f );
@@ -481,7 +481,9 @@ Sound_Play( PyOSoundObject* obj, PyObject *args)
 static PyObject *
 Sound_Pause( PyOSoundObject* obj)
 {
+  Py_BEGIN_ALLOW_THREADS
   obj->cObj->Pause();
+  Py_END_ALLOW_THREADS
 	RETURN_NONE
 }
 
@@ -496,21 +498,21 @@ Sound_Stop( PyOSoundObject* obj)
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_GetPosition( PyOSoundObject* obj)
-{ 
+{
 	double d;
   Py_BEGIN_ALLOW_THREADS
 	d= obj->cObj->GetPosition();
-  Py_END_ALLOW_THREADS   
+  Py_END_ALLOW_THREADS
   return PyFloat_FromDouble( d );
 }
-  
+
 // ---------------------------------------------------------------------------------
 static PyObject *
 Sound_Unpause( PyOSoundObject* obj)
 {
   obj->cObj->Unpause();
 	RETURN_NONE
-} 
+}
 
 // ---------------------------------------------------------------------------------
 static PyObject *
@@ -679,7 +681,7 @@ MixerControl_GetValue(PyMixerControlObject *obj)
 	PyObject *cRet= PyTuple_New( i );
 	for( int ii= 0; ii< i; ii++ )
 		PyTuple_SetItem( cRet, ii, PyInt_FromLong( aiVals[ ii ] ) );
-	
+
 	return cRet;
 }
 
@@ -712,7 +714,7 @@ static PyMethodDef mixer_control_methods[] =
 };
 
 // ----------------------------------------------------------------
-static PyMemberDef mixer_control_members[] = 
+static PyMemberDef mixer_control_members[] =
 {
 	{MAX_VALUE_NAME, T_INT, offsetof(PyMixerControlObject,iMaxValue), 0, MAX_VALUE_DOC },
 	{MIN_VALUE_NAME, T_INT, offsetof(PyMixerControlObject,iMinValue), 0, MIN_VALUE_NAME },
@@ -728,7 +730,7 @@ static PyGetSetDef mixer_control_getset[] =
 	{"name", (getter)MixerControl_GetName, NULL, "name of the control"},
 	{0}
 };
- 
+
 // ----------------------------------------------------------------
 static void
 MixerControlClose( PyMixerControlObject *obj )
@@ -797,9 +799,9 @@ Mixer_GetControls( PyMixerObject* obj)
 		//
 		char* sDest= obj->cObj->GetDestinationName( i );
 
-		// Scan all sources for destination 
+		// Scan all sources for destination
 		for( int j= 0; j< obj->cObj->GetConnectionsCount( i ); j++ )
-		{ 
+		{
 			// Set connection wise data
 			char* sConn= obj->cObj->GetConnectionName( i, j );
 
@@ -813,7 +815,7 @@ Mixer_GetControls( PyMixerObject* obj)
 					Py_DECREF( cRes );
 					return NULL;
 				}
-				
+
 				// Set line wise data
 				cControl->cObj= obj;
 				Py_INCREF( obj );
@@ -821,16 +823,16 @@ Mixer_GetControls( PyMixerObject* obj)
 				cControl->iConn= j;
 				cControl->iControl= k;
 				strcpy( cControl->sName, obj->cObj->GetControlName( i, j, k ) );
-				obj->cObj->GetControlValues( i, j, k, 
+				obj->cObj->GetControlValues( i, j, k,
 					&cControl->iMinValue, &cControl->iMaxValue, &cControl->iStep, &cControl->iType, &cControl->iChannels );
 
 				if( cControl->iChannels== 0 )
 					cControl->iChannels= 1;
 
 				// Create dictionary with all names and controls
-				PyObject *cTmp= Py_BuildValue( "{sssssssisN}", 
-						"destination", sDest, 
-						"connection", sConn, 
+				PyObject *cTmp= Py_BuildValue( "{sssssssisN}",
+						"destination", sDest,
+						"connection", sConn,
 						"name", obj->cObj->GetControlName( i, j, k ),
 						"active", obj->cObj->IsActive( i, j, k ),
 						"control", cControl );
@@ -1351,7 +1353,7 @@ static PyMethodDef pysound_methods[] =
 		GET_OUTPUT_DEVICES_DOC
 	},
 	{
-		GET_INPUT_DEVICES_NAME, 
+		GET_INPUT_DEVICES_NAME,
 		(PyCFunction)GetInputDevices,
 		METH_NOARGS,
 		GET_INPUT_DEVICES_DOC
@@ -1389,9 +1391,9 @@ initsound(void)
   _EXPORT_INT(m, AFMT_AC3);
   _EXPORT_INT(m, AFMT_S16_NE);
 
-	g_cErr = PyErr_NewException(MODULE_NAME".Error", NULL, NULL);
+	g_cErr = PyErr_NewException(MODULE_NAME".SoundError", NULL, NULL);
 	if( g_cErr != NULL)
-	  PyModule_AddObject(m, "error", g_cErr );
+	  PyModule_AddObject(m, "SoundError", g_cErr );
 
 	PyISoundType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&PyISoundType);
@@ -1474,8 +1476,7 @@ while snd1.isPlaying():
   print '/%.2f %.2f' % ( snd1.getLeft(), snd1.getSpace() ),
 
 
-
-# oss test 
+# oss test
 import ossaudiodev
 snd= ossaudiodev.open( 'w' )
 f= open( 'test.pcm', 'rb' )
@@ -1504,12 +1505,11 @@ s1= r.resample( s )
 res= a.asFrequencies( s1 )
 res= a.asBands( 3, s1 )
 
-   
+
 import pymedia.audio.sound as sound
 mixer= sound.Mixer()
 c= mixer.getControls()
 cc= c[ 7 ]
-   
+
 	*/
 
- 

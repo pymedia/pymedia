@@ -22,3 +22,6 @@ Set of modules to deal with the video encode/decode
 __all__= [ 'muxer', 'vcodec', 'ext_codecs' ]
 import muxer, vcodec, ext_codecs
 __version__= "1.2.3.0"
+
+muxer.error = muxer.MuxerError
+vcodec.error = vcodec.VCodecError 

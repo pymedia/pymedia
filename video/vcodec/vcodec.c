@@ -1287,9 +1287,9 @@ initvcodec(void)
  	PyModule_AddStringConstant( cModule, "__doc__", (char*)PYDOC );
 	PyModule_AddStringConstant( cModule, "version", (char*)PYVERSION );
 	PyModule_AddIntConstant( cModule, "build", PYBUILD );
-	g_cErr= PyErr_NewException(MODULE_NAME".Error", NULL, NULL);
+	g_cErr= PyErr_NewException(MODULE_NAME".VCodecError", NULL, NULL);
 	if( g_cErr )
-		PyModule_AddObject( cModule, "error", g_cErr );
+		PyModule_AddObject( cModule, "VCodecError", g_cErr );
 
 	if (PyType_Ready(&FormatsType) < 0)
 		return;

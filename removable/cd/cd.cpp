@@ -532,9 +532,9 @@ initcd(void)
 	INT_CONSTANT( SEEK_SET );
 	INT_CONSTANT( SEEK_END );
 	INT_CONSTANT( SEEK_CUR );
-	g_cErr = PyErr_NewException(MODULE_NAME".Error", NULL, NULL);
+	g_cErr = PyErr_NewException(MODULE_NAME".CDError", NULL, NULL);
 	if( g_cErr != NULL)
-	  PyModule_AddObject(m, "error", g_cErr );
+	  PyModule_AddObject(m, "CDError", g_cErr );
 
 	PyCDType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&PyCDType);
