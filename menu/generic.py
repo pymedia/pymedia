@@ -1,4 +1,4 @@
-##    generic - Part of the homedia package. Menu drawing utilities.
+##    generic - Part of the pymedia package. Menu drawing utilities.
 ##        Main drawing classes, supporting other modules in representing
 ##        information on the screen
 ##    
@@ -24,10 +24,12 @@ import os, Queue, threading, string, traceback, time
 import pygame
 from __main__ import *
 
-DEFAULT_FONT= 'arial'
+DEFAULT_FONT= 'arialn'
 DEFAULT_FONT_SIZE= 20
 DEFAULT_FONT_COLOR= ( 255, 255, 255 )
 LEFT_C= (0,0)
+EMPTY= 0
+NAV_ICONS= ( 'up_0.gif', 'down_0.gif' )
 
 # ****************************************************************************************************
 # Generic class to support menu items rendering
@@ -94,7 +96,8 @@ class MenuHelper:
   def loadFont( self, paramName ):
     fontName= self.getParam( paramName, DEFAULT_FONT )
     fontSize= self.getParam( paramName+ 'Size', DEFAULT_FONT_SIZE )
-    font= pygame.font.SysFont( fontName, int( fontSize ) )
+    #font= pygame.font.SysFont( fontName, int( fontSize ) )
+    font= pygame.font.Font( 'icons/'+ fontName+ '.ttf', int( fontSize ) )
     if self.getParam( paramName+ 'Bold', 'no' )== 'yes':
       font.set_bold( 1 )
     
@@ -164,7 +167,9 @@ class MenuItem( MenuHelper ):
   def drawItem( self, itemPos, isFocused ):
     item= self.itemsWrapper.items()[ itemPos ]
     # Find out whether it is a directory or file
-    text= self.font[ 0 ].render( item[ 'caption' ], 1 , self.font[ 1 ] )
+    text1= self.font[ 0 ].render( item[ 'caption' ], 1 , self.font[ 1 ] )
+    text= self.font[ 0 ].render( item[ 'caption' ], 1 , (0,0,0) )
+    text.blit( text1, (-1,-1))
     
     # Center text into rect
     resItem= []
@@ -238,6 +243,40 @@ class GenericDisplay( MenuHelper ):
   # -----------------------------------------------------------------
   def hasChanged( self ):
     return MenuHelper.hasChanged( self ) or ( self.getRenderer() and self.getRenderer().hasChanged() )
+
+# ****************************************************************************************
+class BgTextDisplay( GenericDisplay ):
+  """
+    Pure text based displayer without any renderer. Displays the current state of menu.
+  """
+  # -----------------------------------------------------------------
+  def __init__( self, rect, params, renderClass ):
+    GenericDisplay.__init__( self, rect, params, renderClass )
+    self.font= self.loadFont( 'font' )
+    self.alpha= self.getParam( 'alpha', 10 )
+    self.currPos= -1
+    self.textIcon= None
+  
+  # -----------------------------------------------------------------
+  def setText( self, text ):
+    if len( text )> 0:
+      self.textIcon= self.font[ 0 ].render( text, 1, self.font[ 1 ] )
+      #self.textIcon= self.font[ 0 ].render( text, 1, (0,0,0) )
+      #self.textIcon.blit( textIcon1, ( -2,-2 ))
+      self.textIcon.set_alpha( 100 )
+    
+    self.setChanged( 1 )
+  
+  # -----------------------------------------------------------------
+  def render( self ):
+    """
+      Main method called by the main renderer
+    """
+    self.setChanged( 0 )
+    if self.textIcon:
+      return [ ( self.textIcon, self.rect[ :2 ] ) ]
+    else:
+      return []
   
 # ****************************************************************************************************
 # Plain version of list display. Accepts various renderers to draw the list
@@ -254,15 +293,17 @@ class ListDisplay( GenericDisplay ):
     """
     GenericDisplay.__init__( self, rect, params, renderClass )
     self.scrollFlag= self.getParam( 'scroll', 'no' )== 'yes'
+    self.headerFont= self.loadFont( 'headerFont' )
+    self.headerIcon= None
     self.scrollFont= self.loadFont( 'scrollFont' )
     self.messageFont= self.loadFont( 'messageFont' )
-    self.navIcons= self.loadIcon( 'navIcons', ( 'up_0.gif', 'down_0.gif' ) )
+    self.navIcons= self.loadIcon( 'navIcons', NAV_ICONS )
   
   # -----------------------------------------------------------------
   def init( self, itemsWrapper, activeItem= 0 ):
     """
+      Initiate process of displaying the data
     """
-    # Initiate process of displaying the data
     itemsWrapper.init()
     self.renderClass.setItemsWrapper( itemsWrapper )
     self.itemsWrapper= itemsWrapper
@@ -273,12 +314,14 @@ class ListDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
   def getWrapper( self ):
     """
+      Return wrapper for the items in a list.
     """
     return self.itemsWrapper
   
   # -----------------------------------------------------------------
   def setItems( self, itemFrom ):
     """
+      Set starting item from which all items will be shown in an active area.
     """
     if itemFrom< 0:
       itemFrom= 0
@@ -288,6 +331,8 @@ class ListDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
   def moveTo( self, item ):
     """
+      Move the active item to the selected index. If it does not shown on a screen,
+      scroll and show.
     """
     if item< self.getItemsCount():
       if item> -1:
@@ -307,21 +352,28 @@ class ListDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
   def getItemsCount( self ):
     """
+      Return number of items in list control. Takes itemWrapper items count.
     """
     return len( self.itemsWrapper.items() )
       
   # -----------------------------------------------------------------
   def getEffectiveHeight( self ):
     """
+      Return effective window height excluding header and footer areas
     """
+    i= 0
     if self.scrollFlag:
-      return self.rect[ 3 ]- self.scrollFont[ 0 ].get_height()
-    else:
-      return self.rect[ 3 ]
+      i+= self.scrollFont[ 0 ].get_linesize()
+      
+    if self.headerIcon:
+      i+= self.headerFont[ 0 ].get_linesize()
+    
+    return self.rect[ 3 ]- i
     
   # -----------------------------------------------------------------
   def getEffectiveWidth( self ):
     """
+      Return effective width excluding any additional side information the list may have.
     """
     return self.rect[ 2 ]
   
@@ -330,14 +382,14 @@ class ListDisplay( GenericDisplay ):
     """
       Calculate number of items per row
     """
-    return int( self.rect[ 2 ] / self.getRenderer().getItemSize()[ 0 ] )
+    return int( self.getEffectiveWidth() / self.getRenderer().getItemSize()[ 0 ] )
     
   # -----------------------------------------------------------------
   def getItemsPerColumn( self ):
     """
       Calculate number of items per column
     """
-    return int( self.rect[ 3 ] / self.getRenderer().getItemSize()[ 1 ] )
+    return int( self.getEffectiveHeight() / self.getRenderer().getItemSize()[ 1 ] )
   
   # -----------------------------------------------------------------
   def getItem( self, index ):
@@ -351,6 +403,9 @@ class ListDisplay( GenericDisplay ):
   
   # -----------------------------------------------------------------
   def getLastOnScreen( self ):
+    """
+      Return index for the last item visible on a screen
+    """
     if self.startFrom!= -1:
       i= self.startFrom+ self.getItemsPerColumn()*  self.getItemsPerRow()- 1
       if i> self.getItemsCount():
@@ -363,13 +418,15 @@ class ListDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
   def getActiveItem( self ):
     """
-        getActiveItem() -> ( index )
-        return active item as an index
+      return active item as an index
     """
     return self.activeItem
     
   # -----------------------------------------------------------------
   def getItemByPos( self, pos ):
+    """
+      Return item's index by its position in an active area
+    """
     # Get position in a row and column
     if pos[ 0 ]< 0 or pos[ 1 ]< 0:
       return None
@@ -392,6 +449,7 @@ class ListDisplay( GenericDisplay ):
   def getRect( self ):
     """
       getRect() -> ( posX, posY, sizeX, sizeY )
+      
       returns grid settings for the current view
     """
     return self.rect
@@ -400,18 +458,33 @@ class ListDisplay( GenericDisplay ):
   def getPos( self ):
     """
       getPos() -> ( posX, posY )
+      
+      Returns position in a parent area
     """
     return self.rect[ :2 ]
   
   # -----------------------------------------------------------------
-  def showItem( self, i, pos ):
+  def setHeader( self, title ):
+    i= self.getEffectiveWidth()
+    size= self.headerFont[ 0 ].size( title )
+    while size[ 0 ]> i:
+      title= title[ 1: ]
+      size= self.headerFont[ 0 ].size( title )
+    
+    self.headerIcon= self.headerFont[ 0 ].render( title, 1, self.headerFont[ 1 ] )
+    j= self.headerIcon.get_width()
+    self.headerIcon= (( self.headerIcon, ( ( i- j )/2 , 0 ) ),)
+  
+  # -----------------------------------------------------------------
+  def renderItem( self, i, pos ):
     item= self.getRenderer().drawItem( i, self.activeItem== i and self.isActive() )
     return self.adjustPos( item, pos )
   
   # -----------------------------------------------------------------
-  def showLine( self, yPos, start ):
+  def renderLine( self, yPos, start ):
     """
-      _showLine( yPos ) -> ( success )
+      showLine( yPos, startIndex ) -> ( currentIndex, items )
+      
       Shows line based either on top of current items or at the bottom.
       Returns whether it was successfull.
     """
@@ -420,14 +493,14 @@ class ListDisplay( GenericDisplay ):
     
     # Find out which item we should start from and how many of them would be displayed
     itemSize= renderClass.getItemSize()
-    itemsPerLine= self.getItemsPerRow()
+    itemsPerRow= self.getItemsPerRow()
     
     # Start drawing items
     xPos= 0
     res= []
-    for i in xrange( start, start+ itemsPerLine ):
+    for i in xrange( start, start+ itemsPerRow ):
       try:
-        res+= self.showItem( i, ( xPos, yPos ) )
+        res+= self.renderItem( i, ( xPos, yPos ) )
         if itemSize[ 0 ]== 0:
           break
       
@@ -439,7 +512,24 @@ class ListDisplay( GenericDisplay ):
     return i- start+ 1, res
   
   # -----------------------------------------------------------------
-  def showStatusLine( self ):
+  def renderHeader( self ):
+    """
+      renderHeader() -> yOffs, header
+      
+      Returns header if any.
+    """
+    if self.headerIcon:
+      return self.headerIcon[ 0 ][ 0 ].get_height(), list( self.headerIcon )
+    else:
+      return 0, []
+  
+  # -----------------------------------------------------------------
+  def renderStatusLine( self ):
+    """
+      showStatusLine() -> statusLineItems
+      
+      Returns status items that been rendered if any.
+    """
     if self.isActive()== 0:
       return []
     
@@ -510,6 +600,13 @@ class ListDisplay( GenericDisplay ):
     return [ ( text, ( x,y ) ) ]
   
   # -----------------------------------------------------------------
+  def renderCustomMessage( self, messageCode ):
+    # For most cases it would be predefined.
+    # If message should be custom, just override this function
+    if messageCode== EMPTY:
+      return self.renderMessage( 'Empty' )
+    
+  # -----------------------------------------------------------------
   def render( self ):
     # Start showing the menu if there was a change
     if self.visible== 0:
@@ -518,27 +615,27 @@ class ListDisplay( GenericDisplay ):
     itemSize= self.getRenderer().getItemSize()
     
     # Render only message when list is empty
+    yPos, res= self.renderHeader()
     if self.getItemsCount()== 0:
       self.activeItem= -1
-      return self.adjustPos( self.renderMessage( 'Empty' ), self.rect[ :2 ] )
-    
-    # Show items on a screen
-    yPos= 0
-    i= self.startFrom
-    res= []
-    while i< self.getItemsCount() and yPos+ itemSize[ 1 ]< self.getEffectiveHeight():
-      j, resTmp= self.showLine( yPos, i )
-      i+= j
-      res+= resTmp
-      yPos+= itemSize[ 1 ]
-    
-    # If active item still not on a screen, just set the item
-    if ( self.activeItem< self.startFrom or self.activeItem> self.getLastOnScreen() ) and self.activeItem!= -1:
-      self.setItems( self.activeItem )
-    
-    # Show status at the bottom if needed
-    if self.scrollFlag:
-      res+= self.showStatusLine()
+      res+= self.renderCustomMessage( EMPTY )
+    else:
+      # Show items on a screen
+      iInitial= yPos
+      i= self.startFrom
+      while i< self.getItemsCount() and yPos- iInitial+ itemSize[ 1 ]<= self.getEffectiveHeight():
+        j, resTmp= self.renderLine( yPos, i )
+        i+= j
+        res+= resTmp
+        yPos+= itemSize[ 1 ]
+      
+      # If active item still not on a screen, just set the item
+      if ( self.activeItem< self.startFrom or self.activeItem> self.getLastOnScreen() ) and self.activeItem!= -1:
+        self.setItems( self.activeItem )
+      
+      # Show status at the bottom if needed
+      if self.scrollFlag:
+        res+= self.renderStatusLine()
     
     self.setChanged( 0 )
     return self.adjustPos( res, self.rect[ :2 ] )
@@ -546,42 +643,4 @@ class ListDisplay( GenericDisplay ):
 # ***********************************************************************
 # Run some tests against basic list functionality
 if __name__== '__main__':
-  class MenuWrapper:
-    def __init__( self, items ):
-      self.menuItems= items
-    def items( self ):
-      return self.menuItems
-    
-  import pygame
-  resolution = 640,480
-  pygame.init()
-  screen = pygame.display.set_mode(resolution)
-  rect= ( 210,120,210,200 )
-  params= { 'font': 'Arial.ttf',
-            'fontSize': '20',
-            'fontColor': '89,150,255',
-            'scroll': 'no' }
-  menuDef= (
-    { 'caption': 'Music',
-      'onClick': '' },
-    { 'caption': 'GPS',
-      'onClick': '' },
-    { 'caption': 'Settings',
-      'onClick': '' },
-    { 'caption': 'Exit',
-      'onClick': 'EXIT_FLAG=1' } )
-    
-  mItem= MenuItem( rect, params )
-  listDisplay= ListDisplay( rect, params, mItem )
-  listDisplay.init( MenuWrapper( menuDef ), 0 )
-  
-  EXIT_FLAG= 0
-  listDisplay.setVisible( 1 )
-  screen.blit( listDisplay.render(), rect[ :2 ] )
-  pygame.display.flip()
-  while EXIT_FLAG== 0:
-    #use event.wait to keep from polling 100% cpu
-    event = pygame.event.wait()
-    if event.type is pygame.KEYDOWN:
-      if event.key == pygame.K_ESCAPE:
-        EXIT_FLAG= 1
+  print 'This module cannot run. It should be used in pymedia library only.'
