@@ -34,13 +34,19 @@ LEFT_C= (0,0)
 
 # ---------------------------------------------------
 def getFileName( fullName ):
+  """
+    getFileName( fullName ) -> name
+    
+    Splits full file name and returns only the filename with no path.
+  """
   s= string.split( fullName, '.' )
   return string.join( s[ : len( s )- 1 ], '.' )
 
 # **********************************************************************************************
-# *
-# **********************************************************************************************
 class AbstractFileList:
+  """
+    Generic class to provide list functionality for a set of files or links
+  """
   # ---------------------------------------------------
   def __init__( self ):
     self.clear()
@@ -49,19 +55,24 @@ class AbstractFileList:
   # ---------------------------------------------------
   def addFile( self, file, pos= -1 ):
     """
-    addFile( file, pos= -1 ) -> None
-    Adds or inserts file into the playlist
+      addFile( file, pos= -1 ) -> None
+      
+      Adds or inserts file into the list by the object
     """
     fullName= aaudio.cache.getPathName( file )
-    if not self.fileNames.has_key( fullName ):
-      self.files.append( file )
-      self.fileNames[ aaudio.cache.getPathName( file ) ]= len( self.files )- 1
+    if self.fileNames.has_key( fullName ):
+      return 0, self.fileNames[ fullName ]
+    
+    self.files.append( file )
+    self.fileNames[ aaudio.cache.getPathName( file ) ]= len( self.files )- 1
+    return 1, len( self.fileNames )- 1
   
   # ---------------------------------------------------
   def addFilePath( self, filePath, pos= -1 ):
     """
-    addFile( file, pos= -1 ) -> None
-    Adds or inserts file into the playlist
+      addFilePat ( file, pos= -1 ) -> None
+      
+      Adds or inserts file into the list by the full system name
     """
     file= aaudio.cache.getFile( filePath )
     self.addFile( file, pos )
@@ -69,6 +80,9 @@ class AbstractFileList:
   # ---------------------------------------------------
   def clear( self ):
     """
+      clear() -> None
+      
+      Clear the list
     """
     self.files= []
     self.fileNames= {}
@@ -78,7 +92,8 @@ class AbstractFileList:
   def remove( self, filePos ):
     """
       remove( pos ) -> None
-      Removes file from cache by its position
+      
+      Removes file from list by its position
     """
     if len( self.files )> filePos:
       fullName= aaudio.cache.getPathName( self.files[ filePos ] )
@@ -89,8 +104,9 @@ class AbstractFileList:
   # ---------------------------------------------------
   def getFile( self, filePos ):
     """
-    getFile( pos ) -> file | None
-    Gets file from the playlist by its position
+      getFile( pos ) -> file | None
+      
+      Gets file from the list by its position
     """
     if len( self.files )> filePos:
       return self.files[ filePos ]
@@ -100,8 +116,9 @@ class AbstractFileList:
   # ---------------------------------------------------
   def getFileNum( self, file ):
     """
-    getFile( pos ) -> file
-    Returns file from cache by its position
+      getFile( pos ) -> file
+      
+      Returns file from list by its position
     """
     fName= aaudio.cache.getPathName( file )
     if self.fileNames.has_key( fName ):
@@ -111,11 +128,21 @@ class AbstractFileList:
   
   # -----------------------------------------------------------------
   def sortByDate( self, ascending ):
+    """
+      sortByDate( acsending ) -> list
+      
+      Sorts the list by date. Not sure it can be done in generic way. Just a stub for now.
+    """
     self.setChanged( 1 )
     return self.getList()
   
   # -----------------------------------------------------------------
   def randomize( self ):
+    """
+      randomize() -> list
+      
+      Randomize list of files
+    """
     tmpList= []
     tmpNames= {}
     while len( self.files )> 0:
@@ -131,6 +158,12 @@ class AbstractFileList:
 
   # -----------------------------------------------------------------
   def sortByName( self, isDummy= 0 ):
+    """
+      sortByName( isDummy= 0 ) -> list
+      
+      Sorts the list by name. Not sure it can be done in generic way.
+      Just takes name attribute for now..
+    """
     # Get names
     if len( self.files )> 0:
       hasParent= 0
@@ -160,28 +193,65 @@ class AbstractFileList:
 
   # -----------------------------------------------------------------
   def items( self ):
+    """
+      items() -> list
+      
+      Returns items in a list as a list
+    """
     return self.files
 
   # -----------------------------------------------------------------
   def getFilesCount( self ):
+    """
+      getFilesCount() -> filesCount
+      
+      Return number of files in a list
+    """
     return len( self.files )
 
   # ---------------------------------------------------
   def hasChanged( self ):
+    """
+      hasChanged() -> hasChanged_flag
+      
+      Whether or not list has changed
+    """
     return self.changed
   
   # ---------------------------------------------------
   def setChanged( self, changed ):
+    """
+      setChanged( changed ) -> None
+      
+      Set whether or not list has changed
+    """
     self.changed= changed
   
 # ****************************************************************************************************
 class FileWrapper( AbstractFileList ):
+  """
+    Specific file oriented implementation of a list of files for differnt
+    controls such as menu.ListDisplay.
+    Being used as wrapper for most of the lists.
+  """
+  # ---------------------------------------------------
   def __init__( self, items, filter ):
+    """
+      ctor( items, filter ) -> self
+      
+      Creates custom list with ability to apply filters
+    """
     AbstractFileList.__init__( self )
     self.changed= 1
     self.setItems( items, filter )
   
+  # ---------------------------------------------------
   def setItems( self, items, filter ):
+    """
+      setItems( items, filter ) -> None
+        
+      Set items into the list and filter them out using filter criteria
+    """
     self.files= []
     filterLower= map( lambda x: string.lower( x ), filter )
     if items:
@@ -197,7 +267,13 @@ class FileWrapper( AbstractFileList ):
       
     self.setChanged( 1 )
   
+  # ---------------------------------------------------
   def init( self ):
+    """
+      init() -> None
+      
+      Just a stub for ListDisplay completeness
+    """
     pass
 
 # **********************************************************************************************
@@ -209,18 +285,23 @@ class PlayList( AbstractFileList ):
   """
   # ---------------------------------------------------
   def __init__( self ):
+    """
+      ctor() -> PlayList
+    """
     AbstractFileList.__init__( self )
     self.changed= 0
   
   # ---------------------------------------------------
   def save( self, fileName ):
+    """
+      save( fileName ) -> None
+      
+      Saves the playlist into the file as a regular m3u format( just a full filename )
+    """
     f= open( fileName, 'w' )
     for file in self.files:
-      # If it is an audio file, just save Track %d
-      if file.has_key( 'isCDDA' ):
-        pass
-        #f.write( 'CDDA:\t%s\t%d\n' % ( audiofile.cache.getPathName( file[ 'parent' ] ), file[ 'tracknum' ] ) )
-      else:
+      # If it is an audio file, do not save it to the playlist
+      if not file.has_key( 'isCDDA' ):
         f.write( aaudio.cache.getPathName( file )+ '\n' )
     
     f.close()
@@ -228,6 +309,11 @@ class PlayList( AbstractFileList ):
   
   # ---------------------------------------------------
   def load( self, fileName ):
+    """
+      load( fileName ) -> success
+      
+      Loads playlist from a simplified m3u file
+    """
     try:
       files= open( fileName, 'r' ).readlines()
     except:
@@ -245,48 +331,18 @@ class PlayList( AbstractFileList ):
   
   # ---------------------------------------------------
   def init( self ):
+    """
+      Stub for ListDisplay
+    """
     self.changed= 1
   
-# ****************************************************************************************************
-class PlayListItem( menu.MenuItem ):
-  # -----------------------------------------------------------------
-  def __init__( self, rect, params ):
-    menu.MenuItem.__init__( self, rect, params )
-  
-  # -----------------------------------------------------------------
-  def processKey( self, itemPos, key ):
-    item= self.itemsWrapper.items()[ itemPos ]
-    paramName= 'onKeyPress'
-    if key== pygame.K_RETURN:
-      paramName= 'onEnter'
-    
-    self.execute( paramName, key, item )
-  
-  # -----------------------------------------------------------------
-  def drawItem( self, itemPos, isFocused ):
-    item= self.itemsWrapper.items()[ itemPos ]
-    # See if current playlist item is a default. If it is then, write * at the end
-    s= item[ 'caption' ]
-    pl= aaudio.player.getPlayList()
-    if aaudio.playLists.getName( pl[ 0 ] )== s:
-      s= '*'+ s
-      
-    # Find out whether it is a directory or file
-    res= []
-    # Select current item if needed
-    if isFocused== 1:
-      res.append( ( self.stripeIcon, LEFT_C ) )
-    
-    res.append( ( self.font[ 0 ].render( s, 1 , self.font[ 1 ] ), LEFT_C ) )
-    return res
-
 # **********************************************************************************************
 # *
 # **********************************************************************************************
 class PlayLists:
   # ---------------------------------------------------
   def __init__( self ):
-    pass
+    self.default= 'Default'
   
   # ---------------------------------------------------
   def save( self ):
@@ -318,13 +374,16 @@ class PlayLists:
     # Load positions
     try:
       f= open( os.path.join( dir, 'positions.dat' ), 'rt').readlines()
-      for line in f:
+      for line in f[ 1: ]:
         name, pos= string.split( line, '\t' )
         try:
           index= self.lists.index( [ name, -1, None ] )
           self.lists[ index ][ 1 ]= int( pos )
         except:
           pass
+      # Set default playlist if any
+      if len( f ):
+        self.default= f[ 0 ].strip()
     except:
       traceback.print_exc()
   
@@ -353,7 +412,7 @@ class PlayLists:
     
   # ---------------------------------------------------
   def getDefault( self ):
-    return self.getPlayList( 'Default' )
+    return self.getPlayList( self.default )
   
   # ---------------------------------------------------
   def getPlayList( self, name= None ):
@@ -407,9 +466,13 @@ class PlayLists:
   
   # ---------------------------------------------------
   def savePositions( self ):
+    # Get the default playlist name
+    pl= aaudio.player.getPlayList()
+    self.default= self.getName( pl[ 0 ] )
     # If found, then save it in the positions.dat file
     posData= map( lambda x: '%s\t%d' % ( x[ 0 ], x[ 1 ] ), self.lists )
     f= open( os.path.join( self.dir, 'positions.dat' ), 'w' )
+    f.write( self.default+ '\n' )
     f.write( string.join( posData, '\n' ) )
     f.close()
 
@@ -418,7 +481,7 @@ class PlayLists:
 # **********************************************************************************************
 class Player:
   """
-    Main player class, decodes mp3 stream and sends to the audio device
+    Main player class, decodes audio streams and sends to the audio device
   """
   # --------------------------------------------------------
   def __init__( self ):
@@ -430,13 +493,11 @@ class Player:
     if self.thread:
       raise 'Cannot run another copy of player'
     
-    self.startPosition= 0
     self.startOffset= 0
     self.stopFlag= 1
     self.exitFlag= 0
     self.fileChanged= 0
     self.currentFile= -1
-    self.avgBitrate= -1
     self.iFreqRate= -1
     self.paused= 0
     
@@ -464,7 +525,6 @@ class Player:
     """ Stop playing all streams """
     res= pysound.isOpen()
     self.stopFlag= 1
-    self.startPosition= 0
     self.startOffset= self.paused= 0
     pysound.stop()
     pysound.close()
@@ -543,9 +603,7 @@ class Player:
     if pysound.isOpen()== 0:
       return -1
     
-    pos= pysound.getPosition()
-    
-    return ( pos- self.startPosition )/ self.iFreqRate
+    return ( pysound.getPosition()- self.startOffset )/ self.iFreqRate
     
   # --------------------------------------------------------
   def getCurrentFileIndex( self ):
@@ -570,6 +628,9 @@ class Player:
     reminder= ''
     readFileNum= 0
     f= None
+    chunk= -1
+    chunks= []
+    newFile= 1
     print 'Player started'
     while 1:
       # Handle stop and init
@@ -596,9 +657,9 @@ class Player:
         continue
       
       # If no chunk is playing right now, get the next file to play
-      chunk= pysound.getChunkNum()
+      chunk1= pysound.getChunkNum()
       # Update currently playing file number
-      if chunk== -1:
+      if chunk1== -1:
         # Set current file into the beginning
         if self.fileChanged== 1:
           initFlag= 1
@@ -610,6 +671,11 @@ class Player:
         
         # Initialize list of chunks
         self.startOffset= 0
+      elif chunk1!= chunk and len( chunks )> 0 and chunk1== chunks[ 0 ]:
+        self.startOffset= pysound.getPosition()
+        del chunks[ 0 ]
+      
+      chunk= chunk1
       
       if len( unprocessedChunk )== 0:
         # Get the next file to play
@@ -620,6 +686,7 @@ class Player:
           
           self.currentFile= readFileNum
           readFileNum+= 1
+          newFile= 1
           
           f= aaudio.cache.open( playlistFile )
           if f== None:
@@ -663,6 +730,7 @@ class Player:
           
           if len( unprocessedChunk )> 0:
             kbPerSec, self.iFreqRate, sampleRate, channels, processedChunk= dec.convert2PCM( unprocessedChunk )
+            f.getFile()[ 'bitrate' ]= kbPerSec
         
         if pysound.getRate()!= self.iFreqRate:
           pysound.stop()
@@ -674,10 +742,11 @@ class Player:
         try:
           # Commit chunk for playing
           tmpChunk= pysound.play( processedChunk )
-          if chunk== -1:
-            self.startPosition= pysound.getPosition()
-            self.avgBitrate= 0
           processedChunk= ''
+          if newFile== 1:
+            chunks.append( tmpChunk )
+          
+          newFile= 0
         except:
           # Too many chunks submitted already for playing
           time.sleep( 0.05 )
@@ -687,11 +756,12 @@ class Player:
     print 'Player stopped'
     
 
-#if __name__ == "__main__":
+if __name__ == "__main__":
+  print 'The aplayer module is a part of pymedia package.\nIt cannot be executed separately.'
+
 """
 import player
 pls= player.PlayList( ( "c:\\Bors\\music\\Leftfield\\Leftism\\11-21st Century Poem.mp3", "c:\\Bors\\music\\Leftfield\\Leftism\\04-Song Of Life.mp3" ) )
-pls.addFilePath( "c:\\Bors\\music\\Kino\\The Best 82-86\\02-v_nashih_glazah_320_lame_cbr.mp3" )
 pl= player.Player()
 pl.start( pls )
 pl.startPlayback()
