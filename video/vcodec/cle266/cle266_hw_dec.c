@@ -42,7 +42,8 @@ int hwdec_open( MpegContext *s )
   unsigned long tmp;
   unsigned char *addr;
 
-  ioperm(0, 0x400, 1);
+  if (ioperm(0, 0x400, 1) != 0)
+      return 0;
   iopl(3);
   outb(0x2f, 0x3c4);
 
