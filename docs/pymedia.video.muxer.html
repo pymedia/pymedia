@@ -1,0 +1,150 @@
+
+<!doctype html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module pymedia.video.muxer</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pymedia.html"><font color="#ffffff">pymedia</font></a>.<a href="pymedia.video.html"><font color="#ffffff">video</font></a>.muxer</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C|/python23/lib/site-packages/pymedia/video/muxer.pyd">c:\python23\lib\site-packages\pymedia\video\muxer.pyd</a></font></td></tr></table>
+    <p><tt><a href="#Muxer">Muxer</a>&nbsp;allows&nbsp;to:<br>
+-&nbsp;Identify&nbsp;the&nbsp;format&nbsp;of&nbsp;individual&nbsp;streams&nbsp;inside&nbsp;compound&nbsp;streams&nbsp;such&nbsp;as&nbsp;asf,&nbsp;avi,&nbsp;mov&nbsp;etc<br>
+-&nbsp;Demux&nbsp;stream&nbsp;into&nbsp;the&nbsp;separate&nbsp;streams</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial">Error
+</font></dt></dl>
+</dd>
+<dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="pymedia.video.muxer.html#Demuxer">Demuxer</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.video.muxer.html#Muxer">Muxer</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Demuxer">class <strong>Demuxer</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Demuxer">Demuxer</a>(&nbsp;ext&nbsp;)&nbsp;-&gt;&nbsp;demuxer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns&nbsp;demuxer&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;based&nbsp;on&nbsp;extension&nbsp;passed.&nbsp;<br>
+It&nbsp;can&nbsp;demux&nbsp;stream&nbsp;into&nbsp;separate&nbsp;streams&nbsp;based&nbsp;on&nbsp;a&nbsp;stream&nbsp;type.&nbsp;Once&nbsp;demuxer&nbsp;is&nbsp;created&nbsp;the&nbsp;following&nbsp;methods&nbsp;are&nbsp;available:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Demuxer-hasHeader">hasHeader</a>()&nbsp;-&gt;&nbsp;{&nbsp;1&nbsp;|&nbsp;0&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns&nbsp;whether&nbsp;header&nbsp;presented&nbsp;or&nbsp;not&nbsp;in&nbsp;a&nbsp;stream.&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You&nbsp;should&nbsp;not&nbsp;rely&nbsp;on&nbsp;'streams'&nbsp;call&nbsp;if&nbsp;this&nbsp;function&nbsp;returns&nbsp;0.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Some&nbsp;values&nbsp;may&nbsp;be&nbsp;used&nbsp;still,&nbsp;such&nbsp;as&nbsp;'id'&nbsp;and&nbsp;'type'<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You&nbsp;should&nbsp;call&nbsp;<a href="#Demuxer-parse">parse</a>()&nbsp;at&nbsp;least&nbsp;once&nbsp;before&nbsp;you&nbsp;can&nbsp;call&nbsp;this&nbsp;method.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Demuxer-parse">parse</a>(&nbsp;fragment&nbsp;)&nbsp;-&gt;&nbsp;streams<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parses&nbsp;stream&nbsp;and&nbsp;returns&nbsp;sub&nbsp;stream&nbsp;data&nbsp;in&nbsp;order&nbsp;it&nbsp;appear&nbsp;in&nbsp;the&nbsp;fragment&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Demuxer-reset">reset</a>()&nbsp;-&gt;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Reset&nbsp;demultiplexer&nbsp;buffers<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Demuxer-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#Demuxer-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="Demuxer-hasHeader"><strong>hasHeader</strong></a>(...)</dt><dd><tt><a href="#Demuxer-hasHeader">hasHeader</a>()&nbsp;-&gt;&nbsp;{&nbsp;1&nbsp;|&nbsp;0&nbsp;}<br>
+Returns&nbsp;whether&nbsp;header&nbsp;presented&nbsp;or&nbsp;not&nbsp;in&nbsp;a&nbsp;stream.&nbsp;<br>
+You&nbsp;should&nbsp;not&nbsp;rely&nbsp;on&nbsp;'streams'&nbsp;call&nbsp;if&nbsp;this&nbsp;function&nbsp;returns&nbsp;0.<br>
+Some&nbsp;values&nbsp;may&nbsp;be&nbsp;used&nbsp;still,&nbsp;such&nbsp;as&nbsp;'id'&nbsp;and&nbsp;'type'<br>
+You&nbsp;should&nbsp;call&nbsp;<a href="#Demuxer-parse">parse</a>()&nbsp;at&nbsp;least&nbsp;once&nbsp;before&nbsp;you&nbsp;can&nbsp;call&nbsp;this&nbsp;method.</tt></dd></dl>
+
+<dl><dt><a name="Demuxer-parse"><strong>parse</strong></a>(...)</dt><dd><tt><a href="#Demuxer-parse">parse</a>(&nbsp;fragment&nbsp;)&nbsp;-&gt;&nbsp;streams<br>
+Parses&nbsp;stream&nbsp;and&nbsp;returns&nbsp;sub&nbsp;stream&nbsp;data&nbsp;in&nbsp;order&nbsp;it&nbsp;appear&nbsp;in&nbsp;the&nbsp;fragment</tt></dd></dl>
+
+<dl><dt><a name="Demuxer-reset"><strong>reset</strong></a>(...)</dt><dd><tt><a href="#Demuxer-reset">reset</a>()&nbsp;-&gt;&nbsp;<br>
+Reset&nbsp;demultiplexer&nbsp;buffers</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x0100C0C0&gt;<dd><tt>T.<a href="#Demuxer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>streams</strong> = &lt;attribute 'streams' of 'pymedia.video.muxer.Demuxer' objects&gt;<dd><tt>streams&nbsp;-&gt;&nbsp;streams<br>
+Returns&nbsp;list&nbsp;of&nbsp;streams&nbsp;within&nbsp;after&nbsp;the&nbsp;header&nbsp;is&nbsp;read&nbsp;in&nbsp;order&nbsp;they&nbsp;listed&nbsp;in&nbsp;a&nbsp;master&nbsp;stream.<br>
+It&nbsp;may&nbsp;contain&nbsp;the&nbsp;following&nbsp;attributes:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;internal&nbsp;stream&nbsp;identifier&nbsp;compatible&nbsp;with&nbsp;vcodec<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fourcc&nbsp;-&nbsp;fourcc&nbsp;stream&nbsp;identifier&nbsp;if&nbsp;any&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;type&nbsp;-&nbsp;stream&nbsp;type{&nbsp;video=&nbsp;0&nbsp;|&nbsp;audio=&nbsp;1&nbsp;|&nbsp;text=&nbsp;??&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bitrate&nbsp;-&nbsp;stream&nbsp;bitrate<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;width&nbsp;-&nbsp;picture&nbsp;width&nbsp;if&nbsp;any<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;height&nbsp;-&nbsp;picture&nbsp;height&nbsp;if&nbsp;any</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Muxer">class <strong>Muxer</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Muxer">Muxer</a>(&nbsp;ext&nbsp;)&nbsp;-&gt;&nbsp;<a href="#Muxer">Muxer</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns&nbsp;muxer&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;based&nbsp;on&nbsp;extension&nbsp;passed.&nbsp;<br>
+<a href="#Muxer">Muxer</a>&nbsp;can&nbsp;multiplex&nbsp;stream&nbsp;from&nbsp;separate&nbsp;streams&nbsp;based&nbsp;on&nbsp;a&nbsp;stream&nbsp;type.&nbsp;Once&nbsp;<a href="#Muxer">Muxer</a>&nbsp;is&nbsp;created&nbsp;the&nbsp;following&nbsp;methods&nbsp;are&nbsp;available:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Muxer-start">start</a>()&nbsp;-&gt;&nbsp;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;File&nbsp;header&nbsp;generation.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Muxer-end">end</a>()&nbsp;-&gt;&nbsp;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Footer&nbsp;generation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Muxer-addStream">addStream</a>(codec_id,&nbsp;[codec_params])&nbsp;-&gt;&nbsp;stream&nbsp;index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Adds&nbsp;&nbsp;stream&nbsp;to&nbsp;muxer.&nbsp;codec_params&nbsp;is&nbsp;an&nbsp;optional&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;codec&nbsp;parameters&nbsp;dictionary.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;write&nbsp;(stream_index,&nbsp;str)&nbsp;-&gt;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Write&nbsp;frame&nbsp;into&nbsp;on&nbsp;of&nbsp;the&nbsp;streams&nbsp;in&nbsp;muxer.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Muxer-getStreamPTS">getStreamPTS</a>(stream_index)&nbsp;-&gt;&nbsp;tuple&nbsp;of&nbsp;pts_val,&nbsp;pts_num,&nbsp;pts_den&nbsp;for&nbsp;stream<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Muxer-addStream"><strong>addStream</strong></a>(...)</dt><dd><tt><a href="#Muxer-addStream">addStream</a>(codec_id,&nbsp;[codec_params])&nbsp;-&gt;&nbsp;stream&nbsp;index<br>
+Adds&nbsp;&nbsp;stream&nbsp;to&nbsp;muxer.&nbsp;codec_params&nbsp;is&nbsp;an&nbsp;optional&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;codec&nbsp;parameters&nbsp;dictionary.</tt></dd></dl>
+
+<dl><dt><a name="Muxer-end"><strong>end</strong></a>(...)</dt><dd><tt><a href="#Muxer-end">end</a>()&nbsp;-&gt;&nbsp;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+Footer&nbsp;generation</tt></dd></dl>
+
+<dl><dt><a name="Muxer-getStreamPTS"><strong>getStreamPTS</strong></a>(...)</dt><dd><tt><a href="#Muxer-getStreamPTS">getStreamPTS</a>(stream_index)&nbsp;-&gt;&nbsp;tuple&nbsp;of&nbsp;pts_val,&nbsp;pts_num,&nbsp;pts_den&nbsp;for&nbsp;stream</tt></dd></dl>
+
+<dl><dt><a name="Muxer-start"><strong>start</strong></a>(...)</dt><dd><tt><a href="#Muxer-start">start</a>()&nbsp;-&gt;&nbsp;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+File&nbsp;header&nbsp;generation.</tt></dd></dl>
+
+<dl><dt><a name="Muxer-write"><strong>write</strong></a>(...)</dt><dd><tt>write&nbsp;(stream_index,&nbsp;str)&nbsp;-&gt;encoded&nbsp;string&nbsp;or&nbsp;None&nbsp;if&nbsp;no&nbsp;data<br>
+Write&nbsp;frame&nbsp;into&nbsp;on&nbsp;of&nbsp;the&nbsp;streams&nbsp;in&nbsp;muxer.</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x0100CBB0&gt;<dd><tt>T.<a href="#Muxer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>CODEC_TYPE_AUDIO</strong> = 1<br>
+<strong>CODEC_TYPE_VIDEO</strong> = 0<br>
+<strong>build</strong> = 1911<br>
+<strong>extensions</strong> = ['avi', 'wmv', 'mov', 'mp4', 'asf', 'mpeg', 'mpg', 'mpeg', 'dat', 'vob']<br>
+<strong>version</strong> = '2'</td></tr></table>
+</body></html>

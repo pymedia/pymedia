@@ -1,0 +1,182 @@
+
+<!doctype html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module pymedia.video.vcodec</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pymedia.html"><font color="#ffffff">pymedia</font></a>.<a href="pymedia.video.html"><font color="#ffffff">video</font></a>.vcodec</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C|/python23/lib/site-packages/pymedia/video/vcodec.pyd">c:\python23\lib\site-packages\pymedia\video\vcodec.pyd</a></font></td></tr></table>
+    <p><tt>Video&nbsp;data&nbsp;decoding/encoding&nbsp;routins<br>
+Allows&nbsp;to&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Decode/encode&nbsp;strings&nbsp;of&nbsp;video&nbsp;information&nbsp;into/from&nbsp;either&nbsp;planar&nbsp;or&nbsp;packed&nbsp;formats(&nbsp;such&nbsp;as&nbsp;YUV420,&nbsp;RGB24,&nbsp;etc&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Provides&nbsp;all&nbsp;formats&nbsp;with&nbsp;the&nbsp;same&nbsp;interface</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial">Error
+</font></dt></dl>
+</dd>
+<dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="pymedia.video.vcodec.html#Decoder">Decoder</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.video.vcodec.html#Encoder">Encoder</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.video.vcodec.html#VFrame">VFrame</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Decoder">class <strong>Decoder</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Decoder">Decoder</a>(&nbsp;codecParams&nbsp;)&nbsp;-&gt;&nbsp;<a href="#Decoder">Decoder</a><br>
+&nbsp;<br>
+Creates&nbsp;new&nbsp;video&nbsp;decoder&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;based&nbsp;on&nbsp;codecParams.&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;codecParams&nbsp;-&nbsp;dictionary&nbsp;with&nbsp;the&nbsp;following&nbsp;items&nbsp;parameters:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'id',&nbsp;'fourcc',&nbsp;'type',&nbsp;'bitrate',&nbsp;'width',&nbsp;'height',&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'format',&nbsp;'data',&nbsp;'size',&nbsp;'rate',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'rate_base',&nbsp;'frame_rate',&nbsp;'frame_rate_base',&nbsp;'gop_size'<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'max_b_frames',&nbsp;'deinterlace'<br>
+The&nbsp;list&nbsp;of&nbsp;available&nbsp;codecs&nbsp;may&nbsp;be&nbsp;accessed&nbsp;through&nbsp;vcodec.codecs<br>
+All&nbsp;possible&nbsp;formats&nbsp;can&nbsp;be&nbsp;obtained&nbsp;through&nbsp;vcodec.formats<br>
+Methods&nbsp;of&nbsp;<a href="#Decoder">Decoder</a>&nbsp;are:<br>
+convert(&nbsp;format&nbsp;{,&nbsp;size&nbsp;}&nbsp;)&nbsp;-&gt;&nbsp;frame<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Convert&nbsp;existing&nbsp;video&nbsp;frame&nbsp;into&nbsp;another&nbsp;format&nbsp;with&nbsp;all&nbsp;needed&nbsp;color&nbsp;conversions&nbsp;and&nbsp;scaling.<br>
+<a href="#Decoder-getParams">getParams</a>()&nbsp;-&gt;&nbsp;params<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parameters&nbsp;that&nbsp;represents&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;codec<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Decoder-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#Decoder-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="Decoder-decode"><strong>decode</strong></a>(...)</dt><dd><tt>convert(&nbsp;format&nbsp;{,&nbsp;size&nbsp;}&nbsp;)&nbsp;-&gt;&nbsp;frame<br>
+Convert&nbsp;existing&nbsp;video&nbsp;frame&nbsp;into&nbsp;another&nbsp;format&nbsp;with&nbsp;all&nbsp;needed&nbsp;color&nbsp;conversions&nbsp;and&nbsp;scaling.</tt></dd></dl>
+
+<dl><dt><a name="Decoder-getParams"><strong>getParams</strong></a>(...)</dt><dd><tt><a href="#Decoder-getParams">getParams</a>()&nbsp;-&gt;&nbsp;params<br>
+Parameters&nbsp;that&nbsp;represents&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
+
+<dl><dt><a name="Decoder-reset"><strong>reset</strong></a>(...)</dt><dd><tt><a href="#Decoder-reset">reset</a>()&nbsp;-&gt;&nbsp;None<br>
+Reset&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x010E3828&gt;<dd><tt>T.<a href="#Decoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Encoder">class <strong>Encoder</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Encoder">Encoder</a>(&nbsp;codecParams&nbsp;)&nbsp;-&gt;&nbsp;<a href="#Encoder">Encoder</a><br>
+&nbsp;<br>
+Creates&nbsp;new&nbsp;video&nbsp;encoder&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;based&nbsp;codecParams.&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;codecParams&nbsp;-&nbsp;dictionary&nbsp;with&nbsp;the&nbsp;following&nbsp;items&nbsp;parameters:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'id',&nbsp;'fourcc',&nbsp;'type',&nbsp;'bitrate',&nbsp;'width',&nbsp;'height',&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'format',&nbsp;'data',&nbsp;'size',&nbsp;'rate',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'rate_base',&nbsp;'frame_rate',&nbsp;'frame_rate_base',&nbsp;'gop_size'<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'max_b_frames',&nbsp;'deinterlace'<br>
+The&nbsp;list&nbsp;of&nbsp;available&nbsp;codecs&nbsp;may&nbsp;be&nbsp;accessed&nbsp;through&nbsp;vcodec.codecs<br>
+All&nbsp;possible&nbsp;formats&nbsp;to&nbsp;the&nbsp;convert&nbsp;video&nbsp;frame&nbsp;to&nbsp;are&nbsp;available&nbsp;trough&nbsp;vcodec.formats<br>
+Methods&nbsp;of&nbsp;<a href="#Encoder">Encoder</a>&nbsp;are:<br>
+<a href="#Encoder-encode">encode</a>(&nbsp;frame,&nbsp;[&nbsp;scale&nbsp;]-&gt;&nbsp;encoded&nbsp;string<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Encode&nbsp;frame<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Encoder-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#Encoder-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="Encoder-encode"><strong>encode</strong></a>(...)</dt><dd><tt><a href="#Encoder-encode">encode</a>(&nbsp;frame,&nbsp;[&nbsp;scale&nbsp;]-&gt;&nbsp;encoded&nbsp;string<br>
+Encode&nbsp;frame</tt></dd></dl>
+
+<dl><dt><a name="Encoder-getParams"><strong>getParams</strong></a>(...)</dt><dd><tt><a href="#Encoder-getParams">getParams</a>()&nbsp;-&gt;&nbsp;params<br>
+Parameters&nbsp;that&nbsp;represents&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x010E3918&gt;<dd><tt>T.<a href="#Encoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="VFrame">class <strong>VFrame</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#VFrame">VFrame</a>(&nbsp;format,&nbsp;size,&nbsp;data&nbsp;)&nbsp;-&gt;&nbsp;<a href="#VFrame">VFrame</a><br>
+Create&nbsp;a&nbsp;new&nbsp;<a href="#VFrame">VFrame</a>&nbsp;with&nbsp;the&nbsp;parameters&nbsp;passed.<br>
+The&nbsp;'format'&nbsp;should&nbsp;be&nbsp;one&nbsp;from&nbsp;vcodec.formats&nbsp;and&nbsp;the&nbsp;'size'&nbsp;should&nbsp;represent&nbsp;the&nbsp;actual&nbsp;size&nbsp;of&nbsp;the&nbsp;frame(&nbsp;w,&nbsp;h&nbsp;)<br>
+If&nbsp;you&nbsp;create&nbsp;RGB&nbsp;picture,&nbsp;make&nbsp;sure&nbsp;that&nbsp;'data'&nbsp;contains&nbsp;3&nbsp;strings&nbsp;as&nbsp;below:&nbsp;(&nbsp;RGB,&nbsp;None,&nbsp;None&nbsp;)<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="VFrame-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#VFrame-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="VFrame-convert"><strong>convert</strong></a>(...)</dt><dd><tt><a href="#VFrame-convert">convert</a>(&nbsp;format&nbsp;{,&nbsp;size&nbsp;}&nbsp;)&nbsp;-&gt;&nbsp;frame<br>
+Convert&nbsp;existing&nbsp;video&nbsp;frame&nbsp;into&nbsp;another&nbsp;format&nbsp;with&nbsp;all&nbsp;needed&nbsp;color&nbsp;conversions&nbsp;and&nbsp;scaling.</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x010E3728&gt;<dd><tt>T.<a href="#VFrame-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+<dl><dt><strong>aspect_ratio</strong> = &lt;member 'aspect_ratio' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Picture&nbsp;default&nbsp;aspect&nbsp;ratio.</tt></dl>
+
+<dl><dt><strong>bitrate</strong> = &lt;member 'bitrate' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Bitrate&nbsp;of&nbsp;the&nbsp;stream.&nbsp;May&nbsp;change&nbsp;from&nbsp;frame&nbsp;to&nbsp;frame.</tt></dl>
+
+<dl><dt><strong>data</strong> = &lt;attribute 'data' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Data&nbsp;of&nbsp;the&nbsp;frame&nbsp;as&nbsp;a&nbsp;tuple&nbsp;of&nbsp;strings.&nbsp;Numbers&nbsp;of&nbsp;strings&nbsp;depend&nbsp;on&nbsp;frame&nbsp;type(&nbsp;1&nbsp;for&nbsp;RGB,&nbsp;3&nbsp;for&nbsp;component&nbsp;)</tt></dl>
+
+<dl><dt><strong>format</strong> = &lt;member 'format' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Frame&nbsp;format&nbsp;as&nbsp;integer.&nbsp;See&nbsp;list&nbsp;of&nbsp;formats&nbsp;in&nbsp;vcodec.codecs</tt></dl>
+
+<dl><dt><strong>rate</strong> = &lt;member 'rate' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Frame&nbsp;rate&nbsp;in&nbsp;units&nbsp;relative&nbsp;to&nbsp;the&nbsp;frame_base</tt></dl>
+
+<dl><dt><strong>rate_base</strong> = &lt;member 'rate_base' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Frame&nbsp;rate&nbsp;base</tt></dl>
+
+<dl><dt><strong>resync</strong> = &lt;member 'resync' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Flag&nbsp;is&nbsp;set&nbsp;if&nbsp;resync&nbsp;still&nbsp;in&nbsp;place</tt></dl>
+
+<dl><dt><strong>size</strong> = &lt;attribute 'size' of 'pymedia.video.vcodec.VFrame' objects&gt;<dd><tt>Size&nbsp;of&nbsp;the&nbsp;frame&nbsp;in&nbsp;pixels(&nbsp;w,&nbsp;h&nbsp;)</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-getCodecID"><strong>getCodecID</strong></a>(...)</dt><dd><tt><a href="#-getCodecID">getCodecID</a>(name)&nbsp;-&nbsp;returns&nbsp;internal&nbsp;numerical&nbsp;codec&nbsp;id&nbsp;for&nbsp;its&nbsp;name</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>build</strong> = 1911<br>
+<strong>formats</strong> = PIX_FMT_RGB555,PIX_FMT_MONOBLACK,PIX_FMT_YUV410P...PIX_FMT_YUVJ422P,PIX_FMT_YUVJ420P,PIX_FMT_YUV444P<br>
+<strong>version</strong> = '1'</td></tr></table>
+</body></html>

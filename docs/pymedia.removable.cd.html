@@ -1,0 +1,149 @@
+
+<!doctype html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module pymedia.removable.cd</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pymedia.html"><font color="#ffffff">pymedia</font></a>.<a href="pymedia.removable.html"><font color="#ffffff">removable</font></a>.cd</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C|/python23/lib/site-packages/pymedia/removable/cd.pyd">c:\python23\lib\site-packages\pymedia\removable\cd.pyd</a></font></td></tr></table>
+    <p><tt><a href="#CD">CD</a>&nbsp;direct&nbsp;<a href="#CD">CD</a>/DVD&nbsp;ROM&nbsp;access.<br>
+Provides&nbsp;the&nbsp;following&nbsp;functionality:<br>
+-&nbsp;Identify&nbsp;all&nbsp;drives&nbsp;in&nbsp;a&nbsp;system<br>
+-&nbsp;Direct&nbsp;access&nbsp;in&nbsp;file&nbsp;based&nbsp;mode&nbsp;to&nbsp;these&nbsp;drives&nbsp;per&nbsp;track<br>
+The&nbsp;following&nbsp;methods&nbsp;available&nbsp;from&nbsp;the&nbsp;module&nbsp;directly:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#-init">init</a>()&nbsp;-&gt;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;initialize&nbsp;cdrom&nbsp;subsystem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#-quit">quit</a>()&nbsp;-&gt;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quit&nbsp;cdrom&nbsp;subsystem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#-getCount">getCount</a>()&nbsp;-&gt;&nbsp;(&nbsp;count&nbsp;)&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return&nbsp;number&nbsp;of&nbsp;cdroms&nbsp;in&nbsp;a&nbsp;system<br>
+To&nbsp;access&nbsp;content&nbsp;of&nbsp;each&nbsp;individual&nbsp;drive&nbsp;in&nbsp;the&nbsp;system,&nbsp;use&nbsp;cd.<a href="#CD">CD</a>(&nbsp;index&nbsp;)</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial">Error
+</font></dt></dl>
+</dd>
+<dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="pymedia.removable.cd.html#CD">CD</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="CD">class <strong>CD</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#CD">CD</a>&nbsp;allow&nbsp;you&nbsp;to&nbsp;query&nbsp;information&nbsp;about&nbsp;media&nbsp;type&nbsp;and&nbsp;read&nbsp;data&nbsp;in&nbsp;a&nbsp;raw&nbsp;mode<br>
+Once&nbsp;created,&nbsp;the&nbsp;following&nbsp;methods&nbsp;are&nbsp;available:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-isReady">isReady</a>()&nbsp;-&gt;&nbsp;ready<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-eject">eject</a>()&nbsp;-&gt;&nbsp;None<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-open">open</a>(&nbsp;name&nbsp;)&nbsp;-&gt;&nbsp;File<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="CD-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#CD-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
+
+<dl><dt><a name="CD-eject"><strong>eject</strong></a>(...)</dt><dd><tt><a href="#CD-eject">eject</a>()&nbsp;-&gt;&nbsp;None<br>
+Eject&nbsp;tray</tt></dd></dl>
+
+<dl><dt><a name="CD-getName"><strong>getName</strong></a>(...)</dt><dd><tt><a href="#CD-getName">getName</a>()&nbsp;-&gt;&nbsp;name<br>
+Return&nbsp;the&nbsp;name&nbsp;of&nbsp;the&nbsp;drive</tt></dd></dl>
+
+<dl><dt><a name="CD-getProperties"><strong>getProperties</strong></a>(...)</dt><dd><tt><a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>
+Return&nbsp;properties&nbsp;for&nbsp;a&nbsp;selected&nbsp;ROM&nbsp;as&nbsp;a&nbsp;dictionary<br>
+'label'&nbsp;is&nbsp;always&nbsp;set&nbsp;and&nbsp;represent&nbsp;the&nbsp;media&nbsp;volume&nbsp;label<br>
+'type'&nbsp;is&nbsp;always&nbsp;set&nbsp;and&nbsp;can&nbsp;be&nbsp;(&nbsp;{&nbsp;'DVD'&nbsp;|&nbsp;'AudioCD'&nbsp;|&nbsp;'VCD'&nbsp;|&nbsp;'Data'&nbsp;}&nbsp;)<br>
+For&nbsp;DVD&nbsp;it&nbsp;would&nbsp;be:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'titles'&nbsp;list&nbsp;of&nbsp;titles&nbsp;on&nbsp;DVD.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Once&nbsp;title&nbsp;is&nbsp;opened&nbsp;through&nbsp;the&nbsp;<a href="#CD-open">open</a>()&nbsp;call,&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;you&nbsp;may&nbsp;request&nbsp;additional&nbsp;propertirs&nbsp;by&nbsp;calling&nbsp;<a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Properies&nbsp;will&nbsp;be&nbsp;returned&nbsp;as&nbsp;a&nbsp;dictinary&nbsp;with&nbsp;the&nbsp;following&nbsp;members:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'length'&nbsp;length&nbsp;of&nbsp;the&nbsp;title<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'video_streams'&nbsp;list&nbsp;of&nbsp;video&nbsp;streams&nbsp;as&nbsp;dictionaries<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'audio_streams'&nbsp;list&nbsp;of&nbsp;audio&nbsp;streams&nbsp;as&nbsp;dictionaries<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'chapters'&nbsp;list&nbsp;of&nbsp;absolute&nbsp;positions&nbsp;for&nbsp;chapters(&nbsp;to&nbsp;be&nbsp;used&nbsp;in&nbsp;seek&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'seeks'&nbsp;list&nbsp;of&nbsp;pairs(&nbsp;time_sec,&nbsp;seek_pos&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'languages'&nbsp;list&nbsp;of&nbsp;languages&nbsp;for&nbsp;a&nbsp;title&nbsp;as&nbsp;dictionaries<br>
+For&nbsp;AudioCD&nbsp;it&nbsp;would&nbsp;be:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'toc'&nbsp;TOC&nbsp;of&nbsp;a&nbsp;disk<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'titles'&nbsp;list&nbsp;of&nbsp;title&nbsp;names&nbsp;on&nbsp;a&nbsp;disk(&nbsp;matches&nbsp;TOC&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Once&nbsp;title&nbsp;is&nbsp;opened&nbsp;through&nbsp;the&nbsp;<a href="#CD-open">open</a>()&nbsp;call,&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;you&nbsp;may&nbsp;request&nbsp;additional&nbsp;propertirs&nbsp;by&nbsp;calling&nbsp;<a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Properies&nbsp;will&nbsp;be&nbsp;returned&nbsp;as&nbsp;a&nbsp;dictinary&nbsp;with&nbsp;the&nbsp;following&nbsp;members:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'length'&nbsp;length&nbsp;of&nbsp;the&nbsp;title<br>
+For&nbsp;VideoCD&nbsp;it&nbsp;would&nbsp;be:<br>
+'titles'&nbsp;-&gt;&nbsp;list&nbsp;of&nbsp;file&nbsp;names&nbsp;for&nbsp;a&nbsp;movie</tt></dd></dl>
+
+<dl><dt><a name="CD-isReady"><strong>isReady</strong></a>(...)</dt><dd><tt><a href="#CD-isReady">isReady</a>()&nbsp;-&gt;&nbsp;ready<br>
+Returns&nbsp;whether&nbsp;drive&nbsp;is&nbsp;ready&nbsp;or&nbsp;not</tt></dd></dl>
+
+<dl><dt><a name="CD-open"><strong>open</strong></a>(...)</dt><dd><tt><a href="#CD-open">open</a>(&nbsp;name&nbsp;)&nbsp;-&gt;&nbsp;File<br>
+Return&nbsp;file&nbsp;like&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;mapped&nbsp;to&nbsp;given&nbsp;track.<br>
+Track&nbsp;supports&nbsp;following&nbsp;methods:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;read(&nbsp;bytes&nbsp;)&nbsp;-&gt;&nbsp;data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seek(&nbsp;offset,&nbsp;seek_pos&nbsp;)&nbsp;-&gt;&nbsp;None<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;close()&nbsp;-&gt;&nbsp;None<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tell()&nbsp;-&gt;&nbsp;pos</tt></dd></dl>
+
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x011568F8&gt;<dd><tt>T.<a href="#CD-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-getCount"><strong>getCount</strong></a>(...)</dt><dd><tt><a href="#-getCount">getCount</a>()&nbsp;-&gt;&nbsp;(&nbsp;count&nbsp;)&nbsp;<br>
+return&nbsp;number&nbsp;of&nbsp;cdroms&nbsp;in&nbsp;a&nbsp;system</tt></dd></dl>
+ <dl><dt><a name="-init"><strong>init</strong></a>(...)</dt><dd><tt><a href="#-init">init</a>()&nbsp;-&gt;&nbsp;<br>
+initialize&nbsp;cdrom&nbsp;subsystem</tt></dd></dl>
+ <dl><dt><a name="-quit"><strong>quit</strong></a>(...)</dt><dd><tt><a href="#-quit">quit</a>()&nbsp;-&gt;&nbsp;<br>
+quit&nbsp;cdrom&nbsp;subsystem</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>SEEK_CUR</strong> = 1<br>
+<strong>SEEK_END</strong> = 2<br>
+<strong>SEEK_SET</strong> = 0<br>
+<strong>build</strong> = 1911<br>
+<strong>version</strong> = '2'</td></tr></table>
+</body></html>
