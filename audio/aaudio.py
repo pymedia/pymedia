@@ -180,6 +180,21 @@ def processWholeDir( file, extensions ):
       
       f= cache.addFile( file, line, 0 )
 
+# -----------------------------------------------------------------
+def clipIcon( icons, size ):
+  """
+    Clip all icons in a list to a size passed
+  """
+  res= []
+  for icon in icons:
+    size1= [ size[ 0 ]- icon[ 1 ][ 0 ], size[ 1 ]- icon[ 1 ][ 1 ] ]
+    if size1[ 0 ]> icon[ 0 ].get_width():
+      size1[ 0 ]= icon[ 0 ].get_width()
+    if size1[ 1 ]> icon[ 0 ].get_height():
+      size1[ 1 ]= icon[ 0 ].get_height()
+    res+= [ ( icon[ 0 ].subsurface( LEFT_C+ tuple(size1) ), icon[ 1 ] ) ]
+  return res
+
 # ****************************************************************************************************
 class AudioFileHelper( menu.MenuHelper ):
   """
@@ -204,11 +219,12 @@ class AudioFileHelper( menu.MenuHelper ):
     menu.MenuHelper.__init__( self, rect, params )
     # Load fonts and icons
     self.folderIcons= self.loadIcon( 'folderIcons', ( 'folder_0.gif', 'folder_1.gif',  ) )
-    self.fileIcons= self.loadIcon( 'fileIcons', ( 'file_0.bmp', 'file_1.bmp',  ) )
+    self.fileIcons= self.loadIcon( 'fileIcons', ( 'file_0.bmp', 'file_1.bmp' ) )
     self.cddaIcon= self.loadIcon( 'cddaIcon', 'audio.gif' )
     self.emptyIcon= self.loadIcon( 'emptyIcon', 'empty.gif' )
+    self.playingIcon= self.loadIcon( 'playingIcon', 'playing.gif' )
+    self.playlistIcon= self.loadIcon( 'playlistIcon', 'playlist.gif' )
     self.extensions= map( lambda x: string.lower( x ), self.params[ 'extensions' ] )
-    self.extIcons= map( lambda x: self.loadIcon( '%sIcon' % x, '%s.gif' % x ), self.extensions )
     self.titleFont, self.albumFont, self.artistFont, self.lengthFont= \
       map( lambda x: self.loadFont( x ), ( 'titleFont', 'albumFont', 'artistFont', 'lengthFont' ) )
   
@@ -243,6 +259,7 @@ class AudioFileHelper( menu.MenuHelper ):
         f[ 'isCDDA' ]= 1
         f[ 'length' ]= toc[ trackNum- 1 ][ 1 ]/ 75
         f[ 'sectors' ]= toc[ trackNum- 1 ]
+        f[ 'bitRate' ]= 999
   
   # -----------------------------------------------------------------
   def processDir( self, param ):
@@ -264,6 +281,7 @@ class AudioFileHelper( menu.MenuHelper ):
       if device.isReady()== 0:
         print 'Device %s is not ready to read' % cache.getPathName( file )
         file[ 'title' ]= 'No disc'
+        file[ 'processing' ]= 0
         return
       else:
         print 'Device %s is about to be read' % cache.getPathName( file )
@@ -369,7 +387,7 @@ class AudioFileHelper( menu.MenuHelper ):
     self.setChanged( 1 )
   
   # -----------------------------------------------------------------
-  def getNameIcon( self, title, album, artist, track, offset ):
+  def getNameIcon( self, title, album, artist, track ):
     """
       Renders the file / directory informarmation as a text with predefing font and based on
       information it gets from the file attributes
@@ -529,7 +547,7 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     if i== -1:
       # Nothing is playing
       res= []
-      height, res1= self.getNameIcon( 'Nothing is playing', None, None, None, 0 )
+      height, res1= self.getNameIcon( 'Nothing is playing', None, None, None )
     else:
       # Display file information( including the position, length and bitrate )
       playingFile= player.getPlayList()[ 0 ].getFile( i )
@@ -558,7 +576,8 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
       if playingFile.has_key( 'tracknum' ):
         track= playingFile[ 'tracknum' ]
       
-      height, res1= self.getNameIcon( title, album, artist, track, 0 )
+      height, res1= self.getNameIcon( title, album, artist, track )
+      res1= clipIcon( res1, self.mainArea[ 2: ] )
     
     res+= self.adjustPos( res1, self.mainArea[ :2 ] )
     return res
@@ -648,6 +667,7 @@ class AudioFileFolderItem( AudioFileHelper ):
       Constructor.
     """
     AudioFileHelper.__init__( self, rect, params )
+    self.extFont= self.loadFont( 'extensionFont' )
     self.iconSize= self.getParamList( 'iconSize', ( 72, 72 ) )
     self.itemSize= ( rect[ 2 ], 100 )
     # Identify max icon size
@@ -678,7 +698,9 @@ class AudioFileFolderItem( AudioFileHelper ):
           file[ 'icon' ].append( pygame.transform.scale( icon, self.iconSize ))
     else:
       # Process file extension
-      file[ 'icon' ].append( self.extIcons[ self.extensions.index( cache.getExtension( file )) ] )
+      extIcon= self.extFont[ 0 ].render( cache.getExtension( file ), 1, self.extFont[ 1 ] )
+      extIcon.set_alpha( 200 )
+      file[ 'icon' ].append( extIcon )
       
     self.setChanged( 1 )
     
@@ -774,23 +796,28 @@ class AudioFileFolderItem( AudioFileHelper ):
       else:
         eventQueue.put( ( 'EXECUTE', self.processDir, file ) )
     
-    if self.isPlaying( file ):
-      # Draw playing surface in the background
-      #self.plSurface.fill( ( 0, 0, 255 ) )
-      #self.surface.blit( self.plSurface, (0,0) )
-      pass
-    elif self.isSelected( file ):
-      # Draw white surface in the background
-      #self.plSurface.fill( ( 255, 255, 255 ) )
-      #self.surface.blit( self.plSurface, (0,0) )
-      pass
-      
     # Draw icons at the left side of the item
     resIcon= self.drawIcon( file, isFocused )
     
+    folderWidth= self.maxIconSize[ 0 ]+ FRAME_SIZE* 2
+    width= self.getItemSize()[ 0 ]- folderWidth
+    extraIcon= None
+    if self.isPlaying( file ):
+      # Add extra icon at the end of the text when playing
+      extraIcon= self.playingIcon
+    elif self.isSelected( file ):
+      # Add extra icon at the end of the text when is in the playlist
+      extraIcon= self.playlistIcon
+    
+    # Adjust extra icon if exists
+    if extraIcon:
+      width-= extraIcon.get_width()
+      resIcon+= [ ( extraIcon, ( folderWidth+ width, ( self.getItemSize()[ 1 ]- extraIcon.get_height() )/2 ) ) ]
+    
     # Center text into rect
-    height, text= self.getNameIcon( file[ 'title' ], file[ 'album' ], file[ 'author' ], file[ 'tracknum' ], self.maxIconSize[ 0 ] )
-    resIcon+= self.adjustPos( text, ( self.maxIconSize[ 0 ]+ FRAME_SIZE* 2, ( self.getItemSize()[ 1 ]- height )/2 ) )
+    height, text= self.getNameIcon( file[ 'title' ], file[ 'album' ], file[ 'author' ], file[ 'tracknum' ] )
+    text= clipIcon( text, ( width, self.getItemSize()[ 1 ] ))
+    resIcon+= self.adjustPos( text, ( folderWidth, ( self.getItemSize()[ 1 ]- height )/2 ) )
     return resIcon
   
   # -----------------------------------------------------------------
@@ -857,6 +884,8 @@ class AudioFileFolderItem( AudioFileHelper ):
         activeItem= 0
       else:
         addToPlayList( ( item, ), None, None )
+        # Set changed for the whole screen
+        self.setChanged( 2 )
     elif key== pygame.K_BACKSPACE:
       if len( self.history ):
         self.itemsWrapper.setItems( self.history[ -1 ][ 0 ], self.getFilter() )
