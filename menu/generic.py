@@ -155,7 +155,10 @@ class MenuItem( MenuHelper ):
     self.itemsWrapper= None
     
     # Scale default stripe
-    self.stripeIcon= pygame.transform.scale( self.loadIcon( 'stripeIcons', ( 'stripe_1.bmp' ) ), self.itemSize )
+    self.stripeIcon= pygame.Surface( self.itemSize )
+    col= self.getParam( 'stripeColor', ( 95,166,76) )
+    self.stripeIcon.fill( col )
+    self.stripeIcon.set_alpha( 190 )
   
   # -----------------------------------------------------------------
   def drawItem( self, itemPos, isFocused ):
@@ -253,7 +256,7 @@ class ListDisplay( GenericDisplay ):
     self.scrollFlag= self.getParam( 'scroll', 'no' )== 'yes'
     self.scrollFont= self.loadFont( 'scrollFont' )
     self.messageFont= self.loadFont( 'messageFont' )
-    self.navIcons= self.loadIcon( 'navIcons', ( 'up_0.bmp', 'down_0.bmp' ) )
+    self.navIcons= self.loadIcon( 'navIcons', ( 'up_0.gif', 'down_0.gif' ) )
   
   # -----------------------------------------------------------------
   def init( self, itemsWrapper, activeItem= 0 ):
