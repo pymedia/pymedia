@@ -18,9 +18,9 @@
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 ##    Dmitry Borisov
-
-from __main__ import *
 import string, pyRXP
+from __main__ import *
+from pymedia import *
 
 # ****************************************************************************************************
 # Base class that gives some basic conversion functions to all elements
@@ -29,9 +29,11 @@ class NodeElement:
   # Constructor
   def __init__( self, node ):
     self.node= node
-    
+    self.params= self.getAttributes( self.node )
+  
   # -----------------------------------------------------------------
   def execute( self, action, key, item ):
+    from __main__ import *
     try:
       s1= self.params[ action ]
     except:
@@ -39,7 +41,6 @@ class NodeElement:
     
     if self.params.has_key( 'module' ) and self.params[ 'module' ]:
       modParams= self.params[ 'module' ].params
-      exec( 'import %s' % modParams[ 'import' ] )
       # Get actions variable
       if s1[ 0 ]== '%':
         s= eval( modParams[ 'actions' ] )
@@ -56,6 +57,12 @@ class NodeElement:
     self.execute( 'onLoad', None, None )
     return self
   
+  # -----------------------------------------------------------------
+  def loadXMLFile( self, fileName ):
+    s= open( fileName, 'rt' ).read()
+    p= pyRXP.Parser()
+    return p.parse( s )
+    
   # -----------------------------------------------------------------
   def processNodeByName( self, node ):
     try:
@@ -121,12 +128,12 @@ class NodeElement:
   # -----------------------------------------------------------------
   def getLeavesPlain( self, node ):
     # return nodes as list of values
+    from __main__ import *
     res= []
     for i in xrange( len( node[ 2 ] ) ):
       child= node[ 2 ][ i ]
       if child[ 0 ]== 'value':
         if child[ 1 ] and child[ 1 ].has_key( 'eval' ) and child[ 1 ][ 'eval' ]== 'true':
-          exec( 'import %s' % self.params[ 'module' ].params[ 'import' ] )
           res+= eval( child[ 2 ][ 0 ] )
         else:
           res.append( child[ 2 ][ 0 ] )
@@ -136,8 +143,6 @@ class NodeElement:
   # -----------------------------------------------------------------
   def parse( self ):
     # get areas, menuDefs and modules
-    global currentModule
-    self.params= self.getAttributes( self.node )
     self.params[ 'module' ]= currentModule
     for i in xrange( len( self.node[ 2 ] ) ):
       curNode= self.node[ 2 ][ i ]
@@ -161,7 +166,7 @@ class NodeElement:
 class appElement( NodeElement ):
   # -----------------------------------------------------------------
   def __init__( self, node ):
-    self.node= node
+    NodeElement.__init__( self, node )
     self.filter= ( 'areas', 'modules', 'menuDefs' )
   
   # -----------------------------------------------------------------
@@ -173,7 +178,7 @@ class appElement( NodeElement ):
 class areaElement( NodeElement ):
   # -----------------------------------------------------------------
   def __init__( self, node ):
-    self.node= node
+    NodeElement.__init__( self, node )
     self.filter= ()
   
   # -----------------------------------------------------------------
@@ -182,7 +187,7 @@ class areaElement( NodeElement ):
   
   # -----------------------------------------------------------------
   def load( self ):
-    exec( 'import %s' % self.params[ 'modules' ] )
+    from __main__ import *
     params= self.params
     rect= self.getCoords( self.params[ 'coords' ] )
     
@@ -200,7 +205,7 @@ class areaElement( NodeElement ):
 class menuElement( NodeElement ):
   # -----------------------------------------------------------------
   def __init__( self, node ):
-    self.node= node
+    NodeElement.__init__( self, node )
     self.filter= ( 'items', )
     self.changed= 0
   
@@ -237,14 +242,31 @@ class moduleElement( NodeElement ):
   # -----------------------------------------------------------------
   def __init__( self, node ):
     global currentModule
-    self.node= node
+    params= self.getAttributes( node )
+    self.node= self.loadXMLFile( params[ 'file' ] )
+    self.params= self.getAttributes( self.node )
     self.filter= ( 'areas', 'menuDefs' )
     currentModule= self
+    
+    # import modules into the __main__ namespace
+    import __main__
+    s= self.params[ 'import' ]
+    exec( 'import %s' % s )
+    
+    mods= string.split( s, ',' )
+    modules= []
+    for mod in mods:
+      modules.append( string.split( mod, ' ' )[ -1 ] )
+    
+    for module in modules:
+      __main__.__dict__[ module ]= eval( module )
+      
+    print 'Module %s modules %s' % ( self.params[ 'id' ], modules )
   
   # -----------------------------------------------------------------
   def execute( self, action ):
+    from __main__ import *
     params= self.params[ 'params' ]
-    exec( 'import %s' % self.params[ 'import' ] )
     # Get actions variable
     s= eval( self.params[ 'actions' ] )
     s1= self.params[ action ]
@@ -285,10 +307,8 @@ class ConfigElement( NodeElement ):
   
   # -----------------------------------------------------------------
   def parseFile( self, fileName ):
-    s= open( fileName, 'rt' ).read()
-    p= pyRXP.Parser()
-    xmlDoc= p.parse( s )
-    self.parse( xmlDoc[ 2 ] )
+    f= self.loadXMLFile( fileName )
+    self.parse( f[ 2 ] )
 
 # Test for the basic parser functionality
 if __name__== '__main__':
@@ -296,7 +316,8 @@ if __name__== '__main__':
     for s in areas:
       areas[ s ].setVisible( 0 )
   
-  xmlStr= """<config>
+  xmlStr= """
+<config>
   <!-- Defines app name and default icon -->
   <app id="homedia" resolution="640,480" fullScreen="yes" caption="Home Media center" icon="" onLoad="self.init()" onInit="hideAll( areas ); areas[ 'rootmenu' ].init( menuDefs[ 'rootMenu' ] );">
     <!-- Define areas where root menus will reside -->
