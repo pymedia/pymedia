@@ -18,7 +18,7 @@ def disable_fPIC():
   import distutils.sysconfig
   distutils.sysconfig.get_config_vars() # parse Makefile and fill the _config_vars cache
   cv = distutils.sysconfig._config_vars
-  for var in "CCSHARED","GCCSHARED":
+  for var in "CCSHARED","GCCSHARED","CFLAGS","OPT":
     if var in cv:
       cv[var] = cv[var].replace('-fPIC','')
   for var in ("CXX",):
