@@ -100,11 +100,13 @@ static int CheckMounts(char sDrives[ 255 ][ 20 ], int iDrives, const char *mtab)
 		char *tmp;
 		char mnt_type[ 1024 ];
 		char mnt_dev[ 1024 ];
+		char mnt_dir[ 1024 ];
 
 		while ( (mntent=getmntent(mntfp)) != NULL )
 		{
 			strcpy(mnt_type, mntent->mnt_type);
 			strcpy(mnt_dev, mntent->mnt_fsname);
+			strcpy(mnt_dir, mntent->mnt_dir);
 
 			/* Handle "supermount" filesystem mounts */
 			if ( strcmp(mnt_type, MNTTYPE_SUPER) == 0 )
@@ -181,6 +183,7 @@ class CD
 {
 private:
   char sDevName[ 255 ];				// Device name
+  char sPathName[ 1024 ];				// Path name
 public:
 	// ---------------------------------------------------
 	CD( char* sDevName )
@@ -191,6 +194,29 @@ public:
 	}
 	// ---------------------------------------------------
 	inline char* GetName()	{ return &this->sDevName[ 0 ]; }
+
+	// ---------------------------------------------------
+	char* GetPathName()
+	{
+		FILE *mntfp;
+		struct mntent *mntent;
+
+		this->sPathName[ 0 ]= 0;
+		mntfp = setmntent(_PATH_MNTTAB, "r");
+		if( mntfp )
+		{
+			while ( (mntent=getmntent(mntfp)) != NULL )
+				if( strcmp( this->GetName(), mntent->mnt_fsname )== 0 )
+				{
+					strcpy( this->sPathName, mntent->mnt_dir );
+					break;
+				}
+
+			endmntent(mntfp);
+		}
+		return &this->sPathName[ 0 ];
+	}
+
 	// ---------------------------------------------------
 	void GetLabel( char* sLabel, int iLabelLen )
 	{
@@ -217,7 +243,7 @@ public:
 	bool IsReady()
 	{
 		bool bReady= false;
-		int fd= open( this->sDevName, (O_RDONLY|O_EXCL|O_NONBLOCK), 0);
+		int fd= open( this->sDevName, (O_RDONLY|O_NONBLOCK), 0);
 		if( fd )
 		{
 			bReady= ( ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT) == CDS_DISC_OK );

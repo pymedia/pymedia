@@ -29,9 +29,9 @@
 #include "cdgeneric.h"
 #include "cdda.h"
 #include "dvd.h"
- 
+
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "cdcommon_win.h" 
+#include "cdcommon_win.h"
 #else
 #include "cdcommon_unix.h"
 #endif
@@ -68,6 +68,7 @@ const char* PYDOC=
 #define CD_EJECT_HDR "eject() -> None\n"
 #define CD_OPEN_HDR "open( name ) -> File\n"
 #define CD_GETNAME_HDR "getName() -> name\n"
+#define CD_GETPATHNAME_HDR "getPathName() -> path\n"
 #define CD_GETPROPERTIES_HDR "getProperties() -> props\n"
 
 #define CD_ISREADY_DOC CD_ISREADY_HDR"\tReturns whether drive is ready or not\n"
@@ -76,6 +77,7 @@ const char* PYDOC=
 										"\tTrack supports following methods:\n\t\tread( bytes ) -> data\n\t\tseek( offset, seek_pos ) -> None\n"\
 										"\t\tclose() -> None\n\t\ttell() -> pos\n"
 #define CD_GETNAME_DOC CD_GETNAME_HDR"\tReturn the name of the drive\n"
+#define CD_GETPATHNAME_DOC CD_GETPATHNAME_HDR"\tReturn the path where the drive was mounted if any\n"
 #define CD_GETPROPERTIES_DOC \
 	CD_GETPROPERTIES_HDR \
 	"\tReturn properties for a selected ROM as a dictionary" \
@@ -110,6 +112,8 @@ const char* PYDOC=
 								"\t"CD_ISREADY_HDR \
 								"\t"CD_EJECT_HDR \
 								"\t"CD_OPEN_HDR \
+								"\t"CD_GETPATHNAME_HDR \
+								"\t"CD_GETNAME_HDR \
 								"\t"CD_GETPROPERTIES_HDR
 
 PyObject *g_cErr;
@@ -289,7 +293,7 @@ CD_IsReady( PyCDObject *cd )
 {
 	bool bReady;
   Py_BEGIN_ALLOW_THREADS
-	bReady= cd->cObject->IsReady();
+  bReady= cd->cObject->IsReady();
   Py_END_ALLOW_THREADS
 	return PyLong_FromLong( bReady );
 }
@@ -299,6 +303,13 @@ static PyObject *
 CD_GetName( PyCDObject *cd )
 {
 	return PyString_FromString( cd->cObject->GetName() );
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject *
+CD_GetPathName( PyCDObject *cd )
+{
+	return PyString_FromString( cd->cObject->GetPathName() );
 }
 
 // ---------------------------------------------------------------------------------
@@ -318,7 +329,7 @@ CD_Open( PyCDObject *cd, PyObject *args)
 		PyErr_Format( g_cErr, "Media in %s is not DVD, AudioCD or VCD. Cannot open %s in a raw mode", cd->cObject->GetName(), sPath );
 		return NULL;
 	}
-	//cd->cMediaHandle= cCD; 
+	//cd->cMediaHandle= cCD;
 
 	// Try to open file by its name
 	Py_BEGIN_ALLOW_THREADS
@@ -346,36 +357,12 @@ CD_Open( PyCDObject *cd, PyObject *args)
 // List of all methods for the mp3decoder
 static PyMethodDef cd_methods[] =
 {
-	{
-		"getProperties",
-		(PyCFunction)CD_GetProperties,
-		METH_NOARGS,
-	  CD_GETPROPERTIES_DOC
-	},
-	{
-		"isReady",
-		(PyCFunction)CD_IsReady,
-		METH_NOARGS,
-	  CD_ISREADY_DOC
-	},
-	{
-		"eject",
-		(PyCFunction)CD_Eject,
-		METH_NOARGS,
-	  CD_EJECT_DOC
-	},
-	{
-		"open",
-		(PyCFunction)CD_Open,
-		METH_VARARGS,
-	  CD_OPEN_DOC
-	},
-	{
-		"getName",
-		(PyCFunction)CD_GetName,
-		METH_NOARGS,
-	  CD_GETNAME_DOC
-	},
+	{	"getProperties", (PyCFunction)CD_GetProperties, METH_NOARGS, CD_GETPROPERTIES_DOC },
+	{	"isReady", (PyCFunction)CD_IsReady,	METH_NOARGS, CD_ISREADY_DOC	},
+	{	"eject", (PyCFunction)CD_Eject,	METH_NOARGS, CD_EJECT_DOC },
+	{	"open",	(PyCFunction)CD_Open,	METH_VARARGS, CD_OPEN_DOC },
+	{	"getName",(PyCFunction)CD_GetName, METH_NOARGS, CD_GETNAME_DOC },
+	{	"getPathName",(PyCFunction)CD_GetPathName, METH_NOARGS, CD_GETPATHNAME_DOC },
 	{ NULL, NULL },
 };
 
@@ -383,10 +370,6 @@ static PyMethodDef cd_methods[] =
 static void
 CDClose( PyCDObject *cd )
 {
-	//if( cd->cMediaHandle )
-	//	delete cd->cMediaHandle;
-
-	//cd->cMediaHandle= NULL;
 	delete cd->cObject;
 	PyObject_Free( cd );
 }
@@ -556,7 +539,7 @@ initcd(void)
 	PyCDType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&PyCDType);
 	PyModule_AddObject(m, "CD", (PyObject *)&PyCDType);
-} 
+}
 
 };
 
@@ -574,9 +557,9 @@ while len( s )> 0:
   s= f.read( 2000000 )
   f1.write( s )
 
-f1.close() 
+f1.close()
 
-toc= c.getTOC() 
+toc= c.getTOC()
 tr0= c.open( "d:\\Track 01" )
 s= tr0.read( 400000 )
 
