@@ -74,19 +74,18 @@ setActive( areas[ 'audioplaylist' ] )
 # -----------------------------------------------------------------
 ,'rootPlaylistMenu.new':"""
 
-pl= audio.playLists.getPlayList()
-audio.player.setPlayList( pl )
-areas[ 'audioplaylist' ].init( audio.playLists, -1 )
-areas[ 'audioplaylist' ].setChanged( 1 )
+a= areas[ 'textdialog' ]
+a.init( 'New playlist', 'playlist_%d' % len( audio.playLists.items() ), 'audiomenu', ( 'new', ) )
+setActive( a )
 """
 
 # -----------------------------------------------------------------
 ,'rootPlaylistMenu.reload':"""
 
-audio.playLists.reload()
-pl= audio.playLists.getDefault()
-audio.player.setPlayList( pl )
-areas[ 'audioplaylist' ].setChanged( 1 )
+# Remove file from the playlist
+a= areas[ 'yesnodialog' ]
+a.init( 'Reload ?', 'All playlists', 'audiomenu', ( 'reload',) )
+setActive( a )
 """
 
 # -----------------------------------------------------------------
@@ -176,11 +175,40 @@ audio.player.setPlayList( ( pl, audio.playLists.getPlayListPos( pl ) ))
 # -----------------------------------------------------------------
 ,'playlistMenu.clear':"""
 
-pl= areas[ 'playlistcontent' ].getWrapper()
-pl.clear()
-if pl== audio.player.getPlayList()[ 0 ]:
-	audio.player.stopPlayback()
-audio.playLists.setPosition( ( pl, 0 ) )
+# Remove file from the playlist
+a= areas[ 'yesnodialog' ]
+playList= areas[ 'playlistcontent' ].getWrapper()
+name= audio.playLists.getName( playList )
+a.init( 'Clear playlist ?', name, 'audiomenu', ( 'clear',) )
+setActive( a )
+"""
+
+# -----------------------------------------------------------------
+,'audiomenu.onDialogReturn':"""
+
+# Remove file from the playlist
+if item.getParams()[ 0 ]== 'clear':
+	if item.getChoice() and item.getChoice()[ 'caption' ]== 'yes':
+		pl= areas[ 'playlistcontent' ].getWrapper()
+		pl.clear()
+		if pl== audio.player.getPlayList()[ 0 ]:
+			audio.player.stopPlayback()
+		audio.playLists.setPosition( ( pl, 0 ) )
+elif item.getParams()[ 0 ]== 'reload':
+	if item.getChoice() and item.getChoice()[ 'caption' ]== 'yes':
+		audio.playLists.reload()
+		pl= audio.playLists.getDefault()
+		audio.player.setPlayList( pl )
+		areas[ 'audioplaylist' ].setChanged( 1 )
+elif item.getParams()[ 0 ]== 'new':
+	if item.getChoice():
+		pl= audio.playLists.getPlayList( item.getText() )
+		audio.player.setPlayList( pl )
+		areas[ 'audioplaylist' ].init( audio.playLists, -1 )
+		areas[ 'audioplaylist' ].setChanged( 1 )
+
+item.setVisible( 0 )
+setActive( areas[ 'audiomenu' ] )
 """
 
 # -----------------------------------------------------------------

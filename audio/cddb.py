@@ -1,8 +1,5 @@
 import string, os
 
-# **********************************************************************************************
-# *
-# **********************************************************************************************
 class CDDB:
   """
     Local CDDB lookup and synchronization.
@@ -10,11 +7,17 @@ class CDDB:
   """
   # ---------------------------------------------------
   def __init__( self, path ):
+    """
+      Constructor for the CDDB lookup. Can accept http path to the location or server.
+      *** Server based lookup is not supported yet ***
+    """
     self.path= path
   
   # ---------------------------------------------------
   def getDiskId( self, tracksInfo ):
-    """ returns disc id based on tracksInfo which is tuple of ( track_start, track_length )"""
+    """
+      Returns disc id based on tracksInfo which is tuple of ( track_start, track_length )
+    """
     # check sum
     def sumDigits( val ):
       return int( reduce( lambda x, y: int( y )+ int( x ), str( val ) ) )
@@ -28,6 +31,16 @@ class CDDB:
   
   # ---------------------------------------------------
   def getDiscInfo( self, tracksInfo ):
+    """
+      Obtain cddb information for particular disc based on 
+      a discInfo which is list of pairs ( track_start, track_length )\n
+      The result would be the dictionary with the following keys set:
+      - DTITLE - disk title which is in a format: author / album\n
+      - DISCID - disc id calculated based on discInfo\n
+      - DYEAR - year of disc creation\n
+      - DGENRE - genre\n
+      - TTITLE%d - title for the %d's track
+    """
     # Find all files that may be suitable
     diskId= self.getDiskId( tracksInfo )
     hexId= '%x' % diskId

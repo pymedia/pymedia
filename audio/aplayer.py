@@ -21,7 +21,7 @@
 
 # length in seconds: $this->filesize / ($this->bitrate * 125); 
 
-import threading, traceback, time, os, string, random
+import threading, traceback, time, os, string, random, glob
 import pympg, pysound, pygame, aaudio
 
 from __main__ import *
@@ -239,7 +239,7 @@ class PlayList( AbstractFileList ):
       except:
         f= aaudio.cache.getDummyFile( string.strip( file ))
       
-      self.files.append( f )
+      self.addFile( f )
     
     return 1
   
@@ -290,10 +290,15 @@ class PlayLists:
   
   # ---------------------------------------------------
   def save( self ):
+    self.removeAllFiles()
     for list in self.lists:
       self.saveList( list[ 2 ] )
     
     self.savePositions()
+  
+  # ---------------------------------------------------
+  def removeAllFiles( self ):
+    map( lambda x: os.remove( x ), glob.glob( self.dir+ os.sep+ '*.'+ EXT ) )
   
   # ---------------------------------------------------
   def reload( self ):

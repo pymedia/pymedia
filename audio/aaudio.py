@@ -46,8 +46,10 @@ player= aplayer.Player()
 cache= cache.FileCache()
 
 # ------------------------------------------------------------------------------------------------------
-# Process default keys for the audio module
 def processUniKeys( key ):
+  """
+    Process default keys for the audio module
+  """
   if key== pygame.K_PAUSE:
     if player.isPlaying():
       player.pausePlayBack()
@@ -65,6 +67,9 @@ def processUniKeys( key ):
 
 # ------------------------------------------------------------------------------------------------------
 def getVolumeLabel( deviceName, default ):
+  """
+    Return drive's volume. Supported only on NT clone oses.
+  """
   if os.name in ( 'nt', 'dos' ): 
     volInfo= os.popen( 'dir %s' % deviceName ).readlines()
     i= string.find( volInfo[ 0 ], ' is ' )
@@ -75,6 +80,10 @@ def getVolumeLabel( deviceName, default ):
 
 # ------------------------------------------------------------------------------------------------------
 def refreshFiles( area ):
+  """
+    Refresh files specified in the area.
+    It may refresh root(s) directory or anything below the root directory as well.
+  """
   # Do we have something to refresh ?
   global cache
   fileWrapper= area.getWrapper()
@@ -116,7 +125,9 @@ def refreshFiles( area ):
 
 # ------------------------------------------------------------------------------------------------------
 def addToPlayList( files, filter, recursive ):
-  # Add to the playlist or reset playlist if CTRL is pressed
+  """
+    Add file/directory to the playlist. If the file already exists, then do nothing.
+  """
   if files== None:
     return
   
@@ -140,10 +151,17 @@ def addToPlayList( files, filter, recursive ):
 
 # -----------------------------------------------------------------
 def processWholeDir( file, extensions ):
-  # Scan all disk info into the cache
+  """
+    Process directory and everything under it and create a cache structure
+  """
   global cache
   extensionsLower= map( lambda x: string.lower( x ), extensions )
-  files= os.listdir( cache.getPathName( file ) )
+  try:
+    files= os.listdir( cache.getPathName( file ) )
+  except:
+    file[ 'processing' ]= 0
+    traceback.print_exc()
+  
   for line in files:
     if os.path.isdir( os.path.join( cache.getPathName( file ), line )):
       # Process dir
@@ -164,9 +182,25 @@ def processWholeDir( file, extensions ):
 
 # ****************************************************************************************************
 class AudioFileHelper( menu.MenuHelper ):
+  """
+    Generic class to obtain information about the audio file. The following information can be gathered:
+    - album   Name of the album for the track
+    - author  Name of the author for the track
+    - title   Track title
+    - device  Device on which track resides( if it is a removable device )
+    - tracknum  Track number in album
+    - uncompressed  Whether track is compressed
+    - isCDDA  Whether track is in cdda format
+    - length  Track's length
+    - sectors  Sectors( from, to ) where the track is stored( cdda format )
+  """
   # -----------------------------------------------------------------
   # Read settings from the file
   def __init__( self, rect, params ):
+    """
+      Generic class constructor.
+      Accepts parameters and rectangle where it should appear on a screen.
+    """
     menu.MenuHelper.__init__( self, rect, params )
     # Load fonts and icons
     self.folderIcons= self.loadIcon( 'folderIcons', ( 'folder_0.gif', 'folder_1.gif',  ) )
@@ -180,10 +214,17 @@ class AudioFileHelper( menu.MenuHelper ):
   
   # -----------------------------------------------------------------
   def getFilter( self ):
+    """
+      Return audio files extensions that can be processed by this class.
+    """
     return self.extensions
   
   # -----------------------------------------------------------------
   def processAudioDir( self, file ):
+    """
+      Take audio directory from cache and create a list of
+      tracks based on information from the directory itself
+    """
     global cache
     # Scan all disk info we have so far
     info= file[ 'trackInfo' ]
@@ -205,6 +246,10 @@ class AudioFileHelper( menu.MenuHelper ):
   
   # -----------------------------------------------------------------
   def processDir( self, param ):
+    """
+      Proces directory and everything under it. If the directory is an audio disk,
+      it will call cddb to recognize if possible. 
+    """
     global cache
     file= param[ 0 ]
     text= None
@@ -246,6 +291,13 @@ class AudioFileHelper( menu.MenuHelper ):
   
   # -----------------------------------------------------------------
   def processFile( self, param ):
+    """
+      Process regular audio file. Reads information from the file if needed and get the
+      following attributes in addition to the generic ones:
+      - frequency
+      - channels
+      - bitrate
+    """
     global cache
     file= param[ 0 ]
     f= None
@@ -318,6 +370,10 @@ class AudioFileHelper( menu.MenuHelper ):
   
   # -----------------------------------------------------------------
   def getNameIcon( self, title, album, artist, track, offset ):
+    """
+      Renders the file / directory informarmation as a text with predefing font and based on
+      information it gets from the file attributes
+    """
     if track:
       title= ( '%02d - ' % track )+ title
     
@@ -345,6 +401,10 @@ class AudioFileHelper( menu.MenuHelper ):
 # ****************************************************************************************
 # Display position and some other music controls in the background in a small window
 class BgPlayerDisplay( menu.GenericDisplay ):
+  """
+    The pure stateless displayer without any renderer. Displays the current playing
+    time for a track.
+  """
   # -----------------------------------------------------------------
   def __init__( self, rect, params, renderClass ):
     menu.GenericDisplay.__init__( self, rect, params, renderClass )
@@ -353,6 +413,9 @@ class BgPlayerDisplay( menu.GenericDisplay ):
   
   # -----------------------------------------------------------------
   def render( self ):
+    """
+      Main method called by the main renderer
+    """
     self.currPos= player.getPosition()
     if self.currPos!= -1:
       res= self.font[ 0 ].render( '%02d:%02d' % ( int( self.currPos / 60 ), self.currPos % 60 ), 1, self.font[ 1 ] )
@@ -362,14 +425,22 @@ class BgPlayerDisplay( menu.GenericDisplay ):
   
   # -----------------------------------------------------------------
   def hasChanged( self ):
+    """
+      State tracker. If returns 1, then state has been changed.
+    """
     global player
     return player.getPosition()!= self.currPos
 
 # ****************************************************************************************
-# Display full featured player
 class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
+  """
+    Displays full featured player
+  """
   # -----------------------------------------------------------------
   def __init__( self, rect, params, renderClass ):
+    """
+      Constructor whic accepts parameters, rectangle size and renderer
+    """
     menu.GenericDisplay.__init__( self, rect, params, renderClass )
     # Load fonts and icons
     self.titleFont= self.loadFont( 'titleFont' )
@@ -386,11 +457,17 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
 
   # -----------------------------------------------------------------
   def loadVolumeIcons( self ):
+    """
+      Load volume icons
+    """
     volumeSteps= self.getParam( 'volumeSteps', 10 )
     self.volumeIcons= map( lambda x: pygame.image.load( 'icons/vol_%d.gif' % x ), range( 1, volumeSteps+ 1 ))
 
   # -----------------------------------------------------------------
   def loadControls( self, names ):
+    """
+      Load controls for the player. Controls are: prev, stop, play etc...
+    """
     faceIconName= self.getParam( 'face', '' )
     self.faceIcon= pygame.image.load( 'icons/%s' % faceIconName )
 
@@ -411,18 +488,18 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     self.controls= map( lambda x: controls[ x ], indexes )
   
   # -----------------------------------------------------------------
-  def getBitRate( self, yOffset, bitRate ):
-    bitRateIcon= self.lengthFont[ 0 ].render(
-      '%3d kbps' % bitRate, 1, self.lengthFont[ 1 ] )
-    return ( bitRateIcon, ( self.auxArea[ 0 ], self.auxArea[ 1 ]+ yOffset ) )
-
-  # -----------------------------------------------------------------
   def showBitRate( self, yOffset, bitRate ):
+    """
+      Renders bitrate icon as text
+    """
     bitRateIcon= self.lengthFont[ 0 ].render( '%3d kbps' % bitRate, 1, self.lengthFont[ 1 ] )
     return [( bitRateIcon, ( self.auxArea[ 0 ], self.auxArea[ 1 ]+ yOffset ) ) ]
   
   # -----------------------------------------------------------------
   def showVolume( self, yOffset ):
+    """
+      Show volume icons based on current volume level
+    """
     volume= pysound.getVolume()
     step= ( int( volume )* len( self.volumeIcons ) )/ 65536
     xOffs= self.auxArea[ 2 ]- self.volumeIcons[ step ].get_width()
@@ -430,12 +507,18 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def showProgress( self, currPos, length ):
+    """
+      Show progress for the currently playing track
+    """
     x, y, x1, y1= ( int( currPos / 60 ), currPos % 60, int( length / 60 ), length % 60 )
     lengthIcon= self.lengthFont[ 0 ].render( '%02d:%02d / %02d:%02d' % ( x, y, x1, y1 ), 1, self.lengthFont[ 1 ] )
     return [( lengthIcon, self.auxArea[ :2 ] )]
       
   # -----------------------------------------------------------------
   def renderInfo( self ):
+    """
+      Render complete set of information to be shown on a player face.
+    """
     global player
     
     yOffs= 20
@@ -481,6 +564,9 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def renderControls( self ):
+    """
+      Render control buttons
+    """
     controls= [ ( self.faceIcon, LEFT_C ) ]
     for control in self.controls:
       controls.append( ( control[ ( self.activeItem== self.controls.index( control ) )+ 2 ], control[ 1 ] ) )
@@ -489,6 +575,9 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
     
   # -----------------------------------------------------------------
   def render( self ):
+    """
+      Main render call which gathers all controls and texts together
+    """
     res= self.renderControls()
     res+= self.renderInfo()
     menu.MenuHelper.setChanged( self, 0 )
@@ -496,6 +585,9 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def processControl( self, index ):
+    """
+      Process control actions
+    """
     name= self.controls[ self.activeItem ][ 0 ]
     if name== 'prev':
       res= player.prevFile()
@@ -516,6 +608,9 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def processKey( self, key ):
+    """
+      Process player's control actions. It only has left, right, return
+    """
     if key== pygame.K_LEFT:
       # Go to the previous control
       if self.activeItem!= 0:
@@ -534,20 +629,23 @@ class PlayerDisplay( menu.GenericDisplay, AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def hasChanged( self ):
+    """
+      Have we had any changes in controls or player itself ?
+    """
     return player.getPosition()!= self.currPos or menu.MenuHelper.hasChanged( self )
 
 # ****************************************************************************************************
-# Audio file list displayer:
-# The following funcs should be supported:
-#  _init()
-#  _drawItem()
-#  _getItemSize()
-#  _scroll()
-#
 class AudioFileFolderItem( AudioFileHelper ):
+  """
+    Folder display class.
+    Displays all files and folders in a folder style way. All the details will be specified
+    It is most common way of seeing your music...
+  """
   # -----------------------------------------------------------------
-  # Read settings from the file
   def __init__( self, rect, params ):
+    """
+      Constructor.
+    """
     AudioFileHelper.__init__( self, rect, params )
     self.iconSize= self.getParamList( 'iconSize', ( 72, 72 ) )
     self.itemSize= ( rect[ 2 ], 100 )
@@ -558,10 +656,19 @@ class AudioFileFolderItem( AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def processFolderIcon( self, file ):
+    """
+      Render folder/directory icon.
+      Load pictures from the directory if possible or just display the folder icon.
+    """
     if file[ 'isDir' ]== 1:
       fileName= cache.getPathName( file )
       self.changed= 1
-      files= os.listdir( fileName )
+      try:
+        files= os.listdir( fileName )
+      except:
+        traceback.print_exc()
+        return
+        
       for f in files:
         f1= string.split( f, '.' )
         if len( f1 )> 1 and string.upper( f1[ -1 ] ) in( 'JPG', 'BMP', 'GIF' ):
@@ -576,6 +683,10 @@ class AudioFileFolderItem( AudioFileHelper ):
     
   # -----------------------------------------------------------------
   def processIcon( self, params ):
+    """
+      Process icon for any type of file in a background.
+      If it is an audio file, put some icons to indicate that.
+    """
     global cache
     file= params[ 0 ]
     if not file.has_key( 'removable' ):
@@ -595,6 +706,10 @@ class AudioFileFolderItem( AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def drawIcon( self, file, isFocused ):
+    """
+      Draw icons for a generic file.
+      Submit request for the additional information if needed.
+    """
     # Clear out the icon place
     global eventQueue
     try:
@@ -632,6 +747,10 @@ class AudioFileFolderItem( AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def drawItem( self, pos, isFocused ):
+    """
+      Get the properties of the generic file.
+      It may submit background request if needed.
+    """
     global eventQueue
     file= self.itemsWrapper.items()[ pos ]
     # Find out whether it is a directory or file
@@ -694,7 +813,9 @@ class AudioFileFolderItem( AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def isPlaying( self, file ):
-    # Verify whether we are in the playlist
+    """
+      Whether the file is currently playing
+    """
     global cache
     i= player.getCurrentFileIndex()
     if i!= -1:
@@ -706,6 +827,9 @@ class AudioFileFolderItem( AudioFileHelper ):
   
   # -----------------------------------------------------------------
   def processKey( self, pos, key ):
+    """
+      Process generic keys from the parent control
+    """
     global cache
     activeItem= None
     item= self.itemsWrapper.items()[ pos ]

@@ -1,3 +1,25 @@
+##    cache - Part of the pymedia package. Audio module cache support.
+##        Primarily designated for caching files into the memory. It is critical to lower down
+##        power consumption when using small devices. Every IO device consumes as much as 5-7W of power which
+##        is converted to the pure heat and nothing else.
+##    
+##    Copyright (C) 2002-2003  Dmitry Borisov
+##
+##    This library is free software; you can redistribute it and/or
+##    modify it under the terms of the GNU Library General Public
+##    License as published by the Free Software Foundation; either
+##    version 2 of the License, or (at your option) any later version.
+##
+##    This library is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+##    Library General Public License for more details.
+##
+##    You should have received a copy of the GNU Library General Public
+##    License along with this library; if not, write to the Free
+##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+##
+##    Dmitry Borisov
 
 import Queue, os, string, threading, time, pycdda, traceback
 from __main__ import *
@@ -6,13 +28,15 @@ CHUNK_SIZE= 500000
 SECTORS_PER_READ= 40 
 MISSING= '<missing> '
 
-# **********************************************************************************************
-# *
-# **********************************************************************************************
 class CachedFile:
-  """ CachedFile substitute original file object to allow caching """
+  """
+    Original file object replacement to allow dynamic caching
+  """
   # ---------------------------------------------------
   def __init__( self, cache, file ):
+    """
+      Constructor which takes original file object and cache where the data will be stored
+    """
     self.size= 0
     self.data= []
     self.cache= cache
@@ -22,6 +46,9 @@ class CachedFile:
   
   # ---------------------------------------------------
   def read( self, bytes ):
+    """
+      Read certain amoun of bytes from cache. If not vailable, try to read from file.
+    """
     if self.pos== -1:
       raise 'File %s cannot be read because its closed' % self.cache.getPathName( self.file )
     
@@ -48,66 +75,93 @@ class CachedFile:
   
   # ---------------------------------------------------
   def getFile( self ):
+    """
+      Get the physical file out of CachedFile
+    """
     return self.file
   
   # ---------------------------------------------------
   def release( self ):
+    """
+      Release cahed file from the memory and close all handles
+    """
     self.data= []
     del self.file[ 'object' ]
     self.close()
   
   # ---------------------------------------------------
   def open( self ):
+    """
+      Open cached file for reading either from cache or from the physical placement
+    """
     self.pos= self.offset= self.chunk= 0
   
   # ---------------------------------------------------
   def isClosed( self ):
+    """
+      Whether cached file is closed
+    """
     return self.pos== -1
   
   # ---------------------------------------------------
   def close( self ):
+    """
+      Close cached file logically
+    """
     self.pos= self.offset= -1
     self.chunk= 0
   
   # ---------------------------------------------------
   def getSize( self ):
+    """
+      Get the size of cached files
+    """
     return self.size
   
   # ---------------------------------------------------
   def _appendChunk( self, chunk ):
+    """
+      Internal function to add a chunk of file to the cache
+    """
     self.data.append( chunk )
     self.size+= len( chunk )
   
   # ---------------------------------------------------
   def _setComplete( self ):
+    """
+      Set completeness for the physical read op
+    """
     self.complete= 1
-
-  # ---------------------------------------------------
-  def _setIncomplete( self ):
-    self.complete= -1
-    self.release()
 
 # **********************************************************************************************
 # *
 # **********************************************************************************************
 class FileCache:
   """
-    Local file cache, allows to store hierarchy information along with the
-    file name and parent directory
+    Local file cache, allows to store directory hierarchy information along with the
+    file itself and its data
   """
   # ---------------------------------------------------
   def __init__( self ):
-    
-    # Initialize cdda devices
-    pycdda.init()
+    """
+      Cache constructor. Sets cache size to 0. Use setCacheSize() later.
+    """
     self.cacheSize= 0
   
   # ---------------------------------------------------
   def setCacheSize( self, cacheSize ):
+    """
+      Set maximum allowed cache size for files. This amount may be exceeded if there is
+      a big file needs to be read.
+    """
     self.cacheSize= long( cacheSize )
   
   # ---------------------------------------------------
   def setRoot( self, rootDirs ):
+    """
+      Set root directories for the cache. The file would be cached when it belongs to the 
+      root directory.
+    """
     # Save roots for the files in a cache. No dirs allowed to be outside the defined roots.
     self.rootDirs= rootDirs
     # List of root objects
@@ -117,25 +171,37 @@ class FileCache:
     self.totalSize= 0
     res= []
     # Get cdroms
+    pycdda.init()
     self.cdroms= map( lambda x: pycdda.CD( x ), range( pycdda.getCount() ))
     # Get cdrom names
     self.cdromNames= map( lambda x: x.getName(), self.cdroms )
     for rootDir in rootDirs:
       res.append( self.addFile( None, rootDir, 1 ))
     
+    pycdda.init()
+    
     return res
   
   # ---------------------------------------------------
   def getDummyFile( self, filePath ):
+    """
+      Returns dummy file when file cannot be opened.
+    """
     return { 'name': filePath, 'isDir': 0, 'root': None, 'parent': None }
   
   # ---------------------------------------------------
   def getExtension( self, file ):
+    """
+      Return file extension
+    """
     s= str.split( file[ 'name' ], '.' )
     return string.lower( s[ -1 ] )
   
   # ---------------------------------------------------
   def getFile( self, filePath, parent= None ):
+    """
+      Return the file from the internal list of files. If does not exists- return None.
+    """
     if parent== None:
       # No parent, find by name only
       if filePath in self.rootDirs:
@@ -158,6 +224,9 @@ class FileCache:
   # ---------------------------------------------------
   # params is a ( file )
   def checkIsAudio( self, params ):
+    """
+      Background check for a file type. If it is cdda audio, just set the isAudio parameter.
+    """
     file= params[ 0 ]
     #file[ 'device' ].init()
     #tracks= map( lambda x: file[ 'device' ].get_track_audio( x ), range( file[ 'device' ].get_numtracks() ))
@@ -171,6 +240,9 @@ class FileCache:
   
   # ---------------------------------------------------
   def delFile( self, filePath, parent= None ):
+    """
+      Delete file from the cache. Free up all the resources it occupies.
+    """
     global cache
     file= self.getFile( filePath, parent )
     if file:
@@ -196,6 +268,9 @@ class FileCache:
   
   # ---------------------------------------------------
   def addFile( self, parent, filePath, isDir, order= -1 ):
+    """
+      Add new file to the cache or return existing one.
+    """
     global eventQueue
     # Verify whether file already exists
     try:
@@ -237,6 +312,9 @@ class FileCache:
   
   # ---------------------------------------------------
   def addChild( self, parent, child, order= -1 ):
+    """
+      Add new child to the current file. If the file already have exctly the same child, just do nothing.
+    """
     # Assume the parent is a dir, otherwise raise an exception
     try:
       childrenList= parent[ 'children' ]
@@ -256,6 +334,9 @@ class FileCache:
   
   # ---------------------------------------------------
   def getChildren( self, file ):
+    """
+      Return list of children for the file or None if not exists.
+    """
     try:
       return file[ 'children' ]
     except:
@@ -263,6 +344,9 @@ class FileCache:
   
   # ---------------------------------------------------
   def getPathName( self, file ):
+    """
+      Return full path name to a file
+    """
     if file[ 'parent' ]== None:
       if file[ 'root' ]:
         return file[ 'root' ]
@@ -273,14 +357,24 @@ class FileCache:
   
   # ---------------------------------------------------
   def setProperty( self, file, propName, propValue ):
+    """
+      Set file's property
+    """
     file[ propName ]= propValue
   
   # ---------------------------------------------------
   def getProperty( self, file, property ):
+    """
+      Return specified property for a file
+    """
     return file[ property ]
   
   # ---------------------------------------------------
   def open( self, file, noCache= 0 ):
+    """
+      Open file which exists in cache for reading.
+      It may be opened as regular file or cached file.
+    """
     # Just return a file object when no caching is needed
     global eventQueue
     if noCache== 1:
@@ -314,6 +408,9 @@ class FileCache:
 
   # ---------------------------------------------------
   def cleanUpLRU( self ):
+    """
+      Cleanup LRU lists to free up some space if needed.
+    """
     # See if total size exceeds the allowed size, remove some file from the cache
     totalRemoved= 0
     while self.totalSize> self.cacheSize and len( self.lruList )> 0:
@@ -328,6 +425,10 @@ class FileCache:
   
   # ---------------------------------------------------
   def readOSFile( self, fileObj, f ):
+    """
+      Start reading file from the filesystem into the cache.
+      Each file is read by even chunks with default CHUNK_SIZE size.
+    """
     s= ' '
     while len( s ):
       try:
@@ -351,6 +452,10 @@ class FileCache:
   
   # ---------------------------------------------------
   def _readFile( self, param ):
+    """
+      Background file read. Supports for 2 type of files: _raw_ and standard.
+      When raw mode enabled it read data directly from the device without using OS's file objects.
+    """
     file, f= param
     bytesRead= 0
     fileObj= self.getProperty( file, 'object' )
