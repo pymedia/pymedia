@@ -15,7 +15,7 @@
 ##    Library General Public License for more details.
 ##
 ##    You should have received a copy of the GNU Library General Public
-##    License along with this library; if not, write to the Free
+##    License along with this library; If not, write to the Free
 ##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ##
 ##    Dmitry Borisov
@@ -31,15 +31,18 @@ DEFAULT_FONT_COLOR= '255, 255, 255'
 STRIPE_DEFAULT_COLOR= ( 95,166,76)
 DEFAULT_ALPHA= 255
 DEFAULT_FONT_ALPHA= '255'
-FONT_DIR= 'icons/'
 LEFT_C= (0,0)
-EMPTY_MESSAGE= 'This folder is empty'
-NAV_ICONS= ( 'down_0.gif', 'up_0.gif' )
+EMPTY_MESSAGE= 'There are no files here'
+DEFAULT_EXT= '.gif'
+NAV_ICONS= ( 'down_0'+ DEFAULT_EXT, 'up_0'+ DEFAULT_EXT )
+
 CENTER=0
 LEFT=1
 RIGHT=2
 
 # -----------------------------------------------------------------
+# Font is a list:
+# fontObj, color, alpha, shadow, shadowOffset
 def drawText( font, text ):
   text1= font[ 0 ].render( text, 1, font[ 1 ] )
   if font[ 3 ]:
@@ -47,28 +50,27 @@ def drawText( font, text ):
     text.blit( text1, font[ 4 ] )
     text1= text
   
-  if font[ 2 ]!= 255:
-    text1.set_alpha( font[ 2 ] )
+  text1.set_alpha( font[ 2 ], pygame.RLEACCEL )
   return text1
 
 # -----------------------------------------------------------------
-def alignSurface( parent, surf, x, y ):
+def alignSurface( p, c, x, y ):
   if x== CENTER:
-    newX= ( parent[ 0 ]- surf[ 0 ] )/ 2
+    newX= ( p[ 0 ]- c[ 0 ] )/ 2
   if x== LEFT:
     newX= 0
   if x== RIGHT:
-    newX= parent[ 0 ]- surf[ 0 ]
+    newX= p[ 0 ]- c[ 0 ]
   if y== CENTER:
-    newY= ( parent[ 1 ]- surf[ 1 ] )/ 2
+    newY= ( p[ 1 ]- c[ 1 ] )/ 2
   if y== LEFT:
     newY= 0
   if y== RIGHT:
-    newY= parent[ 1 ]- surf[ 1 ]
+    newY= p[ 1 ]- c[ 1 ]
   return ( newX, newY )
 
 # -----------------------------------------------------------------
-# Freevo rulez. We can't do any better, but we'll try
+# Freevo rulez. We can't do any better, so we do it our way
 def drawCircle(s, color, pos, radius):
     """
     draws a circle to the surface s and fixes the borders
@@ -92,8 +94,8 @@ def drawCircle(s, color, pos, radius):
     [ setAt( ( z, y+radius ), p2[ z- x+ 1 ]) for z in xrange( x- 1, x+ 2 ) ]
 
 # -----------------------------------------------------------------
-def drawRoundedBox( size, color, alpha, borderSize= 0, borderColor= None, radius= 0 ):
-  surf= pygame.Surface( size, pygame.SRCALPHA )
+def drawRoundedBox( size, color, alpha= 255, borderSize= 0, borderColor= None, radius= 0 ):
+  surf= pygame.Surface( size, pygame.SRCALPHA | pygame.HWSURFACE | pygame.ASYNCBLIT )
   surf.fill( (0,0,0) )
   surf.set_colorkey( (0,0,0) )
   
@@ -101,19 +103,21 @@ def drawRoundedBox( size, color, alpha, borderSize= 0, borderColor= None, radius
   w,h= size
   if borderColor== None: borderColor= color
   while 1:
-    if radius >= 1:
+    if radius > 0:
       drawCircle( surf, borderColor, ( x+ radius, y+ radius ), radius)
       drawCircle( surf, borderColor, ( x+ w- radius, y+ radius ), radius)
       drawCircle( surf, borderColor, ( x+ radius, y+ h-radius ), radius)
       drawCircle( surf, borderColor, ( x+ w-radius, y+ h-radius ), radius)
       pygame.draw.rect(surf, borderColor, (x+ radius, y, w-2*radius, h))
+    
     pygame.draw.rect(surf, borderColor, (x, y+radius, w, h-2*radius))
     
     x += borderSize
     y += borderSize
     h -= 2* borderSize
     w -= 2* borderSize
-    radius -= borderSize
+    if radius> 0:
+      radius -= borderSize
     if borderSize== 0:
       break
     borderSize= 0
@@ -122,6 +126,7 @@ def drawRoundedBox( size, color, alpha, borderSize= 0, borderColor= None, radius
   if alpha!= 255:
     surf.set_alpha( alpha )
   
+  surf= surf.convert( COLOR_DEPTH )
   return surf
 
 # -----------------------------------------------------------------
@@ -148,13 +153,12 @@ def clipIcon( icons, size ):
 class MenuHelper:
   # -----------------------------------------------------------------
   # Constructor
-  def __init__( self, rect, params ):
-    self.attributes= params
-    self.params= params[ 'params' ]
-    self.parentParams= params
+  def __init__( self, rect, attributes, params ):
+    self.attributes= attributes
+    self.params= params
     self.changed= 1
     self.font= self.loadFont( 'font' )
-    self.alpha= self.getParam( 'alpha', DEFAULT_ALPHA )
+    self.alpha= int( self.getParam( 'alpha', DEFAULT_ALPHA ) )
   
   # -----------------------------------------------------------------
   # Return item size 
@@ -166,8 +170,20 @@ class MenuHelper:
     return self.rect
   
   # -----------------------------------------------------------------
+  def getSize( self ):
+    return self.rect[ 2: ]
+  
+  # -----------------------------------------------------------------
   def getPos( self ):
     return self.rect[ :2 ]
+  
+  # -----------------------------------------------------------------
+  def getWidth( self ):
+    return self.rect[ 2 ]
+  
+  # -----------------------------------------------------------------
+  def getHeight( self ):
+    return self.rect[ 3 ]
   
   # -----------------------------------------------------------------
   def getParam( self, name, default ):
@@ -204,31 +220,48 @@ class MenuHelper:
     self.changed= changed
   
   # -----------------------------------------------------------------
-  def loadFont( self, paramName ):
-    font= fontDefs[ self.getParam( paramName, DEFAULT_FONT ) ]
-    fontName= font.getParam( 'name', DEFAULT_FONT_NAME )
-    size= font.getParam( 'size', DEFAULT_FONT_SIZE )
-    alpha= int( font.getParam( 'alpha', DEFAULT_FONT_ALPHA ) )
-    color= eval( font.getParam( 'color', DEFAULT_FONT_COLOR ) )
-    shadow= eval( font.getParam( 'shadow', 'None' ) )
-    shadowOffset= eval( font.getParam( 'offset', '-1,-1' ) )
-    fontObj= pygame.font.Font( FONT_DIR+ fontName+ '.ttf', int( size ) )
-    if font.getParam( 'bold', 'no' )== 'yes':
-      fontObj.set_bold( 1 )
+  def getPath( self, pathName ):
+    path= ''
+    if self.attributes.has_key( 'module' ):
+      path= self.attributes[ 'module' ].params[ pathName ]
+    else:
+      path= self.attributes[ 'app' ].params[ pathName ]
     
-    return fontObj, color, alpha, shadow, shadowOffset
+    return path
+  
+  # -----------------------------------------------------------------
+  def loadFont( self, paramName ):
+    def loadSingleFont( font ):
+      fontName= font.getParam( 'name', DEFAULT_FONT_NAME )
+      size= font.getParam( 'size', DEFAULT_FONT_SIZE )
+      alpha= int( font.getParam( 'alpha', DEFAULT_FONT_ALPHA ) )
+      color= eval( font.getParam( 'color', DEFAULT_FONT_COLOR ) )
+      shadow= eval( font.getParam( 'shadow', 'None' ) )
+      shadowOffset= eval( font.getParam( 'offset', '-1,-1' ) )
+      path= self.getPath( 'fontPath' )
+      fontObj= pygame.font.Font( os.path.join( path, fontName )+ '.ttf', int( size ) )
+      if font.getParam( 'bold', 'no' )== 'yes':
+        fontObj.set_bold( 1 )
+    
+      return fontObj, color, alpha, shadow, shadowOffset
+    
+    if type( paramName )== str:
+      return loadSingleFont( fontDefs[ self.getParam( paramName, DEFAULT_FONT ) ] )
+    elif type( paramName )== list or type( paramName )== tuple:
+      return [ loadSingleFont( fontDefs[ self.getParam( x, DEFAULT_FONT ) ] ) for x in paramName ]
   
   # -----------------------------------------------------------------
   def loadIcon( self, paramName, default, alpha= -1 ):
     icons= self.getParam( paramName, default )
     icons1= None
     
+    path= self.getPath( 'iconPath' )
     if type( icons )== str:
-      icons1= pygame.image.load( 'icons/'+ icons )
+      icons1= pygame.image.load( os.path.join( path, icons ) ).convert()
       if alpha!= -1:
         icons1.set_alpha( alpha )
     elif type( icons )== list or type( icons )== tuple:
-      icons1= map( lambda x: pygame.image.load( 'icons/'+ x ), icons )
+      icons1= map( lambda x: pygame.image.load( os.path.join( path, x ) ).convert(), icons )
       if alpha!= -1:
         map( lambda x: x.set_alpha( alpha ), icons1 )
     
@@ -242,11 +275,11 @@ class MenuHelper:
     except:
       return
     
-    if self.attributes.has_key( 'module' ) and self.attributes[ 'module' ]:
-      modParams= self.attributes[ 'module' ].params
+    if self.attributes.has_key( 'module' ):
+      modAtts= self.attributes[ 'module' ].attributes
       # Get actions variable
       if s1[ 0 ]== '%':
-        s= eval( modParams[ 'actions' ] )
+        s= eval( modAtts[ 'actions' ] )
         s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
     
     exec( s1 )
@@ -265,9 +298,9 @@ class MenuHelper:
 class MenuItem( MenuHelper ):
   # -----------------------------------------------------------------
   # Initialize menu renderer
-  def __init__( self, rect, params ):
+  def __init__( self, rect, attributes, params ):
     # Initialize base class
-    MenuHelper.__init__( self, rect, params )
+    MenuHelper.__init__( self, rect, attributes, params )
     
     # Create font based on param passed
     self.itemSize= ( rect[ 2 ], self.font[ 0 ].get_height() )
@@ -280,7 +313,7 @@ class MenuItem( MenuHelper ):
       alpha= 200,
       radius= 8,
       borderColor= (87,110,97),
-      borderSize= 2)
+      borderSize= 1)
   
   # -----------------------------------------------------------------
   def drawItem( self, itemPos, isFocused ):
@@ -309,9 +342,9 @@ class MenuItem( MenuHelper ):
 class GenericDisplay( MenuHelper ):
   # -----------------------------------------------------------------
   # Constructor
-  def __init__( self, rect, params, renderClass ):
+  def __init__( self, rect, attributes, params, renderClass ):
     # Initialize base class
-    MenuHelper.__init__( self, rect, params )
+    MenuHelper.__init__( self, rect, attributes, params )
     
     self.rect= rect
     self.renderClass= renderClass
@@ -346,6 +379,12 @@ class GenericDisplay( MenuHelper ):
         self.setActive( 0 )
   
   # -----------------------------------------------------------------
+  def getMaxPos( self, iconsList ):
+    return (
+      max( [ x[ 0 ].get_width()+ x[ 1 ][ 0 ] for x in iconsList ] ),
+      max( [ x[ 0 ].get_height()+ x[ 1 ][ 1 ] for x in iconsList ] ) )
+  
+  # -----------------------------------------------------------------
   def isVisible( self ):
     return self.visible
   
@@ -369,8 +408,8 @@ class BgTextDisplay( GenericDisplay ):
     Pure text based displayer without any renderer. Displays the current state of menu.
   """
   # -----------------------------------------------------------------
-  def __init__( self, rect, params, renderClass ):
-    GenericDisplay.__init__( self, rect, params, renderClass )
+  def __init__( self, rect, attributes, params, renderClass ):
+    GenericDisplay.__init__( self, rect, attributes, params, renderClass )
     self.currPos= -1
     self.textIcon= None
   
@@ -378,7 +417,6 @@ class BgTextDisplay( GenericDisplay ):
   def setText( self, text ):
     if len( text )> 0:
       self.textIcon= drawText( self.font, text )
-      self.textIcon.set_alpha( self.alpha )
     
     self.setChanged( 1 )
   
@@ -398,7 +436,7 @@ class BgTextDisplay( GenericDisplay ):
 # 
 class ListDisplay( GenericDisplay ):
   # -----------------------------------------------------------------
-  def __init__( self, rect, params, renderClass ):
+  def __init__( self, rect, attributes, params, renderClass ):
     """
       __init__( rect, renderClass, eventQueue ) ->
       Constructor for the class.
@@ -406,12 +444,12 @@ class ListDisplay( GenericDisplay ):
                     control will display default icons and behaviors when None or not specified.
         eventQueue - allows to process some items in background for matter of reasons...
     """
-    GenericDisplay.__init__( self, rect, params, renderClass )
+    GenericDisplay.__init__( self, rect, attributes, params, renderClass )
     self.scrollFlag= self.getParam( 'scroll', 'no' )== 'yes'
     self.headerIcon= None
     self.navIcons= self.loadIcon( 'navIcons', NAV_ICONS )
     self.headerFont, self.scrollFont, self.messageFont= \
-      map( lambda x: self.loadFont( x ), ( 'headerFont','scrollFont','messageFont' ))
+      [ self.loadFont( x ) for x in ( 'headerFont','scrollFont','messageFont' ) ]
   
   # -----------------------------------------------------------------
   def init( self, itemsWrapper, activeItem= 0 ):
@@ -701,7 +739,7 @@ class ListDisplay( GenericDisplay ):
     return [
       ( mess,
         alignSurface(
-          parent= self.rect[ 2: ], surf= mess.get_size(), x= CENTER, y= CENTER )) ]
+          p= self.rect[ 2: ], c= mess.get_size(), x= CENTER, y= CENTER )) ]
   
   # -----------------------------------------------------------------
   def render( self ):
