@@ -86,6 +86,8 @@ public:
 	// ---------------------------------------------------
 	inline char* GetName()	{ return &this->sOrigName[ 0 ]; }
 	// ---------------------------------------------------
+	inline char* GetPathName()	{ return &this->sOrigName[ 0 ]; }
+	// ---------------------------------------------------
 	void GetLabel( char* sLabel, int iLabelLen )
 	{
 		DWORD lVolumeSerialNumber,
