@@ -22,6 +22,9 @@ import string, pyRXP
 from __main__ import *
 from pymedia import *
 
+currentModule= None
+currentApp= None
+
 # ****************************************************************************************************
 class NodeElement:
   """
@@ -30,25 +33,26 @@ class NodeElement:
   # -----------------------------------------------------------------
   def __init__( self, node ):
     self.node= node
-    self.params= self.getAttributes( self.node )
+    self.attributes= self.getAttributes( self.node )
+    self.params= {}
   
   # -----------------------------------------------------------------
   def execute( self, action, key, item ):
     from __main__ import *
     try:
-      s1= self.params[ action ]
+      s1= self.attributes[ action ]
     except:
       return
     
-    if self.params.has_key( 'module' ) and self.params[ 'module' ]:
-      modParams= self.params[ 'module' ].params
+    if self.attributes.has_key( 'module' ):
+      modAtts= self.attributes[ 'module' ].attributes
       # Get actions variable
       if s1[ 0 ]== '%':
-        s= eval( modParams[ 'actions' ] )
+        s= eval( modAtts[ 'actions' ] )
         if s1.find( '.' )> 0:
           s1= s[ s1[ 1: ] ]
         else:
-          s1= s[ self.params[ 'id' ]+ '.'+ s1[ 1: ] ]
+          s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
     
     exec( s1 )
     
@@ -147,14 +151,15 @@ class NodeElement:
   # -----------------------------------------------------------------
   def parse( self ):
     # get areas, menuDefs and modules
-    self.params[ 'module' ]= currentModule
+    self.attributes[ 'app' ]= currentApp
+    if currentModule:
+      self.attributes[ 'module' ]= currentModule
     if self.node[ 2 ]== None:
       return
     for i in xrange( len( self.node[ 2 ] ) ):
       curNode= self.node[ 2 ][ i ]
       if curNode[ 0 ]== 'params':
-        params= self.getParams( curNode )
-        self.params[ 'params' ]= params
+        self.params= self.getParams( curNode )
       elif curNode[ 0 ] in self.filter:
         if curNode[ 0 ]== 'items':
           items= self.getItems( curNode )
@@ -165,7 +170,7 @@ class NodeElement:
             if obj:
               # Place node structure into the appropriate dictionary
               target= eval( curNode[ 0 ] )
-              target[ obj.params[ 'id' ] ]= obj.load()
+              target[ obj.attributes[ 'id' ] ]= obj.load()
 
 # ****************************************************************************************************
 class appElement( NodeElement ):
@@ -174,18 +179,23 @@ class appElement( NodeElement ):
   """
   # -----------------------------------------------------------------
   def __init__( self, node ):
+    global currentApp
     NodeElement.__init__( self, node )
+    currentApp= self
+    print 'Application %s' % ( self.attributes[ 'id' ], )
     self.filter= ( 'areas', 'modules', 'menuDefs', 'fontDefs' )
   
   # -----------------------------------------------------------------
   def getParam( self, name, default= None ):
-    try: return self.params[ name ]
+    try: return self.attributes[ name ]
     except: return default
 
 # ****************************************************************************************************
 # Class that holds fonts
 class fontElement( appElement ):
-  pass
+  # -----------------------------------------------------------------
+  def __init__( self, node ):
+    NodeElement.__init__( self, node )
 
 # ****************************************************************************************************
 # Class that creates area definition based on content of current node
@@ -205,14 +215,15 @@ class areaElement( NodeElement ):
   # -----------------------------------------------------------------
   def load( self ):
     from __main__ import *
+    attributes= self.attributes
     params= self.params
-    rect= self.getCoords( self.params[ 'coords' ] )
+    rect= self.getCoords( attributes[ 'coords' ] )
     
     renderer= None
-    if self.params[ 'renderer' ]!= '':
-      renderer= eval( '%s( rect, params )' % self.params[ 'renderer' ] )
+    if attributes[ 'renderer' ]!= '':
+      renderer= eval( '%s( rect, attributes, params )' % attributes[ 'renderer' ] )
       
-    s= '%s( rect, params, renderer )' % self.params[ 'displayer' ]
+    s= '%s( rect, attributes, params, renderer )' % attributes[ 'displayer' ]
     area= eval( s )
     area.setActive( 0 )
     return area
@@ -252,7 +263,7 @@ class menuElement( NodeElement ):
       self.execute( 'onKeyPress', key, item )
     else:
       if item.has_key( 'onClick' ):
-        self.params[ 'onClick' ]= item[ 'onClick' ]
+        self.attributes[ 'onClick' ]= item[ 'onClick' ]
         self.execute( 'onClick', key, item )
     
   
@@ -269,15 +280,15 @@ class moduleElement( NodeElement ):
       Imports needed modules and puts them into the __main__ context.
     """
     global currentModule
-    params= self.getAttributes( node )
-    self.node= self.loadXMLFile( params[ 'file' ] )
-    self.params= self.getAttributes( self.node )
-    self.filter= ( 'areas', 'menuDefs', 'fontDefs' )
     currentModule= self
+    attributes= self.getAttributes( node )
+    self.node= self.loadXMLFile( attributes[ 'file' ] )
+    self.attributes= self.getAttributes( self.node )
+    self.filter= ( 'areas', 'menuDefs', 'fontDefs' )
     
     # import modules into the __main__ namespace
     import __main__
-    s= self.params[ 'import' ]
+    s= self.attributes[ 'import' ]
     exec( 'import %s' % s )
     
     mods= string.split( s, ',' )
@@ -288,7 +299,7 @@ class moduleElement( NodeElement ):
     for module in modules:
       __main__.__dict__[ module ]= eval( module )
       
-    print 'Module %s modules %s' % ( self.params[ 'id' ], modules )
+    print 'Module %s modules %s' % ( self.attributes[ 'id' ], modules )
   
   # -----------------------------------------------------------------
   def execute( self, action ):
@@ -298,12 +309,12 @@ class moduleElement( NodeElement ):
       actions are defined. If the action is not found, just ignore it.
     """
     from __main__ import *
-    params= self.params[ 'params' ]
+    params= self.params
     # Get actions variable
-    s= eval( self.params[ 'actions' ] )
-    s1= self.params[ action ]
+    s= eval( self.attributes[ 'actions' ] )
+    s1= self.attributes[ action ]
     if s1[ 0 ]== '%':
-      s1= s[ self.params[ 'id' ]+ '.'+ s1[ 1: ] ]
+      s1= s[ self.attributes[ 'id' ]+ '.'+ s1[ 1: ] ]
     
     exec( s1 )
     
@@ -313,7 +324,7 @@ class moduleElement( NodeElement ):
       Load module into the memory.
       basically just executes onLoad action.
     """
-    print 'Load module:', self.params[ 'id' ]
+    print 'Load module:', self.attributes[ 'id' ]
     self.execute( 'onLoad' )
     return self
   
@@ -325,9 +336,8 @@ class moduleElement( NodeElement ):
       onUnLoad action should clean up everything that were allocated and
       stop any playing devices
     """
-    print 'Unload module:', self.params[ 'id' ]
+    print 'Unload module:', self.attributes[ 'id' ]
     self.execute( 'onUnLoad' )
-    params= self.params[ 'params' ]
   
 # ****************************************************************************************************
 # Class that directs root elements in config file to the right place
@@ -337,7 +347,6 @@ class ConfigElement( NodeElement ):
   """
   # -----------------------------------------------------------------
   def __init__( self ):
-    global currentModule
     currentModule= None
     self.node= None
   
@@ -348,7 +357,7 @@ class ConfigElement( NodeElement ):
       appNode= node[ i ]
       if appNode[ 0 ]== 'app':
         app= self.processNodeByName( appNode )
-        apps[ app.params[ 'id' ] ]= app.load()
+        apps[ app.attributes[ 'id' ] ]= app.load()
   
   # -----------------------------------------------------------------
   def parseFile( self, fileName ):
