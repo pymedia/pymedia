@@ -43,24 +43,6 @@ NONMMX_FILES= [
 ]
 
 
-CLE266_HW= {
-	'video.ext_codecs.cle266':
-	{
-		'#dir': 'video',
-		'':
-		(
-			'mem.c',
-			'common.c'
-		),
-		'vcodec':
-		[
-			'hw_vcodec.c',
-			'hw_mpeg.c',
-			'cle266/cle266_hw_dec.c',
-		],
-	},
-}
-
 FILES={
 	'audio.acodec':
 	{
@@ -251,7 +233,6 @@ else:
 				('HAVE_LINUX_DVD_STRUCT', '1' ),
 				('DVD_STRUCT_IN_LINUX_CDROM_H', '1' ),
 			]
-			FILES.update( CLE266_HW )
 
 		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= MMX_FILES
 
