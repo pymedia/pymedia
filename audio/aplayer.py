@@ -1,3 +1,24 @@
+##    aplayer - Part of the pymedia package. Major playlists functionality.
+##        Includes global audio player for various types of audio files.
+##    
+##    Copyright (C) 2002-2003  Dmitry Borisov
+##
+##    This library is free software; you can redistribute it and/or
+##    modify it under the terms of the GNU Library General Public
+##    License as published by the Free Software Foundation; either
+##    version 2 of the License, or (at your option) any later version.
+##
+##    This library is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+##    Library General Public License for more details.
+##
+##    You should have received a copy of the GNU Library General Public
+##    License along with this library; if not, write to the Free
+##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+##
+##    Dmitry Borisov
+
 # length in seconds: $this->filesize / ($this->bitrate * 125); 
 
 import threading, traceback, time, os, string, random
@@ -22,7 +43,7 @@ def getFileName( fullName ):
 class AbstractFileList:
   # ---------------------------------------------------
   def __init__( self ):
-    self.files= []
+    self.clear()
     self.sorted= 0
   
   # ---------------------------------------------------
@@ -32,8 +53,9 @@ class AbstractFileList:
     Adds or inserts file into the playlist
     """
     fullName= aaudio.cache.getPathName( file )
-    if fullName not in map( lambda x: aaudio.cache.getPathName( x ), self.files ):
+    if not self.fileNames.has_key( fullName ):
       self.files.append( file )
+      self.fileNames[ aaudio.cache.getPathName( file ) ]= len( self.files )- 1
   
   # ---------------------------------------------------
   def addFilePath( self, filePath, pos= -1 ):
@@ -42,13 +64,14 @@ class AbstractFileList:
     Adds or inserts file into the playlist
     """
     file= aaudio.cache.getFile( filePath )
-    self.files.append( file )
+    self.addFile( file, pos )
   
   # ---------------------------------------------------
   def clear( self ):
     """
     """
     self.files= []
+    self.fileNames= {}
     self.setChanged( 1 )
   
   # ---------------------------------------------------
@@ -58,7 +81,9 @@ class AbstractFileList:
       Removes file from cache by its position
     """
     if len( self.files )> filePos:
+      fullName= aaudio.cache.getPathName( self.files[ filePos ] )
       del( self.files[ filePos ] )
+      del( self.fileNames[ fullName ] )
       self.setChanged( 1 )
   
   # ---------------------------------------------------
@@ -79,9 +104,8 @@ class AbstractFileList:
     Returns file from cache by its position
     """
     fName= aaudio.cache.getPathName( file )
-    for i in xrange( len( self.files )):
-      if aaudio.cache.getPathName( self.files[ i ] )== fName:
-        return i
+    if self.fileNames.has_key( fName ):
+      return self.fileNames[ fName ]
     
     return -1
   
@@ -93,12 +117,15 @@ class AbstractFileList:
   # -----------------------------------------------------------------
   def randomize( self ):
     tmpList= []
+    tmpNames= {}
     while len( self.files )> 0:
       j= int( random.random()* len( self.files ))
       tmpList.append( self.files[ j ] )
+      tmpNames[ aaudio.cache.getPathName( self.files[ j ] ) ]= len( tmpList )- 1 
       del self.files[ j ]
     
     self.files= tmpList
+    self.fileNames= tmpNames
     self.setChanged( 1 )
     return self.items()
 
@@ -134,11 +161,6 @@ class AbstractFileList:
   # -----------------------------------------------------------------
   def items( self ):
     return self.files
-
-  # -----------------------------------------------------------------
-  def clear( self ):
-    self.files= []
-    self.setChanged( 1 )
 
   # -----------------------------------------------------------------
   def getFilesCount( self ):
