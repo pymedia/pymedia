@@ -419,6 +419,7 @@ class BgPlayerDisplay( menu.GenericDisplay ):
     self.currPos= player.getPosition()
     if self.currPos!= -1:
       res= self.font[ 0 ].render( '%02d:%02d' % ( int( self.currPos / 60 ), self.currPos % 60 ), 1, self.font[ 1 ] )
+      res.set_alpha( 150 )
       return [ ( res, self.rect[ :2 ] ) ]
     
     return []
@@ -839,15 +840,15 @@ class AudioFileFolderItem( AudioFileHelper ):
       key= pygame.K_BACKSPACE
     
     if key== pygame.K_RETURN:
-      if cache.getProperty( item, 'isDir' ):
+      if item[ 'isDir' ]:
         # Wait until we process directory( may take awhile )
         startTime= time.time()
         while item[ 'processing' ]== 1:
           time.sleep( 0.01 )
-          if time.time()- startTime> 5:
+          if time.time()- startTime> 1:
             return
         
-        self.history.append( ( self.itemsWrapper.items(), pos ) )
+        self.history.append( ( self.itemsWrapper.items(), pos, item[ 'name' ] ) )
         children= cache.getChildren( item )
         if children== None:
           children= []
@@ -861,9 +862,8 @@ class AudioFileFolderItem( AudioFileHelper ):
         self.itemsWrapper.setItems( self.history[ -1 ][ 0 ], self.getFilter() )
         activeItem= self.history[ -1 ][ 1 ]
         del( self.history[ -1 ] )
-    else:
-      self.execute( 'onKeyPress', key, item )
     
+    self.execute( 'onKeyPress', key, item )
     return activeItem
 
 # ****************************************************************************************************
