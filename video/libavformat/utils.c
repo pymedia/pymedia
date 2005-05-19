@@ -493,6 +493,16 @@ typedef struct InternalBuffer{
 
 #define INTERNAL_BUFFER_SIZE 32
 
+/**
+ * allocates a AVPFrame and set it to defaults.
+ * this can be deallocated by simply calling free()
+ */
+AVFrame *avcodec_alloc_frame(void){
+    AVFrame *pic= av_mallocz(sizeof(AVFrame));
+
+    return pic;
+}
+ 
 int avcodec_default_get_buffer(AVCodecContext *s, AVFrame *pic){
     int i;
     const int width = s->width;
@@ -828,3 +838,5 @@ void av_frac_add(AVFrac *f, int64_t incr)
     }
     f->num = num;
 }
+
+ 

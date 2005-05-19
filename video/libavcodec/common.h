@@ -48,18 +48,26 @@
 
 #define AVOPTION_CODEC_BOOL(name, help, field) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_BOOL }
+
 #define AVOPTION_CODEC_DOUBLE(name, help, field, minv, maxv, defval) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_DOUBLE, minv, maxv, defval }
+
 #define AVOPTION_CODEC_FLAG(name, help, field, flag, defval) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_FLAG, flag, 0, defval }
+
 #define AVOPTION_CODEC_INT(name, help, field, minv, maxv, defval) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_INT, minv, maxv, defval }
+
 #define AVOPTION_CODEC_STRING(name, help, field, str, val) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_STRING, 0,0, val, str }
+
 #define AVOPTION_CODEC_RCOVERRIDE(name, help, field) \
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_RCOVERRIDE, 0,0, 0, NULL }
+
 #define AVOPTION_SUB(ptr) { NULL, (const char*)ptr }
+
 #define AVOPTION_END() AVOPTION_SUB(NULL)
+
  
 struct AVOption;
 #ifdef HAVE_MMX
@@ -929,6 +937,7 @@ static inline int get_xbits_trace(GetBitContext *s, int n, char *file, char *fun
 
 #else //TRACE
 #define tprintf printf
+
 #endif
 
 /* define it to include statistics code (useful only for optimizing

@@ -104,6 +104,8 @@ enum CodecID {
     CODEC_ID_ROQ_DPCM,
     CODEC_ID_INTERPLAY_DPCM,
     CODEC_ID_XAN_DPCM,
+
+		CODEC_ID_FLAC,
 };
 
 /* CODEC_ID_MP3LAME is absolete */
@@ -405,6 +407,7 @@ typedef struct AVFrame {
 } AVFrame;
 
 #define DEFAULT_FRAME_RATE_BASE 1001000
+#define FRAME_RATE_BASE 10000
 
 /**
  * main external api structure.

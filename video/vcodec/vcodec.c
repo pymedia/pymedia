@@ -213,7 +213,7 @@ AVILIBError g_AvilibErr[]= {
 	{ AVILIB_NO_HEADER, "There is no header in a file where it should be" },
 	{ AVILIB_BAD_FORMAT, "The format of file is wrong." },
 	{ AVILIB_BAD_HEADER, "The header of the file is corrupted." },
-	{ AVILIB_SMALL_BUFFER, "Output buffer is too small. You may need to increase vocdec.c/MAX_OUTFRAME_SIZE and recompile pymedia." },
+	{ AVILIB_SMALL_BUFFER, "Output buffer is too small. You may need to increase vcodec.c/MAX_OUTFRAME_SIZE and recompile pymedia." },
 	{ AVILIB_ENCRYPTED, "The stream is encrypted and cannot be processed by codec." },
 	{ 0, NULL }
 };
@@ -1110,7 +1110,7 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 #define ENCODE_OUTBUF_SIZE 100000
 
 	char sOutbuf[ ENCODE_OUTBUF_SIZE ];
-	if (!PyArg_ParseTuple(args, "O", &cFrame ))
+	if (!PyArg_ParseTuple(args, "O!", &VFrameType, &cFrame ))
 		return NULL;
 
 	if (!(obj->cCodec ||obj->cCodec->codec))

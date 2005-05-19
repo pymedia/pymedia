@@ -2,7 +2,7 @@
 #define AVIO_H
 
 #include "patch.h"
-
+ 
 /* output byte stream handling */
 
 typedef INT64 offset_t;
@@ -23,18 +23,10 @@ typedef struct {
     int write_flag;  /* true if open for writing */
     int is_streamed;
     int max_packet_size;
-    OutputBuf out_buf;
+    OutputBuf out_buf; 
 } ByteIOContext;
 
-int init_put_byte(ByteIOContext *s,
-                  unsigned char *buffer,
-                  int buffer_size,
-                  int write_flag,
-                  void *opaque,
-                  int (*read_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  void (*write_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  int (*seek)(void *opaque, offset_t offset, int whence));
-
+int init_put_byte(ByteIOContext *s);
 void put_byte(ByteIOContext *s, int b);
 void put_buffer(ByteIOContext *s, const unsigned char *buf, int size);
 void put_le64(ByteIOContext *s, UINT64 val);
@@ -47,17 +39,11 @@ void put_tag(ByteIOContext *s, const char *tag);
 
 void put_be64_double(ByteIOContext *s, double val);
 void put_strz(ByteIOContext *s, const char *buf);
-int get_mem_buffer_size( ByteIOContext* stBuf );
 
 offset_t url_fseek(ByteIOContext *s, offset_t offset, int whence);
 offset_t url_fskip(ByteIOContext *s, offset_t offset);
 offset_t url_ftell(ByteIOContext *s);
 int url_feof(ByteIOContext *s);
-
-#define URL_EOF (-1)
-int url_fgetc(ByteIOContext *s);
-int url_fprintf(ByteIOContext *s, const char *fmt, ...);
-char *url_fgets(ByteIOContext *s, char *buf, int buf_size);
 
 void put_flush_packet(ByteIOContext *s);
 
@@ -72,7 +58,8 @@ char *get_strz(ByteIOContext *s, char *buf, int maxlen);
 unsigned int get_be16(ByteIOContext *s);
 unsigned int get_be32(ByteIOContext *s);
 UINT64 get_be64(ByteIOContext *s);
-
+int get_mem_buffer_size( ByteIOContext* stBuf );
+char *get_str(ByteIOContext *s, char *buf, int maxlen);
 static inline int url_is_streamed(ByteIOContext *s)
 {
     return s->is_streamed;

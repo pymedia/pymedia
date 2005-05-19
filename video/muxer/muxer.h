@@ -22,5 +22,7 @@ extern PyTypeObject MuxerType ;
 #define PM_GOP_SIZE "gop_size"
 #define PM_MAX_B_FRAMES "max_b_frames"
 #define PM_DURATION "length"
+#define PM_EXTRA_DATA "extra_data"
+#define PM_BLOCK_ALIGN "block_align"
 
 #endif

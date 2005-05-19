@@ -211,9 +211,14 @@ typedef struct AVFormatContext {
     /* stream info */
     char title[512];
     char author[512];
+    char album[512];
+    char track[6];
+    char year[4];
     char copyright[512];
     char comment[512];
-    int flags; /* format specific flags */
+		unsigned char *album_cover;
+		int has_header;
+		int flags; /* format specific flags */
     /* private data for pts handling (do not modify directly) */
     int pts_wrap_bits; /* number of bits in pts (used for wrapping control) */
     int pts_num, pts_den; /* value to convert to seconds */

@@ -34,6 +34,10 @@
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
+ 
+#define MODULE_NAME "pymedia.muxer"
+#define DEMUXER_NAME "Demuxer"
+#define MUXER_NAME "Muxer"
 
 const int PYBUILD= BUILD_NUM;
 const char* PYVERSION= "2";
@@ -73,6 +77,27 @@ const char* PYDOC=
 	Some values may be used still, such as 'id' and 'type'\n\
 	You should call parse() at least once before you can call this method.\n"
 
+#define AUTHOR "artist"
+#define TITLE "title"
+#define YEAR "year"
+#define ALBUM "album"
+#define TRACK "track"
+#define COPYRIGHT "copyright"
+#define COMMENT "comment"
+
+#define GET_INFO "getInfo"
+
+#define GET_INFO_DOC \
+	  GET_INFO"() -> info\n\
+Return all information known by the codec as a dictionary. Predefined dictionary entries are:\n \
+	"TITLE" - title for the song if exists\n \
+	"AUTHOR" - author for the song if exists\n \
+	"ALBUM" - song album if exists\n \
+	"TRACK" - track number if exists\n \
+	"YEAR" - year of album\n \
+	"COPYRIGHT" - copyright info\n \
+	"COMMENT" - comment\n"
+
 #define DEMUXER_DOC \
 	"Demuxer( ext ) -> demuxer\n \
 	Returns demuxer object based on extension passed. \nIt can demux stream into separate streams based on a \
@@ -96,6 +121,7 @@ typedef struct
 	// Whether we tried to get header from the stream
 	bool bTriedHeader;
 	PyObject* cBuffer;
+	PyObject* cDict;
 } PyDemuxerObject;
 
 /* -----------------------------------------------------------------------------------------------*/
@@ -144,7 +170,7 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 	else
 	{
 		i= stBuf->buf_end- stBuf->buf_ptr;
-		stBuf->pos+= stBuf->buf_ptr- stBuf->buffer;
+		//stBuf->pos+= stBuf->buf_ptr- stBuf->buffer;
 		if( stBuf->buf_ptr- stBuf->buffer < iSize )
 		{
 			bufTmp= stBuf->buffer;
@@ -165,6 +191,7 @@ int fill_mem_buffer( ByteIOContext* stBuf, unsigned char* s, int iSize )
 			memcpy( stBuf->buffer+ i, s, iSize );
 			stBuf->buf_end= stBuf->buffer+ i+ iSize;
 		}
+		stBuf->pos= 0;
 		stBuf->buf_ptr= stBuf->buffer;
 	}
 	return 1;
@@ -185,6 +212,17 @@ bool SetAttribute( PyObject* cDict, char* sKey, int iVal )
 bool SetAttribute( PyObject* cDict, char* sKey, char* sVal )
 {
 	PyObject* cVal= PyString_FromString( sVal );
+	if( !cVal )
+		return false;
+	PyDict_SetItemString( cDict, sKey, cVal );
+	Py_DECREF( cVal );
+	return true;
+}
+
+// ---------------------------------------------------------------------------------
+bool SetAttribute( PyObject* cDict, char* sKey, char* sVal, int iSize )
+{
+	PyObject* cVal= PyString_FromStringAndSize( sVal, iSize );
 	if( !cVal )
 		return false;
 	PyDict_SetItemString( cDict, sKey, cVal );
@@ -235,7 +273,10 @@ PyObject* GetStreams( PyDemuxerObject* obj )
 			SetAttribute( cFormat, PM_SAMPLE_RATE, cCodec->sample_rate );
 			SetAttribute( cFormat, PM_CHANNELS, cCodec->channels );
 			SetAttribute( cFormat, PM_DURATION, (int)( obj->ic.streams[ i ]->duration / AV_TIME_BASE ) );
+			SetAttribute( cFormat, PM_BLOCK_ALIGN, cCodec->block_align );
 			SetAttribute( cFormat, PM_INDEX, i );
+			if( cCodec->extradata_size> 0 )
+				SetAttribute( cFormat, PM_EXTRA_DATA, (char*)cCodec->extradata, cCodec->extradata_size );
 		}
 
 		PyTuple_SetItem( cFormats, i, cFormat );
@@ -269,6 +310,45 @@ bool AppendStreamData( PyDemuxerObject* obj, AVPacket* cPkt )
 	return true;
 }
 
+// ---------------------------------------------------------------------------------
+static PyObject *
+Demuxer_GetInfo( PyDemuxerObject* obj)
+{
+	/* Populate dictionary with the data if header already parsed */
+	if( !obj->cDict && obj->bTriedHeader )
+	{
+		PyObject* cStr;
+		obj->cDict= PyDict_New();
+		if( !obj->cDict )
+			return NULL;
+
+		cStr= PyString_FromString( obj->ic.author );
+		PyDict_SetItemString( obj->cDict, AUTHOR, cStr );
+		Py_DECREF( cStr );
+		cStr= PyString_FromString( obj->ic.title );
+		PyDict_SetItemString( obj->cDict, TITLE, cStr );
+		Py_DECREF( cStr );
+		cStr= PyString_FromString( obj->ic.year );
+		PyDict_SetItemString( obj->cDict, YEAR, cStr );
+		Py_DECREF( cStr );
+		cStr= PyString_FromString( obj->ic.album );
+		PyDict_SetItemString( obj->cDict, ALBUM, cStr );
+		Py_DECREF( cStr );
+		cStr= PyString_FromString( obj->ic.track );
+		PyDict_SetItemString( obj->cDict, TRACK, cStr );
+		Py_DECREF( cStr );
+	}
+
+	if( obj->cDict )
+	{
+		/* Return builtin dictionary */
+		Py_INCREF( obj->cDict );
+		return obj->cDict;
+	}
+
+	PyErr_SetString( g_cErr, "The header has not been read yet. Cannot get stream information." );
+	return NULL;
+}
 // ---------------------------------------------------------------------------------
 static PyObject *
 Demuxer_HasHeader( PyDemuxerObject* obj)
@@ -339,7 +419,7 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		while( g_AvilibErr[ i ].iErrCode )
 			if( g_AvilibErr[ i ].iErrCode== iRet )
 			{
-				PyErr_SetString(g_cErr, g_AvilibErr[ i ].sErrDesc );
+				PyErr_SetString( g_cErr, g_AvilibErr[ i ].sErrDesc );
 				return NULL;
 			}
 			else
@@ -376,6 +456,12 @@ static PyMethodDef demuxer_methods[] =
 		METH_NOARGS,
 		HAS_HEADER_DOC
 	},
+	{
+		GET_INFO,
+		(PyCFunction)Demuxer_GetInfo,
+		METH_NOARGS,
+		GET_INFO_DOC
+	},
 	{ NULL, NULL },
 };
 
@@ -389,6 +475,9 @@ DemuxerClose( PyDemuxerObject *obj )
 
 	av_close_input_file( &obj->ic );
 	free_mem_buffer( &obj->ic.pb );
+
+	if( obj->cDict )
+		Py_DECREF( obj->cDict );
 
 	PyObject_Free( (PyObject*)obj );
 }
@@ -417,6 +506,7 @@ DemuxerNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 			demuxer->cBuffer= NULL;
 			demuxer->bHasHeader= demuxer->bTriedHeader= 0;
 			demuxer->ic.iformat = fmt;
+			demuxer->cDict= NULL;
 
 			// allocate private data
 			if( fmt->priv_data_size )
@@ -451,7 +541,7 @@ PyTypeObject DemuxerType =
 {
 	PyObject_HEAD_INIT(NULL)
 	0,
-	"pymedia.video.muxer.Demuxer",
+	MODULE_NAME"."DEMUXER_NAME,
 	sizeof(PyDemuxerObject),
 	0,
 	(destructor)DemuxerClose,  //tp_dealloc
@@ -498,6 +588,147 @@ static PyMethodDef pymuxer_methods[] =
 	{ NULL, NULL },
 };
 
+/*
+// ---------------------------------------------------------------------------------
+static PyObject* ACodec_SetInfo( PyACodecObject* obj, PyObject *args)
+{
+	PyObject* cInfo = NULL;
+	PyObject* cTmp;
+	if (!PyArg_ParseTuple(args, "O!:"SET_INFO, &PyDict_Type, &cInfo ))
+		return NULL;
+
+	// Start parsing the info and feeding it to the codec
+	cTmp= PyDict_GetItemString( cInfo, AUTHOR );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.author, PyString_AsString( cTmp ), i );
+		obj->ic.author[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, TITLE );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.title, PyString_AsString( cTmp ), i );
+		obj->ic.title[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, YEAR );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.year, PyString_AsString( cTmp ), i );
+		obj->ic.year[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, ALBUM );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.album, PyString_AsString( cTmp ), i );
+		obj->ic.album[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, TRACK );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.track, PyString_AsString( cTmp ), i );
+		obj->ic.track[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, COPYRIGHT );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.copyright, PyString_AsString( cTmp ), i );
+		obj->ic.copyright[ ++i ]= 0;
+	}
+
+	cTmp= PyDict_GetItemString( cInfo, COMMENT );
+	if( cTmp )
+	{
+		int i= PyString_Size( cTmp );
+		strncpy( obj->ic.comment, PyString_AsString( cTmp ), i );
+		obj->ic.comment[ ++i ]= 0;
+	}
+
+	obj->ic.has_header= 1;
+	obj->iTriedHeader= 0;
+	RETURN_NONE
+}
+
+	// ---------------------------------------------------------------------------------
+static PyObject* ACodec_Flush( PyACodecObject* obj)
+{
+	int i;
+	if( obj->ic.oformat->write_packet )
+		obj->ic.oformat->write_trailer( &obj->ic );
+
+	// Make the resulting string
+	i= (int)url_ftell( &obj->ic.pb );
+	url_fseek( &obj->ic.pb, 0, SEEK_SET );
+	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
+}
+
+	// ---------------------------------------------------------------------------------
+static PyObject* ACodec_Mux( PyACodecObject* obj, PyObject *args)
+{
+	PyObject* cInfo = NULL;
+	PyObject *cData;
+	int iCount, i;
+	if (!PyArg_ParseTuple(args, "O:"MUX_NAME, &cData ))
+		return NULL;
+
+	if( !PySequence_Check( cData ))
+	{
+		PyErr_SetString(g_cErr, MUX_NAME" accepts only sequence type as parameter. " );
+		return NULL;
+	}
+
+	// Check if file format was chosen through the extension
+	if( !obj->ic.oformat )
+	{
+		PyErr_SetString(g_cErr, "The format in which muxer will work is not chosen when you created Encoder. \n"
+														"Parameters should include 'ext' which will define the output format\n"
+														"You should create the encoder with correct parameters in order to use '"MUX_NAME"()' function" );
+		return NULL;
+	}
+
+	if( !obj->iTriedHeader )
+	{
+		// Process header into the internal buffer
+		init_put_byte( &obj->ic.pb );
+		if( obj->ic.oformat->write_header )
+			obj->ic.oformat->write_header( &obj->ic );
+		obj->iTriedHeader= 1;
+	}
+	// Start muxing frames
+	iCount= PySequence_Size( cData );
+	for( i= 0; i< iCount; i++ )
+	{
+		PyObject *cS= PySequence_GetItem( cData, i );
+		if( PyString_Check( cS ) )
+		{
+			if( obj->ic.oformat->write_packet )
+				obj->ic.oformat->write_packet( &obj->ic, 0, PyString_AsString( cS ), PyString_Size( cS ), 0 );
+		}
+		else
+		{
+			PyErr_Format(g_cErr, "Element at index %d is not a string. Muxing of elementary audio streams can accept strings only.", i );
+			return NULL;
+		}
+	}
+	// Make the resulting string
+	i= (int)url_ftell( &obj->ic.pb );
+	url_fseek( &obj->ic.pb, 0, SEEK_SET );
+	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
+}
+
+
+*/
+
 // ---------------------------------------------------------------------------------
 #define INT_C(name) PyModule_AddIntConstant( m, #name, name )
 
@@ -510,14 +741,19 @@ initmuxer(void)
 	AVInputFormat *fmt;
 
 	Py_Initialize();
-	m= Py_InitModule("muxer", pymuxer_methods);
+	m= Py_InitModule(MODULE_NAME, pymuxer_methods);
 
 	// Formats
 	avidec_init();
 	mov_init();
 	asf_init();
+	raw_init();
 	mpegts_init();
 	mpegps_init();
+
+#ifdef CONFIG_VORBIS
+	ogg_init();
+#endif
 
 	cExtensions = PyList_New(0);
   for(fmt = first_iformat; fmt != NULL; fmt = fmt->next)
@@ -552,13 +788,13 @@ initmuxer(void)
 	INT_C(CODEC_TYPE_VIDEO);
 	PyModule_AddObject( m, "extensions", cExtensions );
 
-	g_cErr = PyErr_NewException("pymedia.video.muxer.MuxerError", NULL, NULL);
+	g_cErr = PyErr_NewException(MODULE_NAME".MuxerError", NULL, NULL);
 	if( g_cErr )
 		PyModule_AddObject( m, "MuxerError", g_cErr );
 
 	DemuxerType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&DemuxerType);
-	PyModule_AddObject(m, "Demuxer", (PyObject *)&DemuxerType);
+	PyModule_AddObject(m, DEMUXER_NAME, (PyObject *)&DemuxerType);
 
 	MuxerType.ob_type = &PyType_Type;
 	Py_INCREF((PyObject *)&MuxerType);
@@ -567,14 +803,29 @@ initmuxer(void)
 };
 
 /*
-
-import pymedia.video.muxer as muxer
+ 
+import pymedia.muxer as muxer
 dm= muxer.Demuxer( 'avi' )
 f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
 #f= open( 'c:\movies\Our video.mpg', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
+
+
+import pymedia.muxer as muxer
+dm= muxer.Demuxer( 'wma' )
+f= open( 'c:\\bors\\media\\test.wma', 'rb' )
+s= f.read( 300000 )
+r= dm.parse( s )
+print len( r[ 0 ][ 1 ] )
+dm.streams
+dm.getInfo()
+while len( s ):
+  s= f.read( 512 )
+  r= dm.parse( s )
+  if len( r ):
+    print '-----------------------'
 
 
 */

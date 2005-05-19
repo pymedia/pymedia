@@ -186,37 +186,24 @@ static PyObject* Muxer_AddStream( PyMuxerObject* obj, PyObject *args)
 static PyObject* Muxer_Start( PyMuxerObject* obj)
 {
 //FD: this constant is stolen from aviobuf.c
-#define IO_BUFFER_SIZE 32768
+#	define IO_BUFFER_SIZE 32768
 
-	uint8_t *buffer;
 	PyObject* cRes = NULL;
-
-	buffer = (uint8_t*)av_malloc(IO_BUFFER_SIZE);
-	if (!buffer) 
-	{
-		PyErr_NoMemory();
-		return NULL;
-	}
-
-	if (init_put_byte(&obj->oc.pb, buffer, IO_BUFFER_SIZE, 1, NULL, NULL, NULL, NULL) < 0)
+	if (init_put_byte(&obj->oc.pb) < 0)
 	{
 		PyErr_Format(g_cErr,"start:Error initialising init_put_byte");
-		av_free(buffer);
 		return NULL;
 	}
 	
 	if (av_write_header(&obj->oc) < 0)  
 	{
-		PyErr_Format(g_cErr,  "Error while writing file header");
+		PyErr_Format(g_cErr, "Error while writing file header");
 		if (obj->oc.pb.out_buf.buffer)
 			free(obj->oc.pb.out_buf.buffer);
 
 		obj->oc.pb.out_buf.buffer= NULL;
 		return NULL;
 	}
-
-	//printf("got %d bytes from muxer when writing header\n",
-	//		obj->oc.pb.out_buf->buf_size);
 	return PyString_FromStringAndSize((char*)obj->oc.pb.out_buf.buffer, obj->oc.pb.out_buf.buf_size);
 }
 
@@ -355,7 +342,7 @@ static PyMethodDef muxer_methods[] =
 		METH_NOARGS,
 		END_DOC
 	},
-	{       "getStreamPTS",
+	{ "getStreamPTS",
 		(PyCFunction)GetStreamPTS,
 		METH_VARARGS,
 		GET_STREAM_PTS_DOC

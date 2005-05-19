@@ -18,31 +18,19 @@
  */
 #include "avformat.h"
 #include <stdarg.h>
-#include "patch.h"
 
 #define IO_BUFFER_SIZE 32768
 
-int init_put_byte(ByteIOContext *s,
-                  unsigned char *buffer,
-                  int buffer_size,
-                  int write_flag,
-                  void *opaque,
-                  int (*read_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  void (*write_packet)(void *opaque, UINT8 *buf, int buf_size),
-                  int (*seek)(void *opaque, offset_t offset, int whence))
+void put_flush_packet(ByteIOContext *s)
 {
-    s->buffer = buffer;
-    s->buffer_size = buffer_size;
-    s->buf_ptr = buffer;
-    s->write_flag = write_flag;
-    if (!s->write_flag)
-        s->buf_end = buffer;
-    else
-        s->buf_end = buffer + buffer_size;
-    s->opaque = opaque;
-    s->write_packet = write_packet;
-    s->read_packet = read_packet;
-    s->seek = seek;
+}
+ 
+int init_put_byte(ByteIOContext *s )
+{
+    s->buffer = NULL;
+    s->buffer_size = 0;
+    s->buf_ptr = NULL;
+    s->write_flag = 1;
     s->pos = 0;
     s->must_flush = 0;
     s->eof_reached = 0;
@@ -50,39 +38,46 @@ int init_put_byte(ByteIOContext *s,
     s->max_packet_size = 0;
     return 0;
 }
-
-
-static void flush_buffer(ByteIOContext *s)
+                  
+static int add_buffer(ByteIOContext *s, int size)
 {
-    if (s->buf_ptr > s->buffer) {
-	    if (s->write_packet)
-		    s->write_packet(s->opaque, s->buffer, s->buf_ptr - s->buffer);
-	    s->pos += s->buf_ptr - s->buffer;
-	    //FD: Saving flushed packets in memory buffer
-	    //if (s->out_buf) 
-			{
-		    s->out_buf.buffer = av_realloc(s->out_buf.buffer,
-				    s->out_buf.buf_size+
-				    s->buf_ptr - s->buffer);
-		    memcpy(s->out_buf.buffer + s->out_buf.buf_size,
-				    s->buffer,
-				    s->buf_ptr - s->buffer);
-		    s->out_buf.buf_size += s->buf_ptr - s->buffer;
-	    }
-    }     
-    s->buf_ptr = s->buffer;
+	size= ( size< IO_BUFFER_SIZE ) ? IO_BUFFER_SIZE: size+ IO_BUFFER_SIZE;
+	if( !s->buffer )
+	{
+		s->buffer= s->buf_ptr= av_malloc( size );
+		if( !s->buffer )
+			return -1;
+
+	}
+	else if( size> 0 )
+	{
+		// Realloc existing buffer to get more data
+		int pos= s->buf_ptr- s->buffer;
+		int iNewSize= s->buffer_size+ size;
+		
+		uint8_t *tmp= av_malloc( s->buffer_size+ size );
+		if( !tmp )
+			return -1;
+		memcpy( tmp, s->buffer, pos );
+		av_free( s->buffer );
+		s->buffer= tmp;
+		s->buf_ptr= s->buffer+ pos;
+	}
+	s->buffer_size+= size;
+	s->buf_end= s->buffer+ s->buffer_size;
+	return 0;
 }
 
 void put_byte(ByteIOContext *s, int b)
 {
+    if (s->buf_ptr >= s->buf_end )
+			add_buffer( s, 1 );
+
     *(s->buf_ptr)++ = b;
-    if (s->buf_ptr >= s->buf_end)
-        flush_buffer(s);
+		s->pos++;
 }
 
-void put_buffer(ByteIOContext *s, 
-		const unsigned char *buf, 
-		int size)
+void put_buffer(ByteIOContext *s, const unsigned char *buf, int size)
 {
     int len;
 
@@ -90,21 +85,18 @@ void put_buffer(ByteIOContext *s,
         len = (s->buf_end - s->buf_ptr);
         if (len > size)
             len = size;
+				else
+				{
+					add_buffer( s, size- len );
+					len= size;
+				}
+
         memcpy(s->buf_ptr, buf, len);
         s->buf_ptr += len;
-
-        if (s->buf_ptr >= s->buf_end)
-            flush_buffer(s);
-
+				s->pos+= len;
         buf += len;
         size -= len;
     }
-}
-
-void put_flush_packet(ByteIOContext *s)
-{
-    flush_buffer(s);
-    s->must_flush = 0;
 }
 
 offset_t url_fseek(ByteIOContext *s, offset_t offset, int whence)
@@ -113,52 +105,19 @@ offset_t url_fseek(ByteIOContext *s, offset_t offset, int whence)
 
     if (whence != SEEK_CUR && whence != SEEK_SET)
         return -EINVAL;
+    
+    if (whence == SEEK_CUR) 
+        offset+= s->pos;
 
-    if (s->write_flag) {
-        if (whence == SEEK_CUR) {
-            offset1 = s->pos + (s->buf_ptr - s->buffer);
-            if (offset == 0)
-                return offset1;
-            offset += offset1;
-        }
-        offset1 = offset - s->pos;
-        if (!s->must_flush &&
-            offset1 >= 0 && offset1 < (s->buf_end - s->buffer)) {
-            /* can do the seek inside the buffer */
-            s->buf_ptr = s->buffer + offset1;
-        } else {
-            if (!s->seek)
-                return -EPIPE;
-            flush_buffer(s);
-            s->must_flush = 1;
-            s->buf_ptr = s->buffer;
-            s->seek(s->opaque, offset, SEEK_SET);
-            s->pos = offset;
-        }
-    } else {
-				offset1 = (s->buf_ptr - s->buffer);
-        if (whence == SEEK_CUR)
-				{
-					// Can navigate only within the buffer
-					if (offset == 0 )
-							return s->pos+ offset1;
-
-					if( -offset> offset1 || offset+ offset1> ( s->buf_end- s->buffer ) )
-						return -1;
-
-          offset += offset1;
-				}
-        else if (whence == SEEK_SET)
-				{
-					offset= offset- s->pos;
-					if( offset> ( s->buf_end- s->buffer ) || offset< 0 )
-						return -1;
-				}
-
-        /* can do the seek inside the buffer */
-        s->buf_ptr = s->buffer + offset;
-    }
-    return s->pos+ offset;
+		offset1 = offset;
+    if (offset1 >= 0 && offset1 <= (s->buf_end - s->buffer)) 
+		{
+      /* can do the seek inside the buffer */
+      s->buf_ptr = s->buffer + offset1;
+			s->pos= offset1;
+    } 
+    s->eof_reached = 0;
+    return offset;
 }
 
 offset_t url_fskip(ByteIOContext *s, offset_t offset)
@@ -251,17 +210,21 @@ int get_mem_buffer_size( ByteIOContext* stBuf )
 
 static void fill_buffer(ByteIOContext *s)
 {
-/*
+    int len;
+
+    /* no need to do anything if EOF already reached */
     if (s->eof_reached)
         return;
     len = s->read_packet(s->opaque, s->buffer, s->buffer_size);
     if (len <= 0) {
+        /* do not modify buffer if EOF reached so that a seek back can
+           be done without rereading data */
         s->eof_reached = 1;
     } else {
         s->pos += len;
         s->buf_ptr = s->buffer;
         s->buf_end = s->buffer + len;
-    }*/
+    }
 }
 
 /* NOTE: return 0 if EOF, so you cannot use it if EOF handling is
@@ -269,10 +232,19 @@ static void fill_buffer(ByteIOContext *s)
 /* XXX: put an inline version */
 int get_byte(ByteIOContext *s)
 {
-    if (s->buf_ptr < s->buf_end)
-      return *s->buf_ptr++;
-		else
-			return 0;
+    if (s->buf_ptr < s->buf_end) {
+				s->pos++;
+        return *s->buf_ptr++;
+    } else {
+        fill_buffer(s);
+        if (s->buf_ptr < s->buf_end)
+				{
+					s->pos++;
+          return *s->buf_ptr++;
+				}
+        else
+            return 0;
+    }
 }
 
 
@@ -291,6 +263,7 @@ int get_buffer(ByteIOContext *s, unsigned char *buf, int size)
         memcpy(buf, s->buf_ptr, len);
         buf += len;
         s->buf_ptr += len;
+				s->pos+= len;
         size -= len;
     }
     return size1 - size;
@@ -360,7 +333,7 @@ char *get_strz(ByteIOContext *s, char *buf, int maxlen)
         if (i < maxlen-1)
             buf[i++] = c;
     }
-
+    
     buf[i] = 0; /* Ensure null terminated, but may be truncated */
 
     return buf;
@@ -371,7 +344,7 @@ char *get_str(ByteIOContext *s, char *buf, int maxlen)
     int i = 0;
 		for( ; maxlen > 0; maxlen-- )
       buf[i++] = get_byte(s);
-
+    
     return buf;
 }
 

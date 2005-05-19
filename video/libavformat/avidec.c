@@ -166,7 +166,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
         return -1;
     avi->buf_size = 1;
     for(;;) {
-        if (url_feof(pb))
+        if (url_feof(pb)) 
             goto fail;
         tag = get_le32(pb);
         size = get_le32(pb);
