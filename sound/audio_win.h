@@ -596,6 +596,7 @@ private:
 	int iRate;
 	int iBuffers;
 	int iErr;
+	float fLastPosition;
 
 	// ---------------------------------------------------------------------------------------------------
 	// Function called by callback
@@ -641,6 +642,7 @@ public:
 		this->format= format;
 		this->iBuffers= this->iProcessed= 0;
 		this->iBytesProcessed= 0;
+		this->fLastPosition= 0;
 		this->bStopFlag= false;
 
 		outFormatex.wFormatTag =
@@ -759,6 +761,7 @@ public:
 		EnterCriticalSection( &this->cs );
 		this->bStopFlag= true;
 		this->iBytesProcessed= this->iProcessed= this->iBuffers= 0;
+		this->fLastPosition= 0;
 		LeaveCriticalSection( &this->cs );
 
 		if( this->dev )
@@ -809,20 +812,20 @@ public:
 	}
 
 	// ---------------------------------------------------------------------------------------------------
-	double GetPosition()
+	float GetPosition()
 	{
-		// Get number of seconds already played
-		double fPos= ((double)this->iBytesProcessed) / ((float)( 2* this->iChannels* this->iRate ));
-
 		// Adjust position using the correction factor 
 		MMTIME stTime;
 		stTime.wType= TIME_MS;
 
 		waveOutGetPosition( this->dev, &stTime, sizeof( stTime ) );
-		double fPosRes= ((double)stTime.u.ms)/ this->iRate;
-		while( fPosRes< fPos )
-			fPosRes+= ((double)0x7FFFFFF)/ this->iRate;
+		float fPosRes= ((float)stTime.u.ms)/ this->iRate;
+		if( this->fLastPosition> fPosRes+ 0x7FFFFF )
+			fPosRes+= ((float)0x7FFFFFF)/ this->iRate;
 
+		EnterCriticalSection( &this->cs );
+		this->fLastPosition= fPosRes;
+		LeaveCriticalSection( &this->cs );
 		return fPosRes;
 	}
 	// ---------------------------------------------------------------------------------------------------
@@ -842,8 +845,6 @@ public:
 		return ( MAX_HEADERS- this->iBuffers )* BUFFER_SIZE;
 	}
 };
-
-
 
 // *****************************************************************************************************
 //	Input sound stream main class

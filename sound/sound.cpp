@@ -22,7 +22,7 @@
 
 #include <Python.h>
 #include <structmember.h>
- 
+   
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
 #include "audio_win.h" 
 #else
@@ -31,7 +31,7 @@
 
 #include "resample.h"
 #include "fft.h"
-
+ 
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
