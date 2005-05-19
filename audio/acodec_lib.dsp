@@ -42,8 +42,9 @@ RSC=rc.exe
 # PROP Target_Dir ""
 LINK32=link.exe
 MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /GX /O2 /I "." /I "libvorbis-1.0/include" /I "libogg-1.0/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /c
+# ADD CPP /nologo /MD /GX /O2 /I "." /I "../../libvorbis-1.0.1/include" /I "../../libogg-1.1/include" /I "../../libfaad2/include" /I "../../lame-3.95.1/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "CONFIG_VORBIS" /D "CONFIG_FAAD" /D "CONFIG_MP3LAME" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -67,6 +68,7 @@ LIB32=link.exe -lib
 # PROP Target_Dir ""
 LINK32=link.exe
 MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
 # ADD CPP /nologo /MDd /Gm /GX /ZI /Od /I "." /I "../../libvorbis-1.0.1/include" /I "../../libogg-1.1/include" /I "../../libfaad2/include" /I "../../lame-3.95.1/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "CONFIG_VORBIS" /D "CONFIG_FAAD" /D "CONFIG_MP3LAME" /YX /FD /GZ /c
 # SUBTRACT CPP /X
@@ -131,6 +133,10 @@ SOURCE=.\libavcodec\faad.c
 # Begin Source File
 
 SOURCE=.\libavcodec\fft.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\libavcodec\flac.c
 # End Source File
 # Begin Source File
 

@@ -78,96 +78,55 @@ void __av_freep(void **ptr)
     *ptr = NULL;
 }
 
- 
-/* you can redefine av_malloc and av_free in your project to use your
-   memory allocator. You do not need to suppress this file because the
-   linker will do it automatically */
 
-static void *xvid_malloc(size_t size, uint8_t alignment)
-{
-	uint8_t *mem_ptr;
-  
-	if(!alignment)
-	{
-
-		/* We have not to satisfy any alignment */
-		if((mem_ptr = (uint8_t *) malloc(size + 1)) != NULL)
-		{
-
-			/* Store (mem_ptr - "real allocated memory") in *(mem_ptr-1) */
-			*mem_ptr = 0;
-
-			/* Return the mem_ptr pointer */
-			return (void *) mem_ptr++;
-
-		}
-
-	}
-	else
-	{
-		uint8_t *tmp;
-	
-		/*
-		 * Allocate the required size memory + alignment so we
-		 * can realign the data if necessary
-		 */
-
-		if((tmp = (uint8_t *) malloc(size + alignment)) != NULL)
-		{
-
-			/* Align the tmp pointer */
-			mem_ptr = (uint8_t *)((uint32_t)(tmp + alignment - 1)&(~(uint32_t)(alignment - 1)));
-
-			/*
-			 * Special case where malloc have already satisfied the alignment
-			 * We must add alignment to mem_ptr because we must store
-			 * (mem_ptr - tmp) in *(mem_ptr-1)
-			 * If we do not add alignment to mem_ptr then *(mem_ptr-1) points
-			 * to a forbidden memory space
-			 */
-			if(mem_ptr == tmp) mem_ptr += alignment;
-
-			/*
-			 * (mem_ptr - tmp) is stored in *(mem_ptr-1) so we are able to retrieve
-			 * the real malloc block allocated and free it in xvid_free
-			 */
-			*(mem_ptr - 1) = (uint8_t)(mem_ptr - tmp);
-
-			/* Return the aligned pointer */
-			return (void *) mem_ptr;
-
-		}
-	}
-
-	return NULL;
-
-}
-
-/* memory alloc */
+/** 
+ * Memory allocation of size byte with alignment suitable for all
+ * memory accesses (including vectors if available on the
+ * CPU). av_malloc(0) must return a non NULL pointer.
+ */
 void *av_malloc(unsigned int size)
 {
-    void *ptr = xvid_malloc(size,64);
-//mem_allocated+= size;
-//printf( "alloc: %d\n", size );
-    if (!ptr) return NULL;
-    memset(ptr, 0, size);
+    void *ptr;
+    
+#ifdef MEMALIGN_HACK
+    int diff;
+    ptr = malloc(size+16+1);
+    diff= ((-(int)ptr - 1)&15) + 1;
+    ptr += diff;
+    ((char*)ptr)[-1]= diff;
+#elif defined (HAVE_MEMALIGN) 
+    ptr = memalign(16,size);
+    /* Why 64? 
+       Indeed, we should align it:
+         on 4 for 386
+         on 16 for 486
+	 on 32 for 586, PPro - k6-III
+	 on 64 for K7 (maybe for P3 too).
+       Because L1 and L2 caches are aligned on those values.
+       But I don't want to code such logic here!
+     */
+     /* Why 16?
+        because some cpus need alignment, for example SSE2 on P4, & most RISC cpus
+        it will just trigger an exception and the unaligned load will be done in the
+        exception handler or it will just segfault (SSE2 on P4)
+        Why not larger? because i didnt see a difference in benchmarks ...
+     */
+     /* benchmarks with p3
+        memalign(64)+1		3071,3051,3032
+        memalign(64)+2		3051,3032,3041
+        memalign(64)+4		2911,2896,2915
+        memalign(64)+8		2545,2554,2550
+        memalign(64)+16		2543,2572,2563
+        memalign(64)+32		2546,2545,2571
+        memalign(64)+64		2570,2533,2558
+        
+        btw, malloc seems to do 8 byte alignment by default here
+     */
+#else
+    ptr = malloc(size);
+#endif
     return ptr;
 }
-
-/* NOTE: ptr = NULL is explicetly allowed */
-void av_free(void *ptr)
-{
-    /* XXX: this test should not be needed on most libcs */
-    if (ptr)
-		{
-//mem_allocated-= *(int*)( (uint8_t*)ptr - *((uint8_t*)ptr - 1)- 16 )- 64;
-//printf( "free: %d\n", *(int*)( (uint8_t*)ptr - *((uint8_t*)ptr - 1)- 16 )- 64 );
-         free((uint8_t*)ptr - *((uint8_t*)ptr - 1));
-		}
-
-}
-
-
 
 /**
  * av_realloc semantics (same as glibc): if ptr is NULL and size > 0,
@@ -176,21 +135,36 @@ void av_free(void *ptr)
  */
 void *av_realloc(void *ptr, unsigned int size)
 {
-	if (!ptr)
-		return av_malloc(size);
-	else
-		return realloc(ptr, size);
+#ifdef MEMALIGN_HACK
+    //FIXME this isnt aligned correctly though it probably isnt needed
+    int diff= ptr ? ((char*)ptr)[-1] : 0;
+    return realloc(ptr - diff, size + diff) + diff;
+#else
+    return realloc(ptr, size);
+#endif
+}
+
+/* NOTE: ptr = NULL is explicetly allowed */
+void av_free(void *ptr)
+{
+    /* XXX: this test should not be needed on most libcs */
+    if (ptr)
+#ifdef MEMALIGN_HACK
+        free(ptr - ((char*)ptr)[-1]);
+#else
+        free(ptr);
+#endif
 }
  
-/*
+/**
+ * realloc which does nothing if the block is large enough
+ */
 void *av_fast_realloc(void *ptr, unsigned int *size, unsigned int min_size)
 {
     if(min_size < *size) 
         return ptr;
     
-    *size= min_size + 10*1024;
+    *size= 17*min_size/16 + 32;
 
     return av_realloc(ptr, *size);
 }
-
-*/
