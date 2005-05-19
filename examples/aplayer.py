@@ -2,30 +2,49 @@
 
 import sys
 
+EMULATE=0
+
 def aplayer( name, card, rate ):
-  import pymedia.audio.acodec as acodec
-  import pymedia.audio.sound as sound
+  import pymedia.muxer as muxer, pymedia.audio.acodec as acodec, pymedia.audio.sound as sound
   import time
-  dec= acodec.Decoder( str.split( name, '.' )[ -1 ].lower() )
+  dm= muxer.Demuxer( str.split( name, '.' )[ -1 ].lower() )
   snds= sound.getODevices()
   if card not in range( len( snds ) ):
     raise 'Cannot play sound to non existent device %d out of %d' % ( card+ 1, len( snds ) )
   f= open( name, 'rb' )
-  snd= resampler= None
+  snd= resampler= dec= None
   s= f.read( 32000 )
+  t= 0
   while len( s ):
-    r= dec.decode( s )
-    if snd== None:
-      print 'Opening sound with %d channels -> %s' % ( r.channels, snds[ card ][ 'name' ] )
-      snd= sound.Output( r.sample_rate* rate, r.channels, sound.AFMT_S16_LE, card )
-      #if rate< 1 or rate> 1:
-      #  resampler= sound.Resampler( (r.sample_rate,r.channels), (int(r.sample_rate/rate),r.channels) )
-      #  print 'Sound resampling %d->%d' % ( r.sample_rate, r.sample_rate/rate )
-    if r:
-      data= r.data
-      if resampler:
-        data= resampler.resample( data )
-      snd.play( data )
+    frames= dm.parse( s )
+    if frames:
+      for fr in frames:
+        # Assume for now only audio streams
+        if dec== None:
+          print dm.getInfo(), dm.streams
+          dec= acodec.Decoder( dm.streams[ fr[ 0 ] ] )
+        
+        r= dec.decode( fr[ 1 ] )
+        if r and r.data:
+          if snd== None:
+            print 'Opening sound with %d channels -> %s' % ( r.channels, snds[ card ][ 'name' ] )
+            snd= sound.Output( r.sample_rate* rate, r.channels, sound.AFMT_S16_LE, card )
+            if rate< 1 or rate> 1:
+              resampler= sound.Resampler( (r.sample_rate,r.channels), (int(r.sample_rate/rate),r.channels) )
+              print 'Sound resampling %d->%d' % ( r.sample_rate, r.sample_rate/rate )
+          
+          data= r.data
+          if resampler:
+            data= resampler.resample( data )
+          if EMULATE:
+            # Calc delay we should wait to emulate snd.play()
+            d= len( data )/ float( r.sample_rate* r.channels* 2 )
+            time.sleep( d )
+            if int( t+d )!= int( t ):
+              print 'playing: %d sec\r' % ( t+d ),
+            t+= d
+          else:
+            snd.play( data )
     
     s= f.read( 512 )
 

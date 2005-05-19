@@ -1,6 +1,6 @@
 #! /bin/env python
 import sys
-import pymedia.video.muxer as muxer
+import pymedia.muxer as muxer
 import pymedia.video.vcodec as vcodec
 
 def recodeVideo( inFile, outFile, outCodec ):

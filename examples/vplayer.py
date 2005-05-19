@@ -2,7 +2,7 @@
 import sys, thread, time, traceback, Queue, os
 
 import pymedia
-import pymedia.video.muxer as muxer
+import pymedia.muxer as muxer
 import pymedia.audio.acodec as acodec
 import pymedia.video.vcodec as vcodec
 import pymedia.audio.sound as sound
@@ -14,7 +14,7 @@ else:
   import pygame
   YV12= pygame.YV12_OVERLAY
 
-SEEK_SEC= 40
+SEEK_SEC= 10
 SEEK_IN_PROGRESS= -1
 
 ########################################################################3
@@ -36,20 +36,22 @@ class VPlayer:
     self.seek= 0
     self.vc= None
     self.ac= None
+    self.ovlTime= 0
   
   # ------------------------------------
   def resetAudio( self ):
     # No delta for audio so far
     self.snd= self.resampler= None
     self.aDelta= 0
+    self.aDecodedFrames= []
     if self.ac:
       self.ac.reset()
   
   # ------------------------------------
   def initAudio( self, params ):
-    # Reset audio stream
-    self.resetAudio()
     try:
+      # Reset audio stream
+      self.resetAudio()
       # Initializing audio codec
       self.ac= acodec.Decoder( params )
     except:
@@ -61,7 +63,7 @@ class VPlayer:
     # Init all used vars first
     self.decodeTime= self.vBitRate= self.frameNum= \
     self.sndDelay= self.hurry= self.videoPTS= \
-    self.lastPTS= self.frRate= 0
+    self.lastPTS= self.frRate= self.vDelay= 0
     self.seek= 0
     if self.initADelta!= -1:
       self.seekADelta= self.initADelta
@@ -76,12 +78,12 @@ class VPlayer:
   def initVideo( self, params ):
     # There is no overlay created yet
     self.overlay= self.pictureSize= None
-    # Set the initial sound delay to 0 for now
-    # It defines initial offset from video in the beginning of the stream
-    self.initADelta= -1
-    self.resetVideo()
-    self.seekADelta= 0
     try:
+      # Set the initial sound delay to 0 for now
+      # It defines initial offset from video in the beginning of the stream
+      self.initADelta= -1
+      self.resetVideo()
+      self.seekADelta= 0
       # Setting up the HW video codec
       self.vc= pymedia.video.ext_codecs.Decoder( params ) 
     except:
@@ -118,21 +120,22 @@ class VPlayer:
         return
       
       vfr, videoPTS= self.decodedFrames[ 0 ]
-      delay= videoPTS- self.seekADelta- self.getPTS()
+      self.vDelay= videoPTS- self.seekADelta- self.getPTS()
       frRate= float( vfr.rate_base )/ vfr.rate
       res= self.decodeVideoFrame()
-      if res== -1 or ( res== -2 and delay> 0 ) or ( self.snd and self.snd.getLeft()< frRate ):
+      if res== -1 or ( res== -2 and self.vDelay> 0 ) or ( self.snd and self.snd.getLeft()< frRate ):
         return
       
       # If delay
-      #print '!!', delay, self.frameNum, videoPTS, self.getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self.snd.getLeft()
-      if delay< frRate / 4:
+      print '!!', self.vDelay, self.frameNum, videoPTS, self.getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self.snd.getLeft()
+      if self.vDelay< frRate / 4:
         # Remove frame from the queue
         del( self.decodedFrames[ 0 ] )
         
         # Get delay for seeking
         if self.frameNum== 0 and self.initADelta== -1:
-          self.initADelta= self.snd.getLeft()
+          self.initADelta= self.snd.getLeft() #+ self.snd.getPosition()
+          #self.aDelta= -self.snd.getPosition()
         
         # Increase number of frames
         self.frameNum+= 1
@@ -143,12 +146,18 @@ class VPlayer:
             self.createOverlay( vfr )
           
           # Set data for the overlay
-          self.overlay.set_data( vfr.data )
-          # Display it
-          self.overlay.display()
+          ovl= self.overlay
+          if ovl:
+            t= time.time()
+            # Display it
+            ovl.set_data( vfr.data )
+            ovl.display()
+            self.ovlTime+= time.time()- t
+          
+          self.vDelay= frRate
           #break
-      elif delay> 0 and delay< frRate and len( self.rawFrames )== 0:
-        time.sleep( delay )
+      elif self.vDelay> 0 and self.vDelay< frRate and len( self.rawFrames )== 0:
+        time.sleep( self.vDelay )
     
   # ------------------------------------
   def decodeVideoFrame( self ):
@@ -223,8 +232,14 @@ class VPlayer:
       
       # Play the raw data if we have it
       if len( s )> 0:
-        #print 'LEFT:', self.snd.getLeft(), len( s )
-        self.snd.play( s )
+        self.aDecodedFrames.append( s )
+        while len( self.aDecodedFrames ):
+          # See if we can play sound chunk without clashing with the video frame
+          if len( s )> self.snd.getSpace():
+            break
+          
+          #print 'LEFT:', self.snd.getLeft(), len( s ), self.snd.getSpace()
+          self.snd.play( self.aDecodedFrames.pop(0) )
   
   # ------------------------------------
   def start( self ):
@@ -266,17 +281,17 @@ class VPlayer:
   def setOverlay( self, loc ):
     self.overlayLoc= loc
     if loc== None:
-        self.overlay= None
+      self.overlay= None
     elif self.overlay:
-        # Calc the scaling factor
-        sw,sh= self.overlayLoc[ 2: ]
-        w,h= self.pictureSize
-        x,y= self.overlayLoc[ :2 ]
-        factor= min( float(sw)/float(w), float(sh)/float(h) )
-        # Find appropriate x or y pos
-        x= ( sw- factor* w ) / 2+ x
-        y= ( sh- factor* h ) / 2+ y
-        self.overlay.set_location( (int(x),int(y),int(float(w)*factor),int(float(h)*factor)) )
+      # Calc the scaling factor
+      sw,sh= self.overlayLoc[ 2: ]
+      w,h= self.pictureSize
+      x,y= self.overlayLoc[ :2 ]
+      factor= min( float(sw)/float(w), float(sh)/float(h) )
+      # Find appropriate x or y pos
+      x= ( sw- factor* w ) / 2+ x
+      y= ( sh- factor* h ) / 2+ y
+      self.overlay.set_location( (int(x),int(y),int(float(w)*factor),int(float(h)*factor)) )
       
   # ------------------------------------
   def isPlaying( self ):
@@ -365,13 +380,33 @@ class VPlayer:
           self.stopPlayback( False )
           self.playingFile= None
     finally:
+      print 'Main video loop has closed'
       self.stopVideo()
       self.stopAudio()
-      print 'Main video loop has closed.'
 
 player= VPlayer()
 
 if __name__ == "__main__":
+  def p( file ):
+    pygame.init()
+    pygame.display.set_mode( (800,600), 0 )
+    player.startPlayback( { 'name': file } )
+    player.start()
+    player.setOverlay( (0,0,800,600) )
+    while player.isPlaying()== 0:
+        time.sleep( .05 )
+    while player.isPlaying():
+      e= pygame.event.wait()
+      if e.type== pygame.KEYDOWN: 
+          if e.key== pygame.K_ESCAPE: 
+              print 'Total overlay delay is %.2f' % player.ovlTime
+              player.stopPlayback()
+              break
+          if e.key== pygame.K_RIGHT: 
+              player.seekRelative( SEEK_SEC )
+          if e.key== pygame.K_LEFT: 
+              player.seekRelative( -SEEK_SEC )
+  
   ########################################################################3
   # Simple cache replacer for standalone testing
   class Menu:
@@ -392,23 +427,9 @@ if __name__ == "__main__":
   if len( sys.argv )< 2 or len( sys.argv )> 3:
       print 'Usage: vplayer <file_name>'
   else:
-      pygame.init()
-      pygame.display.set_mode( (800,600), 0 )
-      player.startPlayback( { 'name': sys.argv[ 1 ] } )
-      player.start()
-      player.setOverlay( (0,0,800,600) )
-      while player.isPlaying()== 0:
-          time.sleep( .05 )
-      while player.isPlaying():
-        e= pygame.event.wait()
-        if e.type== pygame.KEYDOWN: 
-            if e.key== pygame.K_ESCAPE: 
-                player.stopPlayback()
-                break
-            if e.key== pygame.K_RIGHT: 
-                player.seekRelative( SEEK_SEC )
-            if e.key== pygame.K_LEFT: 
-                player.seekRelative( -SEEK_SEC )
+    #import profile
+    #profile.run( 'p( sys.argv[ 1 ] )' )
+    p( sys.argv[ 1 ] )
 else:
   from pycar import menu
 

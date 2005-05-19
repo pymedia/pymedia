@@ -19,7 +19,7 @@ def recodeAudio( fName, fOutput, type, bitrate= None ):
 		if ac1== None:
 			if bitrate== None:
 				bitrate= fr.bitrate
-			params= { 'id': acodec.getCodecID(type),
+			params= { 'id': acodec.getCodecId(type),
 								'bitrate': bitrate,
 								'sample_rate': fr.sample_rate,
 								'channels': fr.channels }

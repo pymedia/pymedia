@@ -1,6 +1,6 @@
 #! /bin/env python
 import sys, os
-import pymedia.video.muxer as muxer
+import pymedia.muxer as muxer
 import pymedia.video.vcodec as vcodec
 import pygame
 
@@ -22,7 +22,7 @@ def dumpVideo( inFile, outFilePattern, fmt ):
       if fr[ 0 ]== v_id:
         d= c.decode( fr[ 1 ] )
         # Save file as RGB BMP
-        if d:
+        if d and d.data:
           dd= d.convert( fmt )
           img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
           pygame.image.save( img, outFilePattern % i )

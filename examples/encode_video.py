@@ -8,7 +8,7 @@ import sys
 def encodeVideo( fName, fOutFile, codecName ):
 	# ------------------------------------
 	import time, traceback
-	import pymedia.video.muxer as muxer
+	import pymedia.muxer as muxer
 	import pymedia.audio.acodec as acodec
 	import pymedia.video.vcodec as vcodec
 	
