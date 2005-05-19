@@ -364,3 +364,9 @@ int avcodec_encode_audio(AVCodecContext *avctx, uint8_t *buf, int buf_size,
 	return ret;
 }
 
+/* av_log API */
+
+void av_log(void* avcl, int level, const char *fmt, ...)
+{
+}
+

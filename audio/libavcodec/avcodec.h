@@ -99,7 +99,11 @@ enum CodecID {
     CODEC_ID_ROQ_DPCM,
     CODEC_ID_INTERPLAY_DPCM,
     CODEC_ID_XAN_DPCM,
-};
+
+    CODEC_ID_FLAC,
+    
+    CODEC_ID_MPEG2TS, /* _FAKE_ codec to indicate a raw MPEG2 transport
+                         stream (only used by libavformat) */ };
 
  enum CodecType {
     CODEC_TYPE_UNKNOWN = -1,
@@ -177,6 +181,16 @@ extern int motion_estimation_method;
 static const int Motion_Est_QTab[] = { ME_ZERO, ME_PHODS, ME_LOG,
                                        ME_X1, ME_EPZS, ME_FULL };
 
+#define AV_LOG_QUIET -1
+#define AV_LOG_ERROR 0
+#define AV_LOG_INFO 1
+#define AV_LOG_DEBUG 2
+ 
+#ifdef __GNUC__
+extern void av_log(void*, int level, const char *fmt, ...) __attribute__ ((__format__ (__printf__, 3, 4)));
+#else
+extern void av_log(void*, int level, const char *fmt, ...);
+#endif
 
 #define FF_MAX_B_FRAMES 8
 
@@ -1363,6 +1377,7 @@ extern AVCodec fourxm_decoder;
 extern AVCodec mdec_decoder;
 extern AVCodec ra_144_decoder;
 extern AVCodec ra_288_decoder;
+extern AVCodec flac_decoder;
 
 /* pcm codecs */
 #define PCM_CODEC(id, name) \

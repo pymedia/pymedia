@@ -27,6 +27,30 @@ const UINT8 ff_sqrt_tab[128]={
         9, 9, 9, 9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11
 };
 
+/** 
+ * reads 0-32 bits.
+ */
+unsigned int get_bits_long(GetBitContext *s, int n){
+    if(n<=17) return get_bits(s, n);
+    else{
+        int ret= get_bits(s, 16) << (n-16);
+        return ret | get_bits(s, n-16);
+    }
+}
+
+/** 
+ * shows 0-32 bits.
+ */
+unsigned int show_bits_long(GetBitContext *s, int n){
+    if(n<=17) return show_bits(s, n);
+    else{
+        GetBitContext gb= *s;
+        int ret= get_bits_long(s, n);
+        *s= gb;
+        return ret;
+    }
+}
+ 
 void init_put_bits(PutBitContext *s, 
                    UINT8 *buffer, int buffer_size,
                    void *opaque,

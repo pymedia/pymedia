@@ -562,6 +562,10 @@ static inline unsigned int show_bits(GetBitContext *s, int n){
     return tmp;
 }
 
+unsigned int get_bits_long(GetBitContext *s, int n);
+
+unsigned int show_bits_long(GetBitContext *s, int n);
+
 static inline void skip_bits(GetBitContext *s, int n){
  //Note gcc seems to optimize this to s->index+=n for the ALT_READER :))
     OPEN_READER(re, s)
