@@ -16,7 +16,12 @@ def disable_fPIC():
   unexpected way."""
 
   import distutils.sysconfig
-  distutils.sysconfig.get_config_vars() # parse Makefile and fill the _config_vars cache
+  try:
+    distutils.sysconfig.get_config_vars() # parse Makefile and fill the _config_vars cache
+  except:
+    print 'There is a failure to open the Makefile options. Please install python-devel package before installing PyMedia'
+    raise
+  
   cv = distutils.sysconfig._config_vars
   for var in "CCSHARED","GCCSHARED","CFLAGS","OPT":
     if var in cv:
@@ -52,17 +57,6 @@ FILES={
 			'acodec/acodec.c',
 			'mem.c'
 		),
-		'libavformat':
-		(
-			'utils.c',
-			'raw.c',
-			'avienc.c',
-			'asf.c',
-			'mov.c',
-			'aviobuf.c',
-			'ogg.c',
-			'wav.c',
-		),
 		'libavcodec':
 		(
 			'utils.c',
@@ -78,14 +72,15 @@ FILES={
 			'oggvorbis.c',
 			'common.c',
 			'mpegaudiodec.c',
+			'mpegaudio.c',
+			'mp3lameaudio.c',
 			'fft.c',
 			'mdct.c',
-			'mpegaudio.c',
 			'ac3enc.c',
-			'mp3lameaudio.c',
+			'flac.c',
 		),
 	},
-	'video.muxer':
+	'muxer':
 	{
 		'#dir': 'video',
 		'':
@@ -95,10 +90,15 @@ FILES={
 			'mem.c',
 			'common.c'
 		),
+		'libavcodec':
+		(
+			'mpegaudio.c',
+			'mpegaudiodec.c',
+		),
 		'libavformat':
 		(
-			'cutils.c',
 			'utils.c',
+			'cutils.c',
 			'mov.c',
 			'avienc.c',
 			'avidec.c',
@@ -106,6 +106,10 @@ FILES={
 			'aviobuf.c',
 			'mpegts.c',
 			'mpeg.c',
+			'raw.c',
+			'asf.c',
+			'ogg.c',
+			'wav.c',
 		),
 	},
 	'video.vcodec':
@@ -257,12 +261,12 @@ if choice== 'n':
 
 METADATA = {
 		"name":             "pymedia",
-		"version":          "1.2.3.0",
+		"version":          "1.3",
 		"license":          "LGPL",
 		"url":              "http://pymedia.sourceforge.net/",
 		"author":           "Dmitry Borisov",
 		"author_email":     "jbors@pymedia.org",
-		"description":      "Pymedia library for mutlimedia easy experience"
+		"description":      "Pymedia library for multimedia easy experience"
 }
 
 PACKAGEDATA = {
