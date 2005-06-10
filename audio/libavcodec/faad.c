@@ -112,10 +112,10 @@ static int faac_init_mp4(AVCodecContext *avctx)
     int r = 0;
 
     if (avctx->extradata)
-	r = s->faacDecInit2(s->faac_handle, (uint8_t*) avctx->extradata,
+	r = s->faacDecInit(s->faac_handle, (uint8_t*) avctx->extradata,
 			    avctx->extradata_size,
 			    &samplerate, &channels);
-    // else r = s->faacDecInit(s->faac_handle ... );
+    //else r = s->faacDecInit(s->faac_handle, avctx-> ... );
 
     if (r < 0)
 	av_log(avctx, AV_LOG_ERROR, "faacDecInit2 failed r:%d   sr:%ld  ch:%ld  s:%d\n",
@@ -145,6 +145,7 @@ static int faac_decode_frame(AVCodecContext *avctx,
     faacDecFrameInfo frame_info;
     void *out;
 #endif
+		*data_size = 0;
     if(buf_size == 0)
 	return 0;
 #ifndef FAAD2_VERSION
@@ -160,19 +161,22 @@ static int faac_decode_frame(AVCodecContext *avctx,
 	? buf_size : (int)bytesconsumed;
 #else
 	
-    out = s->faacDecDecode(s->faac_handle, &frame_info, (unsigned char*)buf, (unsigned long)buf_size);
+		if( buf_size< 4096 )
+			return buf_size;
+		
+		out = s->faacDecDecode(s->faac_handle, &frame_info, (unsigned char*)buf, (unsigned long)buf_size);
 
     if (frame_info.error > 0) {
-	av_log(avctx, AV_LOG_ERROR, "faac: frame decodinf failed: %s\n",
-		s->faacDecGetErrorMessage(frame_info.error));
-        return 0;
+			av_log(avctx, AV_LOG_ERROR, "faac: frame decodinf failed: %s\n",
+					s->faacDecGetErrorMessage(frame_info.error));
+      return -frame_info.error;
     }
 
     frame_info.samples *= s->sample_size;
     memcpy(data, out, frame_info.samples); // CHECKME - can we cheat this one
 
     if (data_size)
-	*data_size = frame_info.samples;
+			*data_size = frame_info.samples;
 
     return (buf_size < (int)frame_info.bytesconsumed)
 	? buf_size : (int)frame_info.bytesconsumed;
