@@ -29,16 +29,15 @@
 
 #include <libavcodec/avcodec.h>
 //#include <libavformat/avformat.h>
+#include "version.h"
 
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
 
-
-#define MODULE_NAME "pymedia.audio.acodec"
+#define MODULE_NAME "pymedia"PYMEDIA_VERSION".audio.acodec"
 
 const int PYBUILD= BUILD_NUM;
-char* PYVERSION= "2";
 char* PYDOC=
 "Audio decoding module:\n"
 "\t- Decode frames of data into the raw PCM format\n"
@@ -131,6 +130,7 @@ typedef struct
 	AVFrame frame;
 	void *pPaddedBuf;
 	int iPaddedSize;
+	int iPaddedPos;
 } PyACodecObject;
 
 // ---------------------------------------------------------------------------------
@@ -308,18 +308,16 @@ int SetAttribute( PyObject* cDict, char* sKey, int iVal )
 int SetCodecParams( PyACodecObject* obj, PyObject* cObj )
 {
 	if( !SetStructVal( &obj->cCodec->bit_rate, cObj, BITRATE ))
-		return 0;
+		return -1;
 	if( !SetStructVal( &obj->cCodec->channels, cObj, CHANNELS ))
-	  return 0;
+	  return -2;
 	if( !SetStructVal( &obj->cCodec->sample_rate, cObj, SAMPLE_RATE ))
-	  return 0;
+	  return -3;
 	if( !SetStructVal( (int*)&obj->cCodec->codec_id, cObj, ID ))
-	  return 0;
-	if( !SetStructVal( &obj->cCodec->block_align, cObj, BLOCK_ALIGN ))
-	  return 0;
-	if( SetExtraData( obj->cCodec, cObj )== -1 )
-	  return 0;
-
+	  return -4;
+	// Non mandatory parameters
+	SetStructVal( &obj->cCodec->block_align, cObj, BLOCK_ALIGN );
+	SetExtraData( obj->cCodec, cObj );
 	return 1;
 }
 
@@ -617,18 +615,9 @@ static int GetFrameSize(PyACodecObject* obj )
 		}
 	}
 	else
-	{
-		frame_size = obj->cCodec->frame_size;
+		frame_size = obj->cCodec->frame_size* sizeof( short )* obj->cCodec->channels;
 
-	}
 	return frame_size;
-}
-
-// ---------------------------------------------------------------------------------
-
-static PyObject* ACodec_GetFrameSize( PyACodecObject* obj)
-{
-	return PyInt_FromLong( GetFrameSize(obj));
 }
 
 // ---------------------------------------------------------------------------------
@@ -636,55 +625,61 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 {
 	PyObject* cRes = NULL;
 	uint8_t* sData = NULL;
-	int iLen = 0;
+	int iLen = 0, iPos= 0;
 	PyObject* cFrame = NULL;
-	//char sOutbuf[ ENCODE_OUTBUF_SIZE ];
+	char sOutbuf[ ENCODE_OUTBUF_SIZE ];
 
-	if (!PyArg_ParseTuple(args, "s#:encode", &sData,&iLen))
+	if (!PyArg_ParseTuple(args, "s#:"ENCODE, &sData,&iLen))
 		return NULL;
 
 	if (!(obj->cCodec || obj->cCodec->codec))
 	{
-		PyErr_SetString(g_cErr, "Encode error:codec not initialized" );
+		PyErr_SetString(g_cErr, "Encode error: codec not initialized properly" );
 		return NULL;
+	}
+
+	if( obj->iPaddedPos )
+	{
+		// Copy only the rest of the frame to the buffer
+		iPos= GetFrameSize(obj)- obj->iPaddedPos;
+		memcpy( (char*)obj->pPaddedBuf+ obj->iPaddedPos, sData, iPos );
 	}
 
 	cRes = PyList_New(0);
 	if (!cRes)
 		return NULL;
 
-/*	printf ("frame size:%d, in buffer:%d\n",
-			GetFrameSize(obj)*2*obj->cCodec->channels,
-			obj->stInBuf.buf_end-obj->stInBuf.buf_ptr);
-*/
-	/*
-	while (obj->stInBuf.buf_end-obj->stInBuf.buf_ptr >=
-			GetFrameSize(obj)*2*obj->cCodec->channels)
+	while ( iLen- iPos>= GetFrameSize(obj) || obj->iPaddedPos )
 	{
-		iLen = avcodec_encode_audio(obj->cCodec,
+		int i= avcodec_encode_audio(obj->cCodec,
 				sOutbuf,
 				ENCODE_OUTBUF_SIZE,
-				(short*)obj->stInBuf.buf_ptr);
+				obj->iPaddedPos ? obj->pPaddedBuf: sData+ iPos );
 
-		obj->stInBuf.buf_ptr+=GetFrameSize(obj)*2*obj->cCodec->channels;
-		if (iLen >ENCODE_OUTBUF_SIZE)
+		if (i >ENCODE_OUTBUF_SIZE)
 		{
-			fprintf (stderr, "Codec output size greated than "
-			"%d bytes! Increase ENCODE_OUTBUF_SIZE in acodec/acodec.c"
-			"and recompile the pymedia library\n",
-			ENCODE_OUTBUF_SIZE);
-
-			PyErr_SetString(g_cErr, "Encode error: internal buffer too small!");
+			PyErr_SetString(g_cErr, "Encode error: internal buffer is too small");
 			return NULL;
 		}
-		if (iLen > 0)
+		if (i > 0)
 		{
-			cFrame = PyString_FromStringAndSize((const char*)sOutbuf, iLen );
+			cFrame = PyString_FromStringAndSize((const char*)sOutbuf, i );
 			PyList_Append(cRes,cFrame);
 			Py_DECREF( cFrame );
 		}
+		if( obj->iPaddedPos )
+			obj->iPaddedPos= 0;
+		else
+			iPos+= GetFrameSize(obj);
 	}
-*/
+
+	// Copy the rest of the buffer to the temp place in the codec
+	if( iLen- iPos )
+	{
+		obj->iPaddedPos= iLen- iPos;
+		memcpy( obj->pPaddedBuf, sData+ iPos, obj->iPaddedPos );
+	}
+
 	return cRes;
 }
 
@@ -718,6 +713,9 @@ static void ACodecClose( PyACodecObject *acodec )
 	if( acodec->cCodec )
 		avcodec_close(acodec->cCodec);
 
+	if( acodec->pPaddedBuf )
+		av_free( acodec->pPaddedBuf );
+
 	PyObject_Free( (PyObject*)acodec );
 }
 
@@ -729,7 +727,7 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	int iId, iRes;
 	PyACodecObject* codec= (PyACodecObject* )type->tp_alloc(type, 0);
 	if( !codec )
-		return NULL;
+		return (PyACodecObject *)PyErr_NoMemory();
 
 		// Get id first if possible
 	codec->pPaddedBuf= NULL;
@@ -766,9 +764,24 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	codec->cCodec->codec= p;
 	// Populate some values from the dictionary
 	iRes= SetCodecParams( codec, cObj );
-	if( !iRes && !bDecoder )
+	if( iRes< 0 && !bDecoder )
 	{
-		// There is some problem initializing codec with valid data
+		// There is some poblem initializing codec with valid data
+		char *s;
+		switch( iRes )
+		{
+			case -1: 
+				s= BITRATE;
+				break;
+			case -2:
+				s= CHANNELS;
+				break;
+			case -3:
+				s= SAMPLE_RATE;
+			case -4:
+				s= ID;
+		};
+		PyErr_Format(g_cErr, "'%s' parameter is missing when initializing codec.", s );
 		Py_DECREF( codec );
 		return NULL;
 	}
@@ -843,11 +856,20 @@ static PyObject *
 EncoderNew( PyTypeObject *type, PyObject *args, PyObject *kwds )
 {
 	PyObject* cObj;
+	PyACodecObject *obj;
 	if (!PyArg_ParseTuple(args, "O:"ENCODER_NAME, &cObj ))
 		return NULL;
 
-	return (PyObject*)Codec_New( cObj, type, 0 );
+	obj= Codec_New( cObj, type, 0 );
+	if( !Codec_AdjustPadBuffer( obj, GetFrameSize( obj ) ) )
+	{
+		Py_DECREF( (PyObject*)obj );
+		obj= NULL;
+	}
+	obj->iPaddedPos= 0;
+	return (PyObject*)obj;
 }
+
 // ----------------------------------------------------------------
 PyTypeObject EncoderType =
 {
@@ -939,7 +961,7 @@ initacodec(void)
 #endif
 
 	PyModule_AddStringConstant(m, "__doc__", PYDOC );
-	PyModule_AddStringConstant(m, "version", PYVERSION );
+	PyModule_AddStringConstant(m, "version", PYMEDIA_VERSION_FULL );
 	PyModule_AddIntConstant(m, "build", PYBUILD );
 
 	g_cErr = PyErr_NewException(MODULE_NAME"."ERROR_NAME, NULL, NULL);
@@ -999,24 +1021,36 @@ print r.sample_rate
 def encode( codec ):
 	import time
 	import pymedia.audio.acodec as acodec
+	import pymedia.muxer as muxer
 	t= time.time()
-	parms= {'channels': 2, 'sample_rate': 44100, 'bitrate': 128000, 'id': acodec.getCodecId(codec), 'ext': codec}
+	parms= {'channels': 2, 'sample_rate': 44100, 'bitrate': 128000, 'id': acodec.getCodecID(codec), 'ext': codec}
+	mux= muxer.Muxer( codec )
+	id= mux.addStream( muxer.CODEC_TYPE_AUDIO, parms )
 	enc= acodec.Encoder( parms )
 	f= open( 'c:\\music\\Roots.pcm', 'rb' )
 	f1= open( 'c:\\music\\test_enc.'+ codec, 'wb' )
 	s= f.read( 300000 )
-	enc.setInfo( { 'album': 'Test album', 'artist': 'Test artist', 'title': 'Test title', 'track': '23', 'year': '1985', 'comment': 'No words, just cool', 'copyright': 'Free for everyone' } )
+	ss= mux.start()
+	f1.write( ss )
+	#enc.setInfo( { 'album': 'Test album', 'artist': 'Test artist', 'title': 'Test title', 'track': '23', 'year': '1985', 'comment': 'No words, just cool', 'copyright': 'Free for everyone' } )
 	while len( s ):
 		frames= enc.encode( s )
-		f1.write( enc.mux( frames ) )
+		for fr in frames:
+			#print len( fr )
+			ss= mux.write( id, fr )
+			if ss: 
+				f1.write( ss )
+		
 		s= f.read( 30000 )
-
+	
 	print 'Done in %.02f seconds' % ( time.time()- t )
-	f1.write( enc.flush() )
+	ss= mux.end() 
+	if ss: 
+		f1.write( )
 	f.close()
 	f1.close()
 
-encode( 'mp3' )
+encode( 'ogg' )
 
 def aplayer( name ):
 	import pymedia.muxer as muxer, pymedia.audio.acodec as acodec, pymedia.audio.sound as sound
@@ -1048,7 +1082,7 @@ def aplayer( name ):
 	  time.sleep( .05 )
 
 #aplayer( "c:\\music\ATB\\No Silence (2004)\\02 - Ecstasy.flac" )
-aplayer( "c:\\bors\\media\\test.wma" )
-#aplayer( "c:\\music\\test.aac" )
+#aplayer( "c:\\bors\\media\\test.wma" )
+aplayer( "c:\\bors\\media\\test.aac" )
 
 */
