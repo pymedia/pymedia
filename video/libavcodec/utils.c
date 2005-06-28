@@ -721,7 +721,7 @@ int av_reduce(int *dst_nom, int *dst_den, int64_t nom, int64_t den, int64_t max)
     return exact;
 }
 
-int64_t av_rescale(int64_t a, int b, int c){
+int64_t av_rescale(int64_t a, int64_t b, int64_t c){
     uint64_t h, l;
     assert(c > 0);
     assert(b >=0);
