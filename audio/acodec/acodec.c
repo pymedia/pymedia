@@ -28,7 +28,7 @@
 #include <structmember.h>
 
 #include <libavcodec/avcodec.h>
-//#include <libavformat/avformat.h>
+#include "libavcodec/dsputil.h"
 #include "version.h"
 
 #ifndef BUILD_NUM
@@ -339,7 +339,6 @@ static PyObject * Codec_GetParams( PyACodecObject* obj, PyObject *args)
 static PyObject * Codec_GetID( PyACodecObject* obj, PyObject *args)
 {
 	AVCodec *p;
-	PyObject* cRes=NULL;
 	char *sName=NULL;
 	int i= 0;
 
@@ -385,7 +384,9 @@ static void AFrameClose( PyAFrameObject *obj )
 {
 	// Close avcodec first !!!
 	if( obj->cData )
+	{
 		Py_DECREF( obj->cData );
+	}
 
 	PyObject_Free( (PyObject*)obj );
 }
@@ -474,7 +475,7 @@ Decoder_Decode( PyACodecObject* obj, PyObject *args)
 	unsigned char* sData;
 	void* pBuf;
 	PyAFrameObject *cFrame= NULL;
-	int iLen, iRet= 0, out_size, i= 0, bitRate= 0, iFrames= 0, len, iBufSize, iPos= 0;
+	int iLen, out_size, len, iBufSize, iPos= 0;
 	if (!PyArg_ParseTuple(args, "s#:decode", &sData, &iLen ))
 		return NULL;
 
@@ -767,7 +768,7 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	if( iRes< 0 && !bDecoder )
 	{
 		// There is some poblem initializing codec with valid data
-		char *s;
+		char *s= "<NOT_FOUND>";
 		switch( iRes )
 		{
 			case -1: 
