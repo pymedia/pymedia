@@ -115,7 +115,6 @@ FILES={
 			'mpegts.c',
 			'mpeg.c',
 			'raw.c',
-			'asf.c',
 			'ogg.c',
 			'wav.c',
 		),
