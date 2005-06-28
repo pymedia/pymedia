@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "common.h"
+#include "rational.h" 
 
 #define FFMPEG_VERSION_INT     0x000408
 #define FFMPEG_VERSION         "0.4.8"
@@ -470,6 +471,14 @@ typedef struct AVCodecContext {
      */
     int frame_rate;
     
+	   /* video only */
+    /**
+     * time base in which the timestamps are specified.
+     * - encoding: MUST be set by user
+     * - decoding: set by lavc.
+     */
+    AVRational time_base; 
+
     /**
      * width / height.
      * - encoding: MUST be set by user. 
@@ -1598,8 +1607,7 @@ int av_reduce(int *dst_nom, int *dst_den, int64_t nom, int64_t den, int64_t max)
  * rescale a 64bit integer.
  * a simple a*b/c isnt possible as it can overflow
  */
-int64_t av_rescale(int64_t a, int b, int c);
-
+int64_t av_rescale(int64_t a, int64_t b, int64_t c);
 
 /**
  * Interface for 0.5.0 version
@@ -1664,6 +1672,46 @@ typedef enum {
 
 } avc_cmd_t;
 
+/* frame parsing */
+typedef struct AVCodecParserContext {
+    void *priv_data;
+    struct AVCodecParser *parser;
+    int64_t frame_offset; /* offset of the current frame */
+    int64_t cur_offset; /* current offset 
+                           (incremented by each av_parser_parse()) */
+    int64_t last_frame_offset; /* offset of the last frame */
+    /* video info */
+    int pict_type; /* XXX: put it back in AVCodecContext */
+    int repeat_pict; /* XXX: put it back in AVCodecContext */
+    int64_t pts;     /* pts of the current frame */
+    int64_t dts;     /* dts of the current frame */
+
+    /* private data */
+    int64_t last_pts;
+    int64_t last_dts;
+    int fetch_timestamp;
+
+#define AV_PARSER_PTS_NB 4
+    int cur_frame_start_index;
+    int64_t cur_frame_offset[AV_PARSER_PTS_NB];
+    int64_t cur_frame_pts[AV_PARSER_PTS_NB];
+    int64_t cur_frame_dts[AV_PARSER_PTS_NB];
+} AVCodecParserContext;
+ 
+typedef struct AVCodecParser {
+    int codec_ids[3]; /* several codec IDs are permitted */
+    int priv_data_size;
+    int (*parser_init)(AVCodecParserContext *s);
+    int (*parser_parse)(AVCodecParserContext *s, 
+                        AVCodecContext *avctx,
+                        uint8_t **poutbuf, int *poutbuf_size, 
+                        const uint8_t *buf, int buf_size);
+    void (*parser_close)(AVCodecParserContext *s);
+    struct AVCodecParser *next;
+} AVCodecParser;
+
+extern AVCodecParser *av_first_parser;
+ 
 /**
  * \param handle  allocated private structure by libavcodec
  *                for initialization pass NULL - will be returned pout

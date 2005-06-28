@@ -13,6 +13,7 @@ extern "C" {
 #include "common.h"
 #include "mem.h"
 #include "avio.h"
+#include <libavcodec/rational.h>
 
 /* packet functions */
 
@@ -24,21 +25,29 @@ extern "C" {
 #define MININT64 int64_t_C(0x8000000000000000)
 #endif
 
+#ifndef MAXINT
+#define MAXINT 0x7fffffff
+#endif
+
 #define AV_NOPTS_VALUE MININT64
 #define AV_TIME_BASE 1000000
 #define MKTAG(a,b,c,d) (a | (b << 8) | (c << 16) | (d << 24))
 #define EDGE_WIDTH 16
 
 typedef struct AVPacket {
-    int64_t pts; /* presentation time stamp in stream units (set av_set_pts_info) */
+    int64_t pts; /* presentation time stamp in AV_TIME_BASE units (or
+                    pts_den units in muxers or demuxers) */
+    int64_t dts; /* decompression time stamp in AV_TIME_BASE units (or
+                    pts_den units in muxers or demuxers) */
     uint8_t *data;
     int   size;
     int   stream_index;
     int   flags;
-    int   duration;
+    int   duration; /* presentation duration (0 if not available) */
     void  (*destruct)(struct AVPacket *);
     void  *priv;
-} AVPacket;
+} AVPacket;  
+
 #define PKT_FLAG_KEY   0x0001
 
 static inline void av_init_packet(AVPacket *pkt)
@@ -123,9 +132,7 @@ typedef struct AVOutputFormat {
     enum CodecID video_codec; /* default video codec */
     int (*write_header)(struct AVFormatContext *);
     /* XXX: change prototype for 64 bit pts */
-    int (*write_packet)(struct AVFormatContext *,
-                        int stream_index,
-                        unsigned char *buf, int size, int force_pts);
+    int (*write_packet)(struct AVFormatContext *, AVPacket *pkt); 
     int (*write_trailer)(struct AVFormatContext *);
     /* can use flags: AVFMT_NOFILE, AVFMT_NEEDNUMBER */
     int flags;
@@ -170,6 +177,15 @@ typedef struct AVInputFormat {
     struct AVInputFormat *next;
 } AVInputFormat;
 
+typedef struct AVIndexEntry {
+    int64_t pos;
+    int64_t timestamp;
+#define AVINDEX_KEYFRAME 0x0001
+/* the following 2 flags indicate that the next/prev keyframe is known, and scaning for it isnt needed */
+    int flags;
+    int min_distance;         /* min distance between this and the previous keyframe, used to avoid unneeded searching */
+} AVIndexEntry;
+ 
 typedef struct AVStream {
     int index;    /* stream index in AVFormatContext */
     int id;       /* format specific stream id */
@@ -178,24 +194,38 @@ typedef struct AVStream {
     int r_frame_rate_base;/* real frame rate base of the stream */
     void *priv_data;
     /* internal data used in av_find_stream_info() */
-    int codec_info_state;
-    int codec_info_nb_repeat_frames;
-    int codec_info_nb_real_frames;
-    /* PTS generation when outputing stream */
+    int64_t codec_info_duration;     
+    int codec_info_nb_frames;
+    /* encoding: PTS generation when outputing stream */
     AVFrac pts;
+    AVRational time_base;
+    int pts_wrap_bits; /* number of bits in pts (used for wrapping control) */
     /* ffmpeg.c private use */
     int stream_copy; /* if TRUE, just copy stream */
     /* quality, as it has been removed from AVCodecContext and put in AVVideoFrame
      * MN:dunno if thats the right place, for it */
-    float quality;
+    float quality; 
     /* decoding: position of the first frame of the component, in
        AV_TIME_BASE fractional seconds. */
-    int64_t start_time;
+    int64_t start_time; 
     /* decoding: duration of the stream, in AV_TIME_BASE fractional
        seconds. */
     int64_t duration;
-} AVStream;
 
+    /* av_read_frame() support */
+    int need_parsing;
+    struct AVCodecParserContext *parser;
+
+    int64_t cur_dts;
+    int last_IP_duration;
+    int64_t last_IP_pts;
+    /* av_seek_frame() support */
+    AVIndexEntry *index_entries; /* only used if the format does not
+                                    support seeking natively */
+    int nb_index_entries;
+    int index_entries_allocated_size;
+} AVStream;
+ 
 #define MAX_STREAMS 20
 
 /* format I/O context */
@@ -442,14 +472,13 @@ int av_find_stream_info(AVFormatContext *ic);
 int av_read_packet(AVFormatContext *s, AVPacket *pkt);
 void av_close_input_file(AVFormatContext *s);
 AVStream *av_new_stream(AVFormatContext *s, int id);
-void av_set_pts_info(AVFormatContext *s, int pts_wrap_bits,
+void av_set_pts_info(AVStream *s, int pts_wrap_bits,
                      int pts_num, int pts_den);
 
 /* media file output */
 int av_set_parameters(AVFormatContext *s, AVFormatParameters *ap);
 int av_write_header(AVFormatContext *s);
-int av_write_frame(AVFormatContext *s, int stream_index, const uint8_t *buf,
-                   int size);
+int av_write_frame(AVFormatContext *s, AVPacket *pkt);
 int av_write_trailer(AVFormatContext *s);
 
 void dump_format(AVFormatContext *ic,

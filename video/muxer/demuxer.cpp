@@ -26,6 +26,7 @@
 
 #include <Python.h>
 
+#include "version.h"
 #include "muxer.h"
 
 //#include "libavcodec/avcodec.h"
@@ -35,12 +36,11 @@
 #define BUILD_NUM 1
 #endif
  
-#define MODULE_NAME "pymedia.muxer"
+#define MODULE_NAME "pymedia"PYMEDIA_VERSION".muxer"
 #define DEMUXER_NAME "Demuxer"
 #define MUXER_NAME "Muxer"
 
 const int PYBUILD= BUILD_NUM;
-const char* PYVERSION= "2";
 const char* PYDOC=
 "Muxer allows to:\n"
 "\t- Identify the format of individual streams inside compound streams such as asf, avi, mov etc\n"
@@ -76,14 +76,6 @@ const char* PYDOC=
 	You should not rely on 'streams' call if this function returns 0.\n\
 	Some values may be used still, such as 'id' and 'type'\n\
 	You should call parse() at least once before you can call this method.\n"
-
-#define AUTHOR "artist"
-#define TITLE "title"
-#define YEAR "year"
-#define ALBUM "album"
-#define TRACK "track"
-#define COPYRIGHT "copyright"
-#define COMMENT "comment"
 
 #define GET_INFO "getInfo"
 
@@ -588,147 +580,6 @@ static PyMethodDef pymuxer_methods[] =
 	{ NULL, NULL },
 };
 
-/*
-// ---------------------------------------------------------------------------------
-static PyObject* ACodec_SetInfo( PyACodecObject* obj, PyObject *args)
-{
-	PyObject* cInfo = NULL;
-	PyObject* cTmp;
-	if (!PyArg_ParseTuple(args, "O!:"SET_INFO, &PyDict_Type, &cInfo ))
-		return NULL;
-
-	// Start parsing the info and feeding it to the codec
-	cTmp= PyDict_GetItemString( cInfo, AUTHOR );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.author, PyString_AsString( cTmp ), i );
-		obj->ic.author[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, TITLE );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.title, PyString_AsString( cTmp ), i );
-		obj->ic.title[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, YEAR );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.year, PyString_AsString( cTmp ), i );
-		obj->ic.year[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, ALBUM );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.album, PyString_AsString( cTmp ), i );
-		obj->ic.album[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, TRACK );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.track, PyString_AsString( cTmp ), i );
-		obj->ic.track[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, COPYRIGHT );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.copyright, PyString_AsString( cTmp ), i );
-		obj->ic.copyright[ ++i ]= 0;
-	}
-
-	cTmp= PyDict_GetItemString( cInfo, COMMENT );
-	if( cTmp )
-	{
-		int i= PyString_Size( cTmp );
-		strncpy( obj->ic.comment, PyString_AsString( cTmp ), i );
-		obj->ic.comment[ ++i ]= 0;
-	}
-
-	obj->ic.has_header= 1;
-	obj->iTriedHeader= 0;
-	RETURN_NONE
-}
-
-	// ---------------------------------------------------------------------------------
-static PyObject* ACodec_Flush( PyACodecObject* obj)
-{
-	int i;
-	if( obj->ic.oformat->write_packet )
-		obj->ic.oformat->write_trailer( &obj->ic );
-
-	// Make the resulting string
-	i= (int)url_ftell( &obj->ic.pb );
-	url_fseek( &obj->ic.pb, 0, SEEK_SET );
-	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
-}
-
-	// ---------------------------------------------------------------------------------
-static PyObject* ACodec_Mux( PyACodecObject* obj, PyObject *args)
-{
-	PyObject* cInfo = NULL;
-	PyObject *cData;
-	int iCount, i;
-	if (!PyArg_ParseTuple(args, "O:"MUX_NAME, &cData ))
-		return NULL;
-
-	if( !PySequence_Check( cData ))
-	{
-		PyErr_SetString(g_cErr, MUX_NAME" accepts only sequence type as parameter. " );
-		return NULL;
-	}
-
-	// Check if file format was chosen through the extension
-	if( !obj->ic.oformat )
-	{
-		PyErr_SetString(g_cErr, "The format in which muxer will work is not chosen when you created Encoder. \n"
-														"Parameters should include 'ext' which will define the output format\n"
-														"You should create the encoder with correct parameters in order to use '"MUX_NAME"()' function" );
-		return NULL;
-	}
-
-	if( !obj->iTriedHeader )
-	{
-		// Process header into the internal buffer
-		init_put_byte( &obj->ic.pb );
-		if( obj->ic.oformat->write_header )
-			obj->ic.oformat->write_header( &obj->ic );
-		obj->iTriedHeader= 1;
-	}
-	// Start muxing frames
-	iCount= PySequence_Size( cData );
-	for( i= 0; i< iCount; i++ )
-	{
-		PyObject *cS= PySequence_GetItem( cData, i );
-		if( PyString_Check( cS ) )
-		{
-			if( obj->ic.oformat->write_packet )
-				obj->ic.oformat->write_packet( &obj->ic, 0, PyString_AsString( cS ), PyString_Size( cS ), 0 );
-		}
-		else
-		{
-			PyErr_Format(g_cErr, "Element at index %d is not a string. Muxing of elementary audio streams can accept strings only.", i );
-			return NULL;
-		}
-	}
-	// Make the resulting string
-	i= (int)url_ftell( &obj->ic.pb );
-	url_fseek( &obj->ic.pb, 0, SEEK_SET );
-	return PyString_FromStringAndSize( obj->ic.pb.buffer, i );
-}
-
-
-*/
-
 // ---------------------------------------------------------------------------------
 #define INT_C(name) PyModule_AddIntConstant( m, #name, name )
 
@@ -745,6 +596,7 @@ initmuxer(void)
 
 	// Formats
 	avidec_init();
+	avienc_init();
 	mov_init();
 	asf_init();
 	raw_init();
@@ -782,7 +634,7 @@ initmuxer(void)
 	}
 
 	PyModule_AddStringConstant( m, "__doc__", (char*)PYDOC );
-	PyModule_AddStringConstant( m, "version", (char*)PYVERSION );
+	PyModule_AddStringConstant( m, "version", PYMEDIA_VERSION_FULL );
 	PyModule_AddIntConstant( m, "build", PYBUILD );
 	INT_C(CODEC_TYPE_AUDIO);
 	INT_C(CODEC_TYPE_VIDEO);
@@ -814,8 +666,8 @@ dm.streams
 
 
 import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'wma' )
-f= open( 'c:\\bors\\media\\test.wma', 'rb' )
+dm= muxer.Demuxer( 'aac' )
+f= open( 'c:\\bors\\media\\test.aac', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 print len( r[ 0 ][ 1 ] )

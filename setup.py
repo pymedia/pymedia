@@ -1,7 +1,14 @@
 #!/bin/env python
 
-import sys, config
-from distutils.core import setup, Extension
+import sys, config, os
+try:
+  from distutils.core import setup, Extension
+except:
+  print 'There is a failure to open the Makefile options. Please install python-devel package before installing PyMedia'
+  raise
+
+MODULE_NAME= 'pymedia'
+VERSION= '1.3.5.0'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.
@@ -30,7 +37,6 @@ def disable_fPIC():
     if var in cv:
       cv[var] = cv[var].replace('gcc','g++')
 
-MODULE_NAME= 'pymedia'
 MMX_FILES= [
 			'i386/cputest.c',
 			'i386/dsputil_mmx.c',
@@ -75,6 +81,7 @@ FILES={
 			'mpegaudio.c',
 			'mp3lameaudio.c',
 			'fft.c',
+			'pcm.c',
 			'mdct.c',
 			'ac3enc.c',
 			'flac.c',
@@ -94,6 +101,7 @@ FILES={
 		(
 			'mpegaudio.c',
 			'mpegaudiodec.c',
+			'integer.c',
 		),
 		'libavformat':
 		(
@@ -249,7 +257,7 @@ DEPS = [
 ]
 
 DEPS= filter( lambda x: x.found, DEPS )
-INC_DIRS= [ x.inc_dir for x in DEPS ]
+INC_DIRS= [ x.inc_dir for x in DEPS ]+ [ os.getcwd() ]
 LIB_DIRS= [ x.lib_dir for x in DEPS ]
 DEFINES+= [ ( x.define, None ) for x in DEPS ]+ [ ( 'HAVE_AV_CONFIG_H', None ), ( 'UDF_CACHE', 1 ) ]
 LIBS+= [ x.lib for x in DEPS ]
@@ -261,19 +269,21 @@ if choice== 'n':
 
 METADATA = {
 		"name":             "pymedia",
-		"version":          "1.3",
+		"version":          VERSION,
 		"license":          "LGPL",
 		"url":              "http://pymedia.sourceforge.net/",
 		"author":           "Dmitry Borisov",
-		"author_email":     "jbors@pymedia.org",
+		"author_email":     "dborisov@pymedia.org",
 		"description":      "Pymedia library for multimedia easy experience"
 }
 
+MODULE= 'pymedia' #+ VERSION.replace( '.', '' )
+
 PACKAGEDATA = {
-				"packages":    ['pymedia','pymedia.audio','pymedia.video', 'pymedia.video.ext_codecs', 'pymedia.removable'],
+				"packages":    [MODULE,MODULE+'.audio',MODULE+'.video', MODULE+'.video.ext_codecs', MODULE+'.removable', 'pymedia'],
 				"package_dir": 
-					{'pymedia': 'inst_lib','pymedia.audio': 'inst_lib/audio','pymedia.video.ext_codecs': 'inst_lib/video/ext_codecs','pymedia.video': 'inst_lib/video','pymedia.removable': 'inst_lib/removable'},
-				"ext_modules": config.extensions( MODULE_NAME, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
+					{MODULE: 'inst_lib',MODULE+'.audio': 'inst_lib/audio',MODULE+'.video.ext_codecs': 'inst_lib/video/ext_codecs',MODULE+'.video': 'inst_lib/video',MODULE+'.removable': 'inst_lib/removable'},
+				"ext_modules": config.extensions( MODULE, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
 }
 
 PACKAGEDATA.update(METADATA)

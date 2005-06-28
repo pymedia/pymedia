@@ -28,6 +28,7 @@
 #include <sys/timeb.h>
 #endif
 #include <time.h>
+#include <libavcodec/integer.h>
 
 AVInputFormat *first_iformat;
 AVOutputFormat *first_oformat;
@@ -302,11 +303,22 @@ AVStream *av_new_stream(AVFormatContext *s, int id)
     if (!st)
         return NULL;
     avcodec_get_context_defaults(&st->codec);
-
+    if (s->iformat) {
+        /* no default bitrate if decoding */
+        st->codec.bit_rate = 0;
+    }
     st->index = s->nb_streams;
     st->id = id;
+    st->start_time = AV_NOPTS_VALUE;
+    st->duration = AV_NOPTS_VALUE;
+    st->cur_dts = AV_NOPTS_VALUE;
+
+    /* default pts settings is MPEG like */
+    av_set_pts_info(st, 33, 1, 90000);
+    st->last_IP_pts = AV_NOPTS_VALUE;
+
     s->streams[s->nb_streams++] = st;
-    return st;
+    return st; 
 }
 
 /* Return in 'buf' the path with '%d' replaced by number. Also handles
@@ -414,14 +426,14 @@ void av_hex_dump(UINT8 *buf, int size)
  * @param pts_num numerator to convert to seconds (MPEG: 1)
  * @param pts_den denominator to convert to seconds (MPEG: 90000)
  */
-void av_set_pts_info(AVFormatContext *s, int pts_wrap_bits,
+void av_set_pts_info(AVStream *s, int pts_wrap_bits,
                      int pts_num, int pts_den)
 {
     s->pts_wrap_bits = pts_wrap_bits;
-    s->pts_num = pts_num;
-    s->pts_den = pts_den;
+    s->time_base.num = pts_num;
+    s->time_base.den = pts_den;
 }
-
+ 
 #if 1
 
 char *av_strdup(const char *s)
@@ -687,8 +699,6 @@ int av_write_header(AVFormatContext *s)
     int ret, i;
     AVStream *st;
 
-    /* default pts settings is MPEG like */
-    av_set_pts_info(s, 33, 1, 90000);
     ret = s->oformat->write_header(s);
     if (ret < 0)
         return ret;
@@ -700,11 +710,11 @@ int av_write_header(AVFormatContext *s)
         switch (st->codec.codec_type) {
         case CODEC_TYPE_AUDIO:
             av_frac_init(&st->pts, 0, 0, 
-                         (int64_t)s->pts_num * st->codec.sample_rate);
+                         (int64_t)st->time_base.num * st->codec.sample_rate);
             break;
         case CODEC_TYPE_VIDEO:
             av_frac_init(&st->pts, 0, 0, 
-                         (int64_t)s->pts_num * st->codec.frame_rate);
+                         (int64_t)st->time_base.num * st->codec.time_base.den);
             break;
         default:
             break;
@@ -712,61 +722,168 @@ int av_write_header(AVFormatContext *s)
     }
     return 0;
 }
+ 
+/* get the number of samples of an audio frame. Return (-1) if error */
+static int get_audio_frame_size(AVCodecContext *enc, int size)
+{
+    int frame_size;
+
+    if (enc->frame_size <= 1) {
+        /* specific hack for pcm codecs because no frame size is
+           provided */
+        switch(enc->codec_id) {
+        case CODEC_ID_PCM_S16LE:
+        case CODEC_ID_PCM_S16BE:
+        case CODEC_ID_PCM_U16LE:
+        case CODEC_ID_PCM_U16BE:
+            if (enc->channels == 0)
+                return -1;
+            frame_size = size / (2 * enc->channels);
+            break;
+        case CODEC_ID_PCM_S8:
+        case CODEC_ID_PCM_U8:
+        case CODEC_ID_PCM_MULAW:
+        case CODEC_ID_PCM_ALAW:
+            if (enc->channels == 0)
+                return -1;
+            frame_size = size / (enc->channels);
+            break;
+        default:
+            /* used for example by ADPCM codecs */
+            if (enc->bit_rate == 0)
+                return -1;
+            frame_size = (size * 8 * enc->sample_rate) / enc->bit_rate;
+            break;
+        }
+    } else {
+        frame_size = enc->frame_size;
+    }
+    return frame_size;
+}
+ 
+/* return the frame duration in seconds, return 0 if not available */
+static void compute_frame_duration(int *pnum, int *pden, AVStream *st, 
+                                   AVCodecParserContext *pc, AVPacket *pkt)
+{
+    int frame_size;
+
+    *pnum = 0;
+    *pden = 0;
+    switch(st->codec.codec_type) {
+    case CODEC_TYPE_VIDEO:
+        *pnum = st->codec.frame_rate_base;
+        *pden = st->codec.frame_rate;
+        if (pc && pc->repeat_pict) {
+            *pden *= 2;
+            *pnum = (*pnum) * (2 + pc->repeat_pict);
+        }
+        break;
+    case CODEC_TYPE_AUDIO:
+        frame_size = get_audio_frame_size(&st->codec, pkt->size);
+        if (frame_size < 0)
+            break;
+        *pnum = frame_size;
+        *pden = st->codec.sample_rate;
+        break;
+    default:
+        break;
+    }
+}
+ 
+//FIXME merge with compute_pkt_fields
+static void compute_pkt_fields2(AVStream *st, AVPacket *pkt){
+    int b_frames = FFMAX(st->codec.has_b_frames, st->codec.max_b_frames);
+    int num, den, frame_size;
+
+//    av_log(NULL, AV_LOG_DEBUG, "av_write_frame: pts:%lld dts:%lld cur_dts:%lld b:%d size:%d st:%d\n", pkt->pts, pkt->dts, st->cur_dts, b_frames, pkt->size, pkt->stream_index);
+    
+/*    if(pkt->pts == AV_NOPTS_VALUE && pkt->dts == AV_NOPTS_VALUE)
+        return -1;*/
+            
+    if(pkt->pts != AV_NOPTS_VALUE)
+        pkt->pts = av_rescale(pkt->pts, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
+    if(pkt->dts != AV_NOPTS_VALUE)
+        pkt->dts = av_rescale(pkt->dts, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
+
+    /* duration field */
+    pkt->duration = (int)av_rescale(pkt->duration, st->time_base.den, AV_TIME_BASE * (int64_t)st->time_base.num);
+    if (pkt->duration == 0) {
+        compute_frame_duration(&num, &den, st, NULL, pkt);
+        if (den && num) {
+            pkt->duration = av_rescale(1, num * (int64_t)st->time_base.den, den * (int64_t)st->time_base.num);
+        }
+    }
+
+    //XXX/FIXME this is a temporary hack until all encoders output pts
+    if((pkt->pts == 0 || pkt->pts == AV_NOPTS_VALUE) && pkt->dts == AV_NOPTS_VALUE && !b_frames){
+        pkt->dts=
+//        pkt->pts= st->cur_dts;
+        pkt->pts= st->pts.val;
+    }
+
+    //calculate dts from pts    
+    if(pkt->pts != AV_NOPTS_VALUE && pkt->dts == AV_NOPTS_VALUE){
+        if(b_frames){
+            if(st->last_IP_pts == AV_NOPTS_VALUE){
+                st->last_IP_pts= -pkt->duration;
+            }
+            if(st->last_IP_pts < pkt->pts){
+                pkt->dts= st->last_IP_pts;
+                st->last_IP_pts= pkt->pts;
+            }else
+                pkt->dts= pkt->pts;
+        }else
+            pkt->dts= pkt->pts;
+    }
+    
+//    av_log(NULL, AV_LOG_DEBUG, "av_write_frame: pts2:%lld dts2:%lld\n", pkt->pts, pkt->dts);
+    st->cur_dts= pkt->dts;
+    st->pts.val= pkt->dts;
+
+    /* update pts */
+    switch (st->codec.codec_type) {
+    case CODEC_TYPE_AUDIO:
+        frame_size = get_audio_frame_size(&st->codec, pkt->size);
+
+        /* HACK/FIXME, we skip the initial 0-size packets as they are most likely equal to the encoder delay,
+           but it would be better if we had the real timestamps from the encoder */
+        if (frame_size >= 0 && (pkt->size || st->pts.num!=st->pts.den>>1 || st->pts.val)) {
+            av_frac_add(&st->pts, (int64_t)st->time_base.den * frame_size);
+        }
+        break;
+    case CODEC_TYPE_VIDEO:
+        av_frac_add(&st->pts, (int64_t)st->time_base.den * st->codec.frame_rate_base);
+        break;
+    default:
+        break;
+    }
+}
+
+static void truncate_ts(AVStream *st, AVPacket *pkt){
+    int64_t pts_mask = (int64_t_C(2) << (st->pts_wrap_bits-1)) - 1;
+    
+    if(pkt->dts < 0)
+        pkt->dts= 0;  //this happens for low_delay=0 and b frames, FIXME, needs further invstigation about what we should do here
+    
+    pkt->pts &= pts_mask;
+    pkt->dts &= pts_mask;
+}
 
 /**
  * Write a packet to an output media file. The packet shall contain
  * one audio or video frame.
  *
  * @param s media file handle
- * @param stream_index stream index
- * @param buf buffer containing the frame data
- * @param size size of buffer
+ * @param pkt the packet, which contains the stream_index, buf/buf_size, dts/pts, ...
  * @return < 0 if error, = 0 if OK, 1 if end of stream wanted.
  */
-int av_write_frame(AVFormatContext *s, int stream_index, const uint8_t *buf, 
-                   int size)
+int av_write_frame(AVFormatContext *s, AVPacket *pkt)
 {
-    AVStream *st;
-    int64_t pts_mask;
-    int ret, frame_size;
+    compute_pkt_fields2(s->streams[pkt->stream_index], pkt);
+    
+    truncate_ts(s->streams[pkt->stream_index], pkt);
 
-    st = s->streams[stream_index];
-    pts_mask = ( int64_t_C( 1 ) << s->pts_wrap_bits) - 1;
-    ret = s->oformat->write_packet(s, stream_index, (uint8_t *)buf, size, 
-                                   st->pts.val & pts_mask);
-    if (ret < 0)
-        return ret;
-
-    /* update pts */
-    switch (st->codec.codec_type) {
-    case CODEC_TYPE_AUDIO:
-        if (st->codec.frame_size <= 1) {
-            frame_size = size / st->codec.channels;
-            /* specific hack for pcm codecs because no frame size is provided */
-            switch(st->codec.codec_id) {
-            case CODEC_ID_PCM_S16LE:
-            case CODEC_ID_PCM_S16BE:
-            case CODEC_ID_PCM_U16LE:
-            case CODEC_ID_PCM_U16BE:
-                frame_size >>= 1;
-                break;
-            default:
-                break;
-            }
-        } else {
-            frame_size = st->codec.frame_size;
-        }
-        av_frac_add(&st->pts, 
-                    (int64_t)s->pts_den * frame_size);
-        break;
-    case CODEC_TYPE_VIDEO:
-        av_frac_add(&st->pts, 
-                    (int64_t)s->pts_den * st->codec.frame_rate_base);
-        break;
-    default:
-        break;
-    }
-    return ret;
+    return s->oformat->write_packet(s, pkt);
 }
 
 /**
@@ -839,4 +956,24 @@ void av_frac_add(AVFrac *f, int64_t incr)
     f->num = num;
 }
 
+int64_t av_rescale(int64_t a, int64_t b, int64_t c){
+    AVInteger ai, ci;
+    assert(c > 0);
+    assert(b >=0);
+    
+    if(a<0) return -av_rescale(-a, b, c);
+    
+    if(b<=MAXINT && c<=MAXINT){
+        if(a<=MAXINT)
+            return (a * b + c/2)/c;
+        else
+            return a/c*b + (a%c*b + c/2)/c;
+    }
+    
+    ai= av_mul_i(av_int2i(a), av_int2i(b));
+    ci= av_int2i(c);
+    ai= av_add_i(ai, av_shr_i(ci,1));
+    
+    return av_i2int(av_div_i(ai, ci));
+}
  

@@ -27,21 +27,21 @@
 #include <Python.h>
 #include <structmember.h>
 
+#include "version.h"
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
-
+ 
 #if defined(CONFIG_WIN32)
 static inline int strcasecmp(const char* s1, const char* s2) { return stricmp(s1,s2); }
 #endif
 
-#define MODULE_NAME "pymedia.video.vcodec"
+#define MODULE_NAME "pymedia"PYMEDIA_VERSION".video.vcodec"
 
 const int PYBUILD= BUILD_NUM;
-const char* PYVERSION= "1";
 const char* PYDOC=
 "Video data decoding/encoding routins\nAllows to :\n"
 "\t- Decode/encode strings of video information into/from either planar or packed formats( such as YUV420, RGB24, etc )\n"
@@ -1469,7 +1469,7 @@ initvcodec(void)
 		return;
 
  	PyModule_AddStringConstant( cModule, "__doc__", (char*)PYDOC );
-	PyModule_AddStringConstant( cModule, "version", (char*)PYVERSION ); 
+	PyModule_AddStringConstant( cModule, "version", (char*)PYMEDIA_VERSION_FULL ); 
 	PyModule_AddIntConstant( cModule, "build", PYBUILD );
 	PyModule_AddIntConstant( cModule, "MAX_BUFFERS", INTERNAL_BUFFER_SIZE );
 	g_cErr= PyErr_NewException(MODULE_NAME".VCodecError", NULL, NULL);

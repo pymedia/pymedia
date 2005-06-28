@@ -64,10 +64,8 @@ class VPlayer:
     self.decodeTime= self.vBitRate= self.frameNum= \
     self.sndDelay= self.hurry= self.videoPTS= \
     self.lastPTS= self.frRate= self.vDelay= 0
+    self.overlay= None
     self.seek= 0
-    if self.initADelta!= -1:
-      self.seekADelta= self.initADelta
-    
     # Zeroing out decoded pics queue
     self.decodedFrames= []
     self.rawFrames= []
@@ -164,6 +162,9 @@ class VPlayer:
     # Decode the video frame
     if self.snd== None and self.seek!= SEEK_IN_PROGRESS :
       return -1
+    
+    if len( self.decodedFrames )> vcodec.MAX_BUFFERS- 4:
+      return 0
     
     while len( self.rawFrames ):
       d= self.rawFrames.pop( 0 )
@@ -379,33 +380,43 @@ class VPlayer:
         if len( self.err ) or len( s )== 0:
           self.stopPlayback( False )
           self.playingFile= None
-    finally:
-      print 'Main video loop has closed'
-      self.stopVideo()
-      self.stopAudio()
+    except:
+      self.err.append( sys.exc_info()[ 1 ] )
+    
+    print 'Main video loop has closed'
+    self.resetVideo()
+    self.resetAudio()
 
 player= VPlayer()
 
 if __name__ == "__main__":
-  def p( file ):
+  def p( file, t ):
     pygame.init()
     pygame.display.set_mode( (800,600), 0 )
     player.startPlayback( { 'name': file } )
     player.start()
     player.setOverlay( (0,0,800,600) )
-    while player.isPlaying()== 0:
-        time.sleep( .05 )
+    while player.isPlaying()== 0 and len( player.err )== 0:
+      time.sleep( .05 )
     while player.isPlaying():
-      e= pygame.event.wait()
-      if e.type== pygame.KEYDOWN: 
+      if ( t> 0 and player.getPTS()> t ):
+        player.stopPlayback()
+        break
+      ev= pygame.event.get()
+      if len( ev )== 0:
+        time.sleep( 0.01 )
+      for e in ev:
+        if e.type== pygame.KEYDOWN: 
           if e.key== pygame.K_ESCAPE: 
-              print 'Total overlay delay is %.2f' % player.ovlTime
               player.stopPlayback()
               break
           if e.key== pygame.K_RIGHT: 
               player.seekRelative( SEEK_SEC )
           if e.key== pygame.K_LEFT: 
               player.seekRelative( -SEEK_SEC )
+    
+    if len( player.err ):
+      raise player.err[ 0 ]
   
   ########################################################################3
   # Simple cache replacer for standalone testing
@@ -429,7 +440,9 @@ if __name__ == "__main__":
   else:
     #import profile
     #profile.run( 'p( sys.argv[ 1 ] )' )
-    p( sys.argv[ 1 ] )
+    try: t= int( sys.argv[ 2 ] )
+    except: t= -1
+    p( sys.argv[ 1 ], t )
 else:
   from pycar import menu
 

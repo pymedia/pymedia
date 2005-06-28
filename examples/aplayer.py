@@ -4,7 +4,7 @@ import sys
 
 EMULATE=0
 
-def aplayer( name, card, rate ):
+def aplayer( name, card, rate, tt ):
   import pymedia.muxer as muxer, pymedia.audio.acodec as acodec, pymedia.audio.sound as sound
   import time
   dm= muxer.Demuxer( str.split( name, '.' )[ -1 ].lower() )
@@ -28,7 +28,7 @@ def aplayer( name, card, rate ):
         if r and r.data:
           if snd== None:
             print 'Opening sound with %d channels -> %s' % ( r.channels, snds[ card ][ 'name' ] )
-            snd= sound.Output( r.sample_rate* rate, r.channels, sound.AFMT_S16_LE, card )
+            snd= sound.Output( int( r.sample_rate* rate ), r.channels, sound.AFMT_S16_LE, card )
             if rate< 1 or rate> 1:
               resampler= sound.Resampler( (r.sample_rate,r.channels), (int(r.sample_rate/rate),r.channels) )
               print 'Sound resampling %d->%d' % ( r.sample_rate, r.sample_rate/rate )
@@ -45,6 +45,9 @@ def aplayer( name, card, rate ):
             t+= d
           else:
             snd.play( data )
+    if tt> 0:
+      if snd and snd.getPosition()> tt:
+        break
     
     s= f.read( 512 )
 
@@ -54,13 +57,16 @@ def aplayer( name, card, rate ):
 # ----------------------------------------------------------------------------------
 # Play any compressed audio file with adjustable pitch
 # http://pymedia.org/
-if len( sys.argv )< 2 or len( sys.argv )> 4:
+if len( sys.argv )< 2 or len( sys.argv )> 5:
   print "Usage: aplayer <filename> [ sound_card_index, rate( 0..1- slower, 1..4 faster ) ]"
 else:
   i= 0
   r= 1
+  t= -1
   if len( sys.argv )> 2 :
     i= int( sys.argv[ 2 ] )
   if len( sys.argv )> 3 :
     r= float( sys.argv[ 3 ] )
-  aplayer( sys.argv[ 1 ], i, r )
+  if len( sys.argv )> 4 :
+    t= int( sys.argv[ 4 ] )
+  aplayer( sys.argv[ 1 ], i, r, t )

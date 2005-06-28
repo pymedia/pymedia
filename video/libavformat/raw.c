@@ -121,15 +121,13 @@ int raw_write_header(struct AVFormatContext *s)
     return 0;
 }
 
-int raw_write_packet(struct AVFormatContext *s,
-                     int stream_index,
-                     unsigned char *buf, int size, int force_pts)
+static int raw_write_packet(struct AVFormatContext *s, AVPacket *pkt)
 {
-    put_buffer(&s->pb, buf, size);
-    //put_flush_packet(&s->pb);
+    put_buffer(&s->pb, pkt->data, pkt->size);
+    put_flush_packet(&s->pb);
     return 0;
 }
-
+ 
 int raw_write_trailer(struct AVFormatContext *s)
 {
     return 0;
@@ -167,6 +165,12 @@ static int raw_read_header(AVFormatContext *s,
         default:
             return -1;
         }
+				// Add some extradata to a header. Some codecs may require that
+				if (s->pb.buf_end- s->pb.buf_ptr > 40) {
+						st->codec.extradata_size = 40;
+						st->codec.extradata = av_mallocz(40);
+						memcpy( st->codec.extradata, s->pb.buf_ptr, st->codec.extradata_size);
+				} 
     } else {
         return -1;
     }
@@ -561,7 +565,7 @@ AVInputFormat ac3_iformat = {
 
 AVInputFormat aac_iformat = {
     "aac",
-    "raw aac",
+    "raw/mpeg2 aac",
     0,
     NULL,
     raw_read_header,

@@ -145,7 +145,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
     ByteIOContext *pb = &s->pb;
     uint32_t tag, tag1, handler;
     int codec_type, stream_index, frame_period, bit_rate, scale, rate;
-    unsigned int size, nb_frames;
+    int size, nb_frames;
     int i, n;
     AVStream *st;
 
@@ -251,7 +251,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 get_le32(pb); /* start */
                 nb_frames = get_le32(pb);
                 st->start_time = 0;
-                st->duration = (double)nb_frames * 
+                st->duration = nb_frames * 
                     st->codec.frame_rate_base * AV_TIME_BASE / 
                     st->codec.frame_rate;
                 if (avi->type == 1 ) {
@@ -388,7 +388,8 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     AVIContext *avi = s->priv_data;
     ByteIOContext *pb = &s->pb;
-    int n, d[8], size, i, pos= url_ftell( pb );
+    int n, d[8], size, i;
+		offset_t pos= url_ftell( pb );
 
     memset(d, -1, sizeof(int)*8);
 

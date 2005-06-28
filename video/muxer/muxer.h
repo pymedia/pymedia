@@ -25,4 +25,14 @@ extern PyTypeObject MuxerType ;
 #define PM_EXTRA_DATA "extra_data"
 #define PM_BLOCK_ALIGN "block_align"
 
+#define AUTHOR "artist"
+#define TITLE "title"
+#define YEAR "year"
+#define ALBUM "album"
+#define TRACK "track"
+#define COPYRIGHT "copyright"
+#define COMMENT "comment"
+
+#define RETURN_NONE return (Py_INCREF(Py_None), Py_None); 
+
 #endif

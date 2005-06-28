@@ -15,9 +15,6 @@ Package=<4>
     Project_Dep_Name acodec_lib
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name aformat_lib
-    End Project Dependency
-    Begin Project Dependency
     Project_Dep_Name ogg_static
     End Project Dependency
     Begin Project Dependency
@@ -42,31 +39,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "aformat_lib"=.\audio\aformat_lib.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-}}}
-
-###############################################################################
-
 Project: "cd"=.\removable\cd\cd.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-}}}
-
-###############################################################################
-
-Project: "libavcodectest"=..\..\tests\libavcodectest\libavcodectest.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -101,23 +74,11 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name vformat_lib
     End Project Dependency
-}}}
-
-###############################################################################
-
-Project: "muxer_test"=..\..\tests\muxer_test\muxer_test.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
     Begin Project Dependency
-    Project_Dep_Name vformat_lib
+    Project_Dep_Name ogg_static
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name vcodec_lib
+    Project_Dep_Name vorbis_static
     End Project Dependency
 }}}
 
@@ -136,30 +97,6 @@ Package=<4>
 ###############################################################################
 
 Project: "sound"=.\sound\sound.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-}}}
-
-###############################################################################
-
-Project: "testusb"="..\..\USB\LIBUSB-WIN32-SRC-0.1.8.0\testusb\testusb.dsp" - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-}}}
-
-###############################################################################
-
-Project: "usb"=.\REMOVABLE\USB\usb.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -206,6 +143,30 @@ Package=<5>
 
 Package=<4>
 {{{
+}}}
+
+###############################################################################
+
+Project: "video_bench"=..\PYMEDIA_BENCH\video_bench\video_bench.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name muxer
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vcodec
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vcodec_lib
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vformat_lib
+    End Project Dependency
 }}}
 
 ###############################################################################

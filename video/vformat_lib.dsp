@@ -171,6 +171,10 @@ SOURCE=libavformat\cutils.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\libavcodec\integer.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\mem.c
 # End Source File
 # Begin Source File
