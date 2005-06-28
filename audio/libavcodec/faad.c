@@ -25,6 +25,8 @@
  * still a bit unfinished - but it plays something
  */
 
+#ifdef CONFIG_FAAD 
+
 #include "avcodec.h"
 #include "faad.h"
 
@@ -321,3 +323,5 @@ AAC_CODEC(CODEC_ID_AAC, aac);
 AAC_CODEC(CODEC_ID_MPEG4AAC, mpeg4aac);
 
 #undef AAC_CODEC
+
+#endif /* CONFIG_FAAD */
