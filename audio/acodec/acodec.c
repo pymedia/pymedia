@@ -960,6 +960,18 @@ initacodec(void)
 	register_avcodec(&mp3lame_encoder);
 #endif
 
+#define PCM_CODEC(id, name) \
+    register_avcodec(& name ## _decoder);
+
+	PCM_CODEC(CODEC_ID_PCM_S16LE, pcm_s16le);
+	PCM_CODEC(CODEC_ID_PCM_S16BE, pcm_s16be);
+	PCM_CODEC(CODEC_ID_PCM_U16LE, pcm_u16le);
+	PCM_CODEC(CODEC_ID_PCM_U16BE, pcm_u16be);
+	PCM_CODEC(CODEC_ID_PCM_S8, pcm_s8);
+	PCM_CODEC(CODEC_ID_PCM_U8, pcm_u8);
+	PCM_CODEC(CODEC_ID_PCM_ALAW, pcm_alaw);
+	PCM_CODEC(CODEC_ID_PCM_MULAW, pcm_mulaw);
+ 
 	PyModule_AddStringConstant(m, "__doc__", PYDOC );
 	PyModule_AddStringConstant(m, "version", PYMEDIA_VERSION_FULL );
 	PyModule_AddIntConstant(m, "build", PYBUILD );
