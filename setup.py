@@ -8,7 +8,7 @@ except:
   raise
 
 MODULE_NAME= 'pymedia'
-VERSION= '1.3.5.0'
+VERSION= '1.3.5.0-pre1'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.
@@ -99,8 +99,6 @@ FILES={
 		),
 		'libavcodec':
 		(
-			'mpegaudio.c',
-			'mpegaudiodec.c',
 			'integer.c',
 		),
 		'libavformat':
@@ -269,8 +267,8 @@ if choice== 'n':
 METADATA = {
 		"name":             "pymedia",
 		"version":          VERSION,
-		"license":          "LGPL",
-		"url":              "http://pymedia.sourceforge.net/",
+		"license":          "LGPL/GPL",
+		"url":              "http://pymedia.org/",
 		"author":           "Dmitry Borisov",
 		"author_email":     "dborisov@pymedia.org",
 		"description":      "Pymedia library for multimedia easy experience"
