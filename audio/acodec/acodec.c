@@ -532,28 +532,31 @@ Decoder_Decode( PyACodecObject* obj, PyObject *args)
 		{
 			iLen-= len;
 			sData+= len;
-			iPos+= out_size;
-			if( cFrame && out_size> 0 )
+			if( out_size> 0 )
 			{
-				cFrame->cData->pData= pBuf;
-				cFrame->cData->iLen= iPos;
-			}
-			if( !cFrame && out_size> 0 )
-			{
-				PyACStringObject* cRes;
-				cFrame= (PyAFrameObject*)PyObject_New( PyAFrameObject, &FrameType );
-				if( !cFrame )
-					return NULL;
+				iPos+= out_size;
+				if( cFrame  )
+				{
+					cFrame->cData->pData= pBuf;
+					cFrame->cData->iLen= iPos;
+				}
+				else
+				{
+					PyACStringObject* cRes;
+					cFrame= (PyAFrameObject*)PyObject_New( PyAFrameObject, &FrameType );
+					if( !cFrame )
+						return NULL;
 
-				cRes= ACString_New( pBuf, out_size );
-				if( !cRes )
-					return NULL;
+					cRes= ACString_New( pBuf, out_size );
+					if( !cRes )
+						return NULL;
 
-				cFrame->bit_rate= obj->cCodec->bit_rate; 
-				cFrame->sample_rate=	obj->cCodec->sample_rate;
-				cFrame->bits_per_sample= obj->cCodec->bits_per_sample;
-				cFrame->channels= obj->cCodec->channels;
-				cFrame->cData= cRes;
+					cFrame->bit_rate= obj->cCodec->bit_rate; 
+					cFrame->sample_rate=	obj->cCodec->sample_rate;
+					cFrame->bits_per_sample= obj->cCodec->bits_per_sample;
+					cFrame->channels= obj->cCodec->channels;
+					cFrame->cData= cRes;
+				}
 			}
 		}
 	}
