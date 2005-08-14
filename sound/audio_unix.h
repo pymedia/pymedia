@@ -337,6 +337,36 @@ public:
 		sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SNDCTL_DSP_GETODELAY");
 		return -1;
 	}
+
+	// ---------------------------------------------------------------------------------------------------
+	int GetVolume()
+	{
+		int fd, devs, v= 0;
+		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
+			return -1;
+
+		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
+		if( devs & SOUND_MASK_PCM )
+			ioctl(fd, SOUND_MIXER_READ_PCM, &v);
+		close( fd );
+		return v;
+	}
+
+	// ---------------------------------------------------------------------------------------------------
+	int SetVolume(int iVolume )
+	{
+		int fd, devs;
+		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
+			return -1;
+
+		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
+		if( devs & SOUND_MASK_PCM )
+			ioctl( fd, SOUND_MIXER_WRITE_PCM, &iVolume);
+
+		close( fd );
+		return 0;
+	}
+
 	// ---------------------------------------------------------------------------------------------------
 	int Pause()
 	{

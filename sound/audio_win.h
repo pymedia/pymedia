@@ -756,6 +756,16 @@ public:
 	int Pause()	{	 return ( waveOutPause( this->dev ) ) ? -1: 0; }
 
 	// ---------------------------------------------------------------------------------------------------
+	int GetVolume()
+	{
+		 DWORD dwVolume;
+		 return ( waveOutGetVolume( this->dev, &dwVolume ) ) ? (-1): (int)dwVolume;
+	}
+
+	// ---------------------------------------------------------------------------------------------------
+	int SetVolume(int iVolume ) { return (waveOutSetVolume( this->dev, iVolume )) ? (-1): 0; }
+
+	// ---------------------------------------------------------------------------------------------------
 	int Stop()
 	{
 		EnterCriticalSection( &this->cs );
@@ -802,6 +812,9 @@ public:
 
 			buf+= l;
 			len-= l;
+			if( this->bStopFlag )
+				break;
+
 		  if( waveOutWrite( this->dev, &this->headers[ i ], sizeof (WAVEHDR) ) )
 		  {
 				this->iErr= ::GetLastError();

@@ -29,6 +29,7 @@
 #include "audio_unix.h"
 #endif
 
+#include "version.h"
 #include "resample.h"
 #include "fft.h"
  
@@ -36,7 +37,7 @@
 #define BUILD_NUM 1
 #endif
 
-#define MODULE_NAME "pymedia.audio.sound"
+#define MODULE_NAME "pymedia"PYMEDIA_VERSION".audio.sound"
 
 #define RETURN_NONE	Py_INCREF( Py_None ); return Py_None;
 
@@ -101,6 +102,8 @@ Here is the simple player for a pcm file\n\
 #define SET_VALUE_NAME "setValue"
 #define SET_ACTIVE_NAME "setActive"
 #define PROP_CHANNELS_NAME "channels"
+#define GET_VOLUME_NAME "getVolume"
+#define SET_VOLUME_NAME "setVolume"
 
 #define GET_OUTPUT_DEVICES_NAME "getODevices"
 #define GET_INPUT_DEVICES_NAME "getIDevices"
@@ -157,6 +160,8 @@ Here is the simple player for a pcm file\n\
 #define GET_VALUE_DOC "get value of the control"
 #define SET_VALUE_DOC "set value of the control"
 #define SET_ACTIVE_DOC "activate control for recording"
+#define GETVOLUME_DOC GET_VOLUME_NAME"() -> ( 0..0xffff )\n\tCurrent volume level for sound channel\n"
+#define SETVOLUME_DOC SET_VOLUME_NAME"( volume ) -> None\n\tSet volume level of sound channel\n"
 
 #define RESAMPLER_NAME "Resampler"
 
@@ -198,6 +203,8 @@ const char* OUTPUT_DOC=
 		"\n\t"GETRATE_NAME"()"
 		"\n\t"GET_LEFT_NAME"()"
 		"\n\t"GET_SPACE_NAME"()"
+		"\n\t"GETVOLUME_DOC"()"
+		"\n\t"SETVOLUME_DOC"()"
 		"\n\t"IS_PLAYING_NAME"()";
 
 const char* INPUT_DOC=
@@ -522,6 +529,25 @@ Sound_Unpause( PyOSoundObject* obj)
 
 // ---------------------------------------------------------------------------------
 static PyObject *
+Sound_GetVolume( PyOSoundObject* obj)
+{
+	return PyLong_FromLong( obj->cObj->GetVolume() & 0xffff );
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject *
+Sound_SetVolume( PyOSoundObject* obj, PyObject *args)
+{
+	int iVolume;
+	if (!PyArg_ParseTuple(args, "i:setVolume", &iVolume ))
+		return NULL;
+
+	obj->cObj->SetVolume( iVolume | ( ((unsigned int)iVolume) << 16 ) );
+	RETURN_NONE
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject *
 Sound_GetRate( PyOSoundObject* obj)
 {
 	return PyInt_FromLong( obj->cObj->GetRate() );
@@ -599,6 +625,8 @@ static PyMethodDef sound_methods[] =
 	{ IS_PLAYING_NAME, (PyCFunction)Sound_IsPlaying, METH_NOARGS,	IS_PLAYING_DOC	},
 	{ GET_LEFT_NAME, (PyCFunction)Sound_GetLeft, METH_NOARGS,	GET_LEFT_DOC	},
 	{ GET_SPACE_NAME, (PyCFunction)Sound_GetSpace, METH_NOARGS,	GET_SPACE_DOC	},
+	{ GET_VOLUME_NAME, (PyCFunction)Sound_GetVolume, METH_NOARGS,	GETVOLUME_DOC	},
+	{ SET_VOLUME_NAME, (PyCFunction)Sound_SetVolume, METH_VARARGS,SETVOLUME_DOC	},
 	{ NULL, NULL },
 };
 
@@ -1154,7 +1182,7 @@ static PyObject* Analyzer_AsBands( PyAnalyzerObject* obj, PyObject *args)
 		return NULL;
 
 	// Calc some static data
-	float octaves= (float)( log( HIGH_FREQ/ LOW_FREQ )/ log( 2 ) );
+	float octaves= (float)( log( (double)( HIGH_FREQ/ LOW_FREQ ) )/ log( (double)2 ) );
   float octaves_per_band = octaves / iBands;
   float mult = powf( 2.0f, octaves_per_band ); // each band's highest freq.
 	float fFreqDelta= ( HIGH_FREQ- LOW_FREQ )/ ( obj->analyzer->GetNumFreq() / 2 );
