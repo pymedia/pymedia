@@ -542,6 +542,9 @@ typedef struct AVCodecContext {
     /* the following data should not be initialized */
     int frame_size;     ///< in samples, initialized when calling 'init' 
     int frame_number;   ///< audio or video frame number 
+// Add By Vadim Grigoriev to keep pts
+    int64_t pts;
+
     int real_pict_num;  ///< returns the real picture number of previous encoded frame 
     
     /**

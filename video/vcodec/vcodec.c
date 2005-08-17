@@ -101,6 +101,9 @@ const char* PYDOC=
 #define RESYNC "resync"
 #define PICT_TYPE "pict_type"
 #define FRAME_NUMBER "frame_number"
+// Add By Vadim Grigoriev
+#define FRAME_PTS "frame_pts"
+
 
 
 //char* FOURCC= "fourcc";
@@ -113,6 +116,7 @@ char* FRAME_RATE_B= "frame_rate_base";
 char* GOP_SIZE="gop_size";
 char* MAX_B_FRAMES="max_b_frames";
 char* DEINTERLACE="deinterlace";
+char* PTS="pts";
 
 PyDoc_STRVAR(decoder_doc,
 DECODER_NAME"( codecParams ) -> "DECODER_NAME"\n\
@@ -187,6 +191,8 @@ typedef struct
 	int resync;
 	int pict_type;
 	int frame_number;
+// Add By Vadim Grigoriev
+	int64_t frame_pts;
 } PyVFrameObject;
 
 // ---------------------------------------------------------------------------------
@@ -736,7 +742,7 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	cRes->width= cSrc->width;
 	cRes->pix_fmt= iFormat;
 	cRes->pict_type= cSrc->pict_type;
-
+        cRes->frame_pts= -1;
 	// Copy string(s)
 	for( i= 0; i< iPlanes; i++ )
 		cRes->cData[ i ]= acPlanes[ i ];
@@ -768,6 +774,8 @@ static PyMemberDef frame_members[] =
 	{RESYNC, T_INT, offsetof(PyVFrameObject,resync), 0, "Flag is set if resync still in place"},
 	{PICT_TYPE, T_INT, offsetof(PyVFrameObject,pict_type), 0, "Type of the frame( 1-I, 2-P, 3-B ) "},
 	{FRAME_NUMBER, T_INT, offsetof(PyVFrameObject,frame_number), 0, "Frame number in a stream"},
+// Add By Vadim Grigoriev	
+	{FRAME_PTS, T_LONG, offsetof(PyVFrameObject,frame_pts), 0, "Frame PTS"},
 	{NULL},
 };
 
@@ -980,6 +988,8 @@ static PyObject* Frame_New_LAVC( PyCodecObject* obj )
 	cRes->resync= obj->cCodec->resync;
 	cRes->pict_type= obj->frame.pict_type;
 	cRes->frame_number= obj->cCodec->frame_number;
+// add by Vadim Grigoriev
+	cRes->frame_pts= obj->frame.pts;
 	return (PyObject*)cRes;
 }
 
@@ -1001,6 +1011,8 @@ Codec_GetParams( PyCodecObject* obj, PyObject *args)
 	SetAttribute_i( cRes, GOP_SIZE, obj->cCodec->gop_size);
 	SetAttribute_i( cRes, MAX_B_FRAMES,obj->cCodec->max_b_frames);
 	SetAttribute_i( cRes, DEINTERLACE, (obj->iVcodecFlags & VCODEC_DEINTERLACE_FL)?1:0);
+// add by Vadim Grigoriev
+	SetAttribute_i( cRes, PTS, obj->frame.pts);
 	return cRes;
 }
 
@@ -1038,63 +1050,68 @@ int Codec_AdjustPadBuffer( PyCodecObject* obj, int iLen )
 PyObject *
 Codec_Decode( PyCodecObject* obj, PyObject *args)
 {
-	PyObject* cRes= NULL;
-	uint8_t *sData=NULL,*sBuf=NULL;
-	int iLen=0, out_size=0, i=0, len=0, hurry= 0;
+  PyObject* cRes= NULL;
+  uint8_t *sData=NULL,*sBuf=NULL;
+  int iLen=0, out_size=0, i=0, len=0, hurry= 0;
+  int64_t pts = 0;
+  // Add by Vadim Grigoriev to save pts
+  if (!PyArg_ParseTuple(args, "s#|Li:decode", &sBuf, &iLen, &pts, &hurry ))
+    return NULL;
+  //need to add padding to buffer for libavcodec
+  if( !Codec_AdjustPadBuffer( obj, iLen ) )
+    {
+      PyErr_NoMemory();
+      return NULL;
+    }
+  memcpy( obj->pPaddedBuf, sBuf, iLen);
+  sData=(uint8_t*)obj->pPaddedBuf;
 
-	if (!PyArg_ParseTuple(args, "s#|i:decode", &sBuf, &iLen, &hurry ))
-		return NULL;
-
-	//need to add padding to buffer for libavcodec
-	if( !Codec_AdjustPadBuffer( obj, iLen ) )
+  while( iLen> 0 )
+    {
+      out_size= 0;
+      obj->cCodec->hurry_up= hurry;
+      // Add By Vadim Grigoriev to save pts
+      obj->frame.pts = pts;
+      //	if (obj->cCodec->coded_frame.pts > 0 )
+      //		 
+      len= obj->cCodec->codec->decode( obj->cCodec, &obj->frame, &out_size, sData, iLen );		
+      if( len < 0 )
 	{
-		PyErr_NoMemory();
+	  // Need to report out the error( it should be in the error list )
+	  while( g_AvilibErr[ i ].iErrCode )
+	    if( g_AvilibErr[ i ].iErrCode== len )
+	      {
+		PyErr_SetString(g_cErr, g_AvilibErr[ i ].sErrDesc );
 		return NULL;
-	}
-	memcpy( obj->pPaddedBuf, sBuf, iLen);
-	sData=(uint8_t*)obj->pPaddedBuf;
+	      }
+	    else
+	      i++;
 
-	while( iLen> 0 )
+	  PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", len );
+	  return NULL;
+	}
+      else
 	{
-		out_size= 0;
-		obj->cCodec->hurry_up= hurry;
-		len= obj->cCodec->codec->decode( obj->cCodec, &obj->frame, &out_size, sData, iLen );
-		if( len < 0 )
-		{
-			// Need to report out the error( it should be in the error list )
-			while( g_AvilibErr[ i ].iErrCode )
-				if( g_AvilibErr[ i ].iErrCode== len )
-				{
-					PyErr_SetString(g_cErr, g_AvilibErr[ i ].sErrDesc );
-					return NULL;
-				}
-				else
-					i++;
-
-			PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", len );
-			return NULL;
-		}
-		else
-		{
-			iLen-= len;
-			sData+= len;
-			if( !cRes && out_size> 0 )
-				cRes= Frame_New_LAVC( obj );
-		}
+	  iLen-= len;
+	  sData+= len;
+	  if( !cRes && out_size> 0 ){
+	    cRes= Frame_New_LAVC( obj );
+	  }
 	}
+    }
 #ifdef HAVE_MMX
-    emms();
+  emms();
 #endif
 
-	if( cRes )
-		return cRes;
+  if( cRes )
+    return cRes;
+    
+  if( out_size )
+    // Raise an error if data was found but no frames created
+    return NULL;
 
-	if( out_size )
-		// Raise an error if data was found but no frames created
-		return NULL;
-
-	Py_INCREF( Py_None );
-	return Py_None;
+  Py_INCREF( Py_None );
+  return Py_None;
 }
 
 // ---------------------------------------------------------------------------------
@@ -1195,7 +1212,6 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	if( !codec )
 		return NULL;
 
-		// Get id first if possible
 	codec->pPaddedBuf= NULL;
 	if( PyDict_Check( cObj ) )
 		iId= PyInt_AsLong( PyDict_GetItemString( cObj, ID ));
@@ -1219,7 +1235,7 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 		return NULL;
 	}
 
-  codec->cCodec= avcodec_alloc_context();
+	codec->cCodec= avcodec_alloc_context();
 	if( !codec->cCodec )
 	{
 		PyErr_NoMemory();
@@ -1240,9 +1256,8 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	PyErr_Clear();
 	if(p->capabilities & CODEC_CAP_TRUNCATED)
 		codec->cCodec->flags |= CODEC_FLAG_TRUNCATED;
-
-	avcodec_open( codec->cCodec, p );
-	memset( &codec->frame, 0, sizeof( codec->frame ) );
+		avcodec_open( codec->cCodec, p );
+		memset( &codec->frame, 0, sizeof( codec->frame ) );
 	return codec;
 }
 

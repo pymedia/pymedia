@@ -285,21 +285,25 @@ void StartStreams( PyDemuxerObject* obj )
 	obj->cBuffer= PyList_New( 0 );
 }
 
+
 // ---------------------------------------------------------------------------------
 bool AppendStreamData( PyDemuxerObject* obj, AVPacket* cPkt )
 {
-	// Just a sanitary check
-	if( cPkt->stream_index>= obj->ic.nb_streams || cPkt->stream_index< 0 )
-		return true;
+  // Just a sanitary check
+  
+  if( cPkt->stream_index>= obj->ic.nb_streams || cPkt->stream_index< 0 ){
+    return true;
+  }
 
-	{
-		if( !obj->cBuffer )
-			obj->cBuffer= PyList_New( 0 );
-		PyObject* cRes= Py_BuildValue( "[is#iL]", cPkt->stream_index, (const char*)cPkt->data, cPkt->size,cPkt->size, cPkt->pts );
-		PyList_Append( obj->cBuffer, cRes );
-		Py_DECREF( cRes );
-	}
-	return true;
+  {
+    if( !obj->cBuffer )
+      obj->cBuffer= PyList_New( 0 );
+    /* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
+    PyObject* cRes= Py_BuildValue( "[is#iLL]", cPkt->stream_index, (const char*)cPkt->data, cPkt->size, cPkt->size, cPkt->pts ,cPkt->dts );
+    PyList_Append( obj->cBuffer, cRes );
+    Py_DECREF( cRes );
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------------
@@ -385,25 +389,26 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		}
 	}
 
-	// Create new list with possible formats
 	StartStreams( obj );
 	while( iRet>= 0 )
 	{
 		obj->pkt.size= 0;
-
-		// more correct than obj->ic.iformat->read_packet( &obj->ic, &obj->pkt );
 		iRet= av_read_packet(&obj->ic,&obj->pkt);
-		// Parse single packet until all parsed
 		if( iRet>= 0 )
 		{
 			if( obj->pkt.size> 0 )
+			  {
 				if( !AppendStreamData( obj, &obj->pkt ) )
 				{
-					PyErr_Format(g_cErr, "Cannot allocate memory ( %d bytes ) for codec parameters", obj->pkt.size );
+				  PyErr_Format(g_cErr, "Cannot allocate memory ( %d bytes ) for codec parameters", obj->pkt.size );
 					return NULL;
 				}
+
+
+			  }
 		}
 	}
+
 	// In case of error or something
 	if( iRet<= AVILIB_ERROR )
 	{
@@ -420,9 +425,9 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", iRet );
 		return NULL;
 	}
-
-	// Return the result
+	//	printf(" Return the result\n");
 	Py_INCREF( obj->cBuffer );
+	//printf(" Return the result% i \n");
 	return obj->cBuffer;
 }
 
@@ -657,16 +662,15 @@ initmuxer(void)
 /*
  
 import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'avi' )
-f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
-#f= open( 'c:\movies\Our video.mpg', 'rb' )
+dm= muxer.Demuxer( 'mpg' )
+f= open( 'c:\\movies\\mpeg-1.mpg', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
 
 
-import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'aac' )
+
+dm= muxer.Demuxer( 'aac' )import pymedia.muxer as muxer
 f= open( 'c:\\bors\\media\\test.aac', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
@@ -677,7 +681,6 @@ while len( s ):
   s= f.read( 512 )
   r= dm.parse( s )
   if len( r ):
-    print '-----------------------'
-
+    print '-----------------------
 
 */

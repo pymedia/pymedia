@@ -419,7 +419,8 @@ static int mpegps_probe(AVProbeData *p)
     for (i = 0; i < 20; i++) {
         c = p->buf[i];
         code = (code << 8) | c;
-        if ((code & 0xffffff00) == 0x100) {
+	//	printf( "Start Code 0%x \n, code");
+	if ((code & 0xffffff00) == 0x100) {
             if (code == PACK_START_CODE ||
                 code == SYSTEM_HEADER_START_CODE ||
                 (code >= 0x1e0 && code <= 0x1ef) ||
@@ -494,6 +495,55 @@ static int64_t get_pts(ByteIOContext *pb, int c)
     return pts;
 }
 
+static int st_start;
+
+static int mpegps_read_vpes_packet(AVFormatContext *s,
+                                  AVPacket *pkt, int format )
+{
+  MpegDemuxContext *m = s->priv_data;
+  AVFormatContext *s2;
+  ByteIOContext *sBuffer;
+  AVStream *st;
+  int header = 0x001b3;
+  unsigned char * cBuffer;
+  int * iBuffer;
+  int len, size, startcode, i, c, flags, header_len, type, codec_id, pos;
+  int64_t pts, dts;
+  
+  sBuffer = (ByteIOContext *)&s->pb;
+  cBuffer = sBuffer->buf_ptr;
+  if (get_mem_buffer_size( &s->pb ) < 4)
+    return AVILIB_NEED_DATA;
+  for ( i = 0 ; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
+    if(  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
+      break; 
+  }
+  url_fskip(&s->pb,i);
+  len = i;
+  if (get_mem_buffer_size( &s->pb ) < 4)
+    return AVILIB_NEED_DATA;
+    
+  for ( i++; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
+    if(  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 ){
+      /* no stream found: add a new stream */	
+      if (s->nb_streams == 0){
+	st = av_new_stream(s, 1);	
+	st->codec.codec_type = CODEC_TYPE_VIDEO;
+	st->codec.codec_id = CODEC_ID_MPEG1VIDEO;	
+      }
+      av_new_packet(pkt, i-len);
+      get_buffer(&s->pb, pkt->data, pkt->size);
+      pts = AV_NOPTS_VALUE;
+      dts = AV_NOPTS_VALUE;    
+      pkt->pts = pts;
+      pkt->dts = dts;
+      pkt->stream_index = 0;
+      return 0;
+    }
+  }
+  return AVILIB_NEED_DATA;
+}
+
 static int mpegps_read_packet(AVFormatContext *s,
                                   AVPacket *pkt, int format )
 {
@@ -502,7 +552,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     int len, size, startcode, i, c, flags, header_len, type, codec_id, pos;
     int64_t pts, dts;
 
-    /* next start code (should be immediately after) */
+    //    printf(" next start code (should be immediately after)\n");
  redo:
 		pos= url_ftell( &s->pb );
 		if( get_mem_buffer_size( &s->pb )< 100 )
@@ -672,8 +722,7 @@ static int mpegps_read_packet(AVFormatContext *s,
         st->codec.bit_rate = st->codec.channels * st->codec.sample_rate * 2;
     }
     av_new_packet(pkt, len);
-    //printf("\nRead Packet ID: %x PTS: %f Size: %d", startcode,
-    //       (float)pts/90000, len);
+//    printf("\nRead Packet ID: %x PTS: %f Size: %d", startcode,(float)pts/90000, len);
 		if( get_mem_buffer_size( &s->pb )< pkt->size )
 		{
 			url_fseek( &s->pb, pos, SEEK_SET );
@@ -681,14 +730,24 @@ static int mpegps_read_packet(AVFormatContext *s,
 		}
     get_buffer(&s->pb, pkt->data, pkt->size);
     pkt->pts = pts;
+/* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
+    pkt->dts = dts;
     pkt->stream_index = st->index;
     return 0;
 }
+
+
 
 static int mpegps_read_packet1(AVFormatContext *s, AVPacket *pkt )
 {
 	return mpegps_read_packet( s, pkt, CODEC_ID_MPEG1VIDEO );
 }
+
+static int mpegps_read_packet_vpes(AVFormatContext *s, AVPacket *pkt )
+{
+	return mpegps_read_vpes_packet( s, pkt, CODEC_ID_MPEG1VIDEO );
+}
+
 
 static int mpegps_read_packet2(AVFormatContext *s, AVPacket *pkt )
 {
@@ -752,6 +811,8 @@ AVInputFormat mpegps_demux = {
 		"mpg,mpeg,dat"
 };
 
+
+
 AVInputFormat mpeg2_demux = {
     "mpeg2",
     "MPEG2 format",
@@ -765,6 +826,21 @@ AVInputFormat mpeg2_demux = {
 		"vob"
 };
 
+
+AVInputFormat mpeg_es_demux = {
+    "mpeg vpes",
+    "MPEG Video PES format",
+    sizeof(MpegDemuxContext),
+    mpegps_probe,
+    mpegps_read_header,
+    mpegps_read_packet_vpes,
+    mpegps_read_close,
+		NULL,
+    AVFMT_NOHEADER,
+		"m1v"
+};
+
+
 int mpegps_init(void)
 {
     av_register_output_format(&mpeg1system_mux);
@@ -772,5 +848,6 @@ int mpegps_init(void)
     av_register_output_format(&mpeg2vob_mux);
     av_register_input_format(&mpegps_demux);
     av_register_input_format(&mpeg2_demux);
+    av_register_input_format(&mpeg_es_demux);
     return 0;
 }

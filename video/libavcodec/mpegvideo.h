@@ -294,6 +294,8 @@ typedef struct MpegEncContext {
     int input_picture_number;
     int picture_number;
     int picture_in_gop_number; ///< 0-> first pic in gop, ...
+// Add by Vadim Grigoriev copy from new version FFMPEG    
+    int64_t user_specified_pts;
     int b_frames_since_non_b;  ///< used for encoding, relative to not yet reordered input
     int mb_width, mb_height;   ///< number of MBs horizontally & vertically
     int mb_stride;             ///< mb_width+1 used for some arrays to allow simple addressng of left & top MBs withoutt sig11
