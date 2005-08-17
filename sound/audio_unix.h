@@ -324,27 +324,39 @@ public:
 	int GetChannels(){ return this->channels;	}
 	// ---------------------------------------------------------------------------------------------------
 	// return: delay in bytes between first and last playing samples in buffer
-	float IsPlaying()
+	int IsPlaying()
 	{
 		int r=0;
 		if( this->bStop )
 			return 0;
 
 		if(ioctl( this->GetDevice(), SNDCTL_DSP_GETODELAY, &r)!=-1)
-			 return (float)r;
+			 return r;
 		
 		this->iErr= errno;
 		sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SNDCTL_DSP_GETODELAY");
 		return -1;
 	}
 
+
 	// ---------------------------------------------------------------------------------------------------
 	int GetVolume()
 	{
 		int fd, devs, v= 0;
-		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
-			return -1;
+		if( this->iDev )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", mixer, this->iDev );
+			fd= open( s, O_RDWR, 0 );
+		}
+		else
+			fd= open( mixer, O_RDWR, 0 );
 
+		if( fd== -1 )
+		{
+			this->FormatError();
+			return -1;
+		}
 		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
 		if( devs & SOUND_MASK_PCM )
 			ioctl(fd, SOUND_MIXER_READ_PCM, &v);
@@ -356,8 +368,20 @@ public:
 	int SetVolume(int iVolume )
 	{
 		int fd, devs;
-		if( (fd = open(oss_mixer_device, O_RDONLY)) < 0)
+		if( this->iDev )
+		{
+			char s[ 20 ];
+			sprintf( s, "%s%d", mixer, this->iDev );
+			fd= open( s, O_RDWR, 0 );
+		}
+		else
+			fd= open( mixer, O_RDWR, 0 );
+
+		if( fd== -1 )
+		{
+			this->FormatError();
 			return -1;
+		}
 
 		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
 		if( devs & SOUND_MASK_PCM )

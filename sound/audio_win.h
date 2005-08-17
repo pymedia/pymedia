@@ -842,13 +842,13 @@ public:
 		return fPosRes;
 	}
 	// ---------------------------------------------------------------------------------------------------
-	float GetLeft()
+	double GetLeft()
 	{
 		// Get physical position for the end of the buffer
-		float fPos= ((float)this->iBytesProcessed)/ ((float)( 2* this->iChannels* this->iRate ));
-		float fPos1= this->GetPosition();
+		double fPos= ((double)this->iBytesProcessed)/ ((double)( 2* this->iChannels* this->iRate ));
+		double fPos1= this->GetPosition();
 		for( int i= 0; i< this->iBuffers; i++ )
-			fPos+= ((float)this->headers[ ( this->iProcessed+ i ) % MAX_HEADERS ].dwBufferLength )/ ((float)( 2* this->iChannels* this->iRate ));
+			fPos+= ((double)this->headers[ ( this->iProcessed+ i ) % MAX_HEADERS ].dwBufferLength )/ ((double)( 2* this->iChannels* this->iRate ));
 		return ( fPos- fPos1 ) < 0 ? 0: ( fPos- fPos1 );
 	}
 	// ---------------------------------------------------------------------------------------------------
