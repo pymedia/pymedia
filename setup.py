@@ -97,12 +97,9 @@ FILES={
 			'mem.c',
 			'common.c'
 		),
-		'libavcodec':
-		(
-			'integer.c',
-		),
 		'libavformat':
 		(
+			'integer.c',
 			'utils.c',
 			'cutils.c',
 			'mov.c',
