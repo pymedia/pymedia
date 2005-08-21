@@ -496,6 +496,8 @@ static int64_t get_pts(ByteIOContext *pb, int c)
 }
 
 static int st_start;
+// Add By Vadim Grigoriev To demux ES
+// Fix August 17, 2005 (skip frames)
 
 static int mpegps_read_vpes_packet(AVFormatContext *s,
                                   AVPacket *pkt, int format )
@@ -504,7 +506,7 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
   AVFormatContext *s2;
   ByteIOContext *sBuffer;
   AVStream *st;
-  int header = 0x001b3;
+  //  int header = 0x001b3;
   unsigned char * cBuffer;
   int * iBuffer;
   int len, size, startcode, i, c, flags, header_len, type, codec_id, pos;
@@ -515,7 +517,8 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
   if (get_mem_buffer_size( &s->pb ) < 4)
     return AVILIB_NEED_DATA;
   for ( i = 0 ; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
-    if(  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
+    if((  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
+       || (  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0x0 ))
       break; 
   }
   url_fskip(&s->pb,i);
@@ -524,7 +527,10 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
     return AVILIB_NEED_DATA;
     
   for ( i++; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
-    if(  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 ){
+    if((  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
+       ||
+       (  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0x0 )){
+
       /* no stream found: add a new stream */	
       if (s->nb_streams == 0){
 	st = av_new_stream(s, 1);	
@@ -543,6 +549,7 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
   }
   return AVILIB_NEED_DATA;
 }
+
 
 static int mpegps_read_packet(AVFormatContext *s,
                                   AVPacket *pkt, int format )
@@ -729,6 +736,7 @@ static int mpegps_read_packet(AVFormatContext *s,
 			return AVILIB_NEED_DATA;
 		}
     get_buffer(&s->pb, pkt->data, pkt->size);
+    //    printf("0x%x 0x%x 0x%x 0x%x Size %i\n", *pkt->data,*(pkt->data+1),*(pkt->data+2),*(pkt->data+3),pkt->size);
     pkt->pts = pts;
 /* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
     pkt->dts = dts;
