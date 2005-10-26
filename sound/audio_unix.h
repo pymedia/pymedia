@@ -55,6 +55,7 @@ static char *dsp=PATH_DEV_DSP;
 char *mixer = PATH_DEV_MIXER;
 const int MAX_INT_BUFFERS= 20;
 const int OPEN_FLAGS= (O_WRONLY|O_NONBLOCK);
+const int OPEN_FLAGS_READ= (O_RDONLY|O_NONBLOCK);
 
 // -------------------------------------------------------------------
 int GetDevicesCount()
@@ -223,10 +224,10 @@ private:
 		{
 			char s[ 20 ];
 			sprintf( s, "%s%d", dsp, iDev );
-			this->dev= open( s, O_WRONLY );
+			this->dev= open( s, OPEN_FLAGS );
 		}
 		else
-			this->dev= open( dsp, O_WRONLY );
+			this->dev= open( dsp, OPEN_FLAGS );
 
 		if( this->dev< 0 )
 		{
@@ -506,7 +507,7 @@ private:
 	// ---------------------------------------------------------------------------------------------------
 	int Init( int rate, int channels, int format )
 	{
-		this->dev= open( dsp, O_RDONLY );
+		this->dev= open( dsp, OPEN_FLAGS_READ );
 		if( this->dev< 0 )
 		{
 			this->iErr= errno;
@@ -700,10 +701,10 @@ public:
 		{
 			char s[ 20 ];
 			sprintf( s, "%s%d", mixer, i );
-			this->dev= open( s, O_RDWR, 0 );
+			this->dev= open( s, O_RDWR|O_NONBLOCK, 0 );
 		}
 		else
-			this->dev= open( mixer, O_RDWR, 0 );
+			this->dev= open( mixer, O_RDWR|O_NONBLOCK, 0 );
 
 		memset( this->aiChannel, 0, sizeof( this->aiChannel ) );
 

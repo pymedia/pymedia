@@ -34,7 +34,7 @@
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
- 
+
 #if defined(CONFIG_WIN32)
 static inline int strcasecmp(const char* s1, const char* s2) { return stricmp(s1,s2); }
 #endif
@@ -377,6 +377,13 @@ vcstring_buffer_getsegcount(PyVCStringObject *self, int *lenp)
 }
 
 // ----------------------------------------------------------------
+static PyObject *
+vcstring_str(PyVCStringObject *self)
+{
+	return PyString_FromStringAndSize(self->pData, self->iLen);
+}
+ 
+// ----------------------------------------------------------------
 static PySequenceMethods vcstring_as_sequence = {
 	(inquiry)vcstring_length, /*sq_length*/
 	0, /*sq_concat*/
@@ -415,7 +422,7 @@ static PyTypeObject VCStringType =
 	0,				//tp_as_mapping
 	0,					/* tp_hash */
 	0,					/* tp_call */
-	0,					/* tp_str */
+	(reprfunc)vcstring_str,					/* tp_str */
 	PyObject_GenericGetAttr,		/* tp_getattro */
 	0,					/* tp_setattro */
 	&vcstring_as_buffer,					/* tp_as_buffer */
@@ -630,17 +637,18 @@ int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame)
 
 	for( i= 0; i< iPlanes; i++)
 	{
+		int iLen;
 		if (!cFrame->cData[i])
 		{
 			PyErr_Format(g_cErr,	"Frame plane structure incomplete. Plane %d is not found. At least %d planes should exists.", i, iPlanes );
 			return -1;
 		}
 
-		frame->data[i] = (uint8_t*)PyString_AsString(cFrame->cData[i] );
+		PyArg_Parse( cFrame->cData[i], "s#", &frame->data[i], &iLen );
 		if (!i)
-			frame->linesize[i] =  PyString_GET_SIZE( cFrame->cData[0] ) / frame_get_height(cFrame); //cFrame->cDec->cCodec->width;
+			frame->linesize[i] =  iLen / frame_get_height(cFrame); //cFrame->cDec->cCodec->width;
 		else
-			frame->linesize[i] = PyString_GET_SIZE( cFrame->cData[0] ) / (2*frame_get_height(cFrame)); // cFrame->cDec->cCodec->width/2;
+			frame->linesize[i] = iLen* 2 / frame_get_height(cFrame); // cFrame->cDec->cCodec->width/2;
 //		printf ("linesize:%d\n",frame->linesize[i]);
 	}
 	return 0;
@@ -774,7 +782,7 @@ static PyMemberDef frame_members[] =
 	{RESYNC, T_INT, offsetof(PyVFrameObject,resync), 0, "Flag is set if resync still in place"},
 	{PICT_TYPE, T_INT, offsetof(PyVFrameObject,pict_type), 0, "Type of the frame( 1-I, 2-P, 3-B ) "},
 	{FRAME_NUMBER, T_INT, offsetof(PyVFrameObject,frame_number), 0, "Frame number in a stream"},
-// Add By Vadim Grigoriev	
+// Add By Vadim Grigoriev
 	{FRAME_PTS, T_LONG, offsetof(PyVFrameObject,frame_pts), 0, "Frame PTS"},
 	{NULL},
 };
@@ -1023,7 +1031,7 @@ static PyObject * Codec_Reset( PyCodecObject* obj)
 		obj->cCodec->codec->resync( obj->cCodec );
 
 	RETURN_NONE
-}
+} 
 
 // ---------------------------------------------------------------------------------
 int Codec_AdjustPadBuffer( PyCodecObject* obj, int iLen )
@@ -1073,31 +1081,30 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
       // Add By Vadim Grigoriev to save pts
       obj->frame.pts = pts;
       //	if (obj->cCodec->coded_frame.pts > 0 )
-      //		 
-      len= obj->cCodec->codec->decode( obj->cCodec, &obj->frame, &out_size, sData, iLen );		
+      //
+      len= obj->cCodec->codec->decode( obj->cCodec, &obj->frame, &out_size, sData, iLen );
       if( len < 0 )
-	{
-	  // Need to report out the error( it should be in the error list )
-	  while( g_AvilibErr[ i ].iErrCode )
-	    if( g_AvilibErr[ i ].iErrCode== len )
-	      {
-		PyErr_SetString(g_cErr, g_AvilibErr[ i ].sErrDesc );
-		return NULL;
-	      }
-	    else
-	      i++;
+			{
+				// Need to report out the error( it should be in the error list )
+				while( g_AvilibErr[ i ].iErrCode )
+					if( g_AvilibErr[ i ].iErrCode== len )
+						{
+				PyErr_SetString(g_cErr, g_AvilibErr[ i ].sErrDesc );
+				return NULL;
+						}
+					else
+						i++;
 
-	  PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", len );
-	  return NULL;
-	}
+				PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", len );
+				return NULL;
+			}
       else
-	{
-	  iLen-= len;
-	  sData+= len;
-	  if( !cRes && out_size> 0 ){
-	    cRes= Frame_New_LAVC( obj );
-	  }
-	}
+			{
+				iLen-= len;
+				sData+= len;
+				if( !cRes && out_size> 0 )
+					cRes= Frame_New_LAVC( obj );
+			}
     }
 #ifdef HAVE_MMX
   emms();
@@ -1105,7 +1112,7 @@ Codec_Decode( PyCodecObject* obj, PyObject *args)
 
   if( cRes )
     return cRes;
-    
+
   if( out_size )
     // Raise an error if data was found but no frames created
     return NULL;
@@ -1484,7 +1491,7 @@ initvcodec(void)
 		return;
 
  	PyModule_AddStringConstant( cModule, "__doc__", (char*)PYDOC );
-	PyModule_AddStringConstant( cModule, "version", (char*)PYMEDIA_VERSION_FULL ); 
+	PyModule_AddStringConstant( cModule, "version", (char*)PYMEDIA_VERSION_FULL );
 	PyModule_AddIntConstant( cModule, "build", PYBUILD );
 	PyModule_AddIntConstant( cModule, "MAX_BUFFERS", INTERNAL_BUFFER_SIZE );
 	g_cErr= PyErr_NewException(MODULE_NAME".VCodecError", NULL, NULL);
@@ -1503,7 +1510,7 @@ initvcodec(void)
 
 #! /bin/env python
 import sys, os, time
-import pymedia.video.muxer as muxer
+import pymedia.muxer as muxer
 import pymedia.video.vcodec as vcodec
 
 def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
@@ -1517,7 +1524,7 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 	v= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_VIDEO, dm.streams )
 	if len( v )== 0:
 		raise 'There is no video stream in a file %s' % inFile
-
+  
 	v_id= v[ 0 ][ 'index' ]
 	print 'Assume video stream at %d index( %d ): ' % ( v_id, dm.streams[ v_id ][ 'id' ] )
 	c= vcodec.Decoder( dm.streams[ v_id ] )
@@ -1539,16 +1546,16 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 								pygame.image.save( img, outFilePattern % i )
 					else:
 						print 'Empty frame'
-
+          
 					i+= 1
-
+    
 		s= f.read( 400000 )
 		r= dm.parse( s )
-
+   
 	f.close()
 	return frames
 
-frames= dumpVideo( 'c:\\movies\\Who.Framed.Roger.Rabbit\\Who.Framed.Roger.Rabbit.1988.XviD-CD2.avi', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
+frames= dumpVideo( 'c:\\movies\\mpeg4.avi', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
 
 t= time.time()
 try: t= time.time()- t

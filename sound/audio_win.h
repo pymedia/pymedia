@@ -237,6 +237,7 @@ private:
 	int iDest;
 	int iConn;
 	int iControl;
+	int iLineControlsCount;
 	MIXERCAPS pCaps;
 	HMIXEROBJ mixer;
 	MIXERLINE pDest;
@@ -369,7 +370,7 @@ private:
 		// Get controls info
 		MIXERLINECONTROLS  mixerLineControls;
 		mixerLineControls.cbStruct = sizeof(MIXERLINECONTROLS);
-		mixerLineControls.cControls = ( this->pConn.cControls > sizeof( this->astConnectionControls ) ? sizeof( this->astConnectionControls ): this->pConn.cControls );
+		this->iLineControlsCount= mixerLineControls.cControls = ( this->pConn.cControls > sizeof( this->astConnectionControls ) ? sizeof( this->astConnectionControls ): this->pConn.cControls );
 		mixerLineControls.dwLineID = this->pConn.dwLineID;
 		mixerLineControls.pamxctrl = &this->astControls[0];
 		mixerLineControls.cbmxctrl = sizeof(MIXERCONTROL);
@@ -378,7 +379,6 @@ private:
 			this->FormatError();
 			return false;
 		}
-		
 		return true;
 	}
 
@@ -548,6 +548,26 @@ public:
 	bool IsActive( int iDest, int iConn, int iControl )
 	{
 		// How to get this value in Windows ?
+		MIXERCONTROLDETAILS          mixerControlDetails;
+		MMRESULT											res;
+		MIXERCONTROLDETAILS_BOOLEAN  pmxcdSelectValue[ 20 ];
+		
+		this->RefreshConnection( iDest, iConn );
+		if( iControl>= this->GetControlsCount( iDest, iConn ) || iControl< 0 )
+			return false;
+		
+		mixerControlDetails.cbStruct = sizeof(MIXERCONTROLDETAILS);
+		mixerControlDetails.dwControlID = this->astControls[ iControl ].dwControlID;
+		mixerControlDetails.cChannels = 1;
+		mixerControlDetails.cMultipleItems = this->iLineControlsCount;
+		mixerControlDetails.paDetails = &pmxcdSelectValue;
+		mixerControlDetails.cbDetails = sizeof(MIXERCONTROLDETAILS_BOOLEAN);
+		res= mixerGetControlDetails((HMIXEROBJ)this->mixer, &mixerControlDetails, MIXER_GETCONTROLDETAILSF_VALUE);
+		if ( res!= MMSYSERR_NOERROR )
+		{
+			this->FormatError();
+			return false;
+		}
 		return false;
 	}
 	// ----------------------------------------------
@@ -988,19 +1008,19 @@ public:
 	void CompleteBuffer( WAVEHDR *wh )
 	{
 		// Submit buffer after it's completed
-		if( wh )
-		{
- 			EnterCriticalSection( &this->cs );
-			if (databuf_length<BUFFER_SIZE*MAX_HEADERS)
-			{
-				memcpy( this->databuf+ this->databuf_length, wh->lpData,BUFFER_SIZE);
-				this->databuf_length+=BUFFER_SIZE;
-			}
-			LeaveCriticalSection( &this->cs );
-		}
-
 		if( !this->bStopFlag )
 		{
+			if( wh )
+			{
+ 				EnterCriticalSection( &this->cs );
+				if (databuf_length<BUFFER_SIZE*MAX_HEADERS)
+				{
+					memcpy( this->databuf+ this->databuf_length, wh->lpData, BUFFER_SIZE);
+					this->databuf_length+=BUFFER_SIZE;
+				}
+				LeaveCriticalSection( &this->cs );
+			}
+
 			memset(wh->lpData,0,BUFFER_SIZE);
 			wh->dwFlags = 0;
 			wh->dwBufferLength = BUFFER_SIZE;
@@ -1031,6 +1051,7 @@ public:
 			}
 
 			// Submit buffers for grabbing
+			this->databuf_length= 0;
 			for (int j=0;j<MAX_HEADERS;j++)
 		    waveInAddBuffer( this->dev, &this->headers[ j ], sizeof(WAVEHDR) );
 		}
@@ -1055,7 +1076,7 @@ public:
 	// Return data from the buffers
 	int GetData( char* pData, int iSize )
 	{
-	  memcpy( pData, databuf, iSize);
+	  memcpy( pData, this->databuf, iSize);
  		EnterCriticalSection( &this->cs );
  		if (databuf_length>iSize)
  		  memcpy(databuf,databuf+iSize,databuf_length-iSize);

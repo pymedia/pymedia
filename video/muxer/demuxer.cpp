@@ -426,6 +426,8 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		return NULL;
 	}
 	//	printf(" Return the result\n");
+//PyErr_SetObject(g_cErr, Py_BuildValue( "(OL)", obj->cBuffer, 123456890999L ));
+//return NULL;
 	Py_INCREF( obj->cBuffer );
 	//printf(" Return the result% i \n");
 	return obj->cBuffer;
@@ -607,6 +609,7 @@ initmuxer(void)
 	raw_init();
 	mpegts_init();
 	mpegps_init();
+	wav_init;
 
 #ifdef CONFIG_VORBIS
 	ogg_init();
@@ -662,15 +665,16 @@ initmuxer(void)
 /*
  
 import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'mpg' )
-f= open( 'c:\\movies\\mpeg-1.mpg', 'rb' )
+dm= muxer.Demuxer( 'avi' )
+f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
 
 
 
-dm= muxer.Demuxer( 'aac' )import pymedia.muxer as muxer
+import pymedia.muxer as muxer
+dm= muxer.Demuxer( 'aac' )
 f= open( 'c:\\bors\\media\\test.aac', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
@@ -683,4 +687,15 @@ while len( s ):
   if len( r ):
     print '-----------------------
 
+import pymedia.muxer as muxer
+dm= muxer.Demuxer( 'aac' )
+f= open( 'c:\\bors\\media\\test.aac', 'rb' )
+s= f.read( 3000 )
+try:
+  r= dm.parse( s )
+except muxer.MuxerError, (a,b):
+	print 'Exception', a,b
+
+
 */
+

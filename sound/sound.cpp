@@ -100,6 +100,7 @@ Here is the simple player for a pcm file\n\
 #define COUNT_NAME "count"
 #define GET_VALUE_NAME "getValue"
 #define SET_VALUE_NAME "setValue"
+#define IS_ACTIVE_NAME "isActive"
 #define SET_ACTIVE_NAME "setActive"
 #define PROP_CHANNELS_NAME "channels"
 #define GET_VOLUME_NAME "getVolume"
@@ -160,6 +161,7 @@ Here is the simple player for a pcm file\n\
 #define GET_VALUE_DOC "get value of the control"
 #define SET_VALUE_DOC "set value of the control"
 #define SET_ACTIVE_DOC "activate control for recording"
+#define IS_ACTIVE_DOC "query if control is active for recording"
 #define GETVOLUME_DOC GET_VOLUME_NAME"() -> ( 0..0xffff )\n\tCurrent volume level for sound channel\n"
 #define SETVOLUME_DOC SET_VOLUME_NAME"( volume ) -> None\n\tSet volume level of sound channel\n"
 
@@ -596,7 +598,7 @@ Sound_GetLeft( PyOSoundObject* obj)
 
 // ---------------------------------------------------------------------------------
 static PyObject *
-Sound_GetSpace( PyOSoundObject* obj)
+Sound_GetSpace( PyOSoundObject* obj) 
 {
 	int i;
   Py_BEGIN_ALLOW_THREADS
@@ -725,6 +727,13 @@ MixerControl_GetName(PyMixerControlObject *obj, void *closure)
 
 // ----------------------------------------------------------------
 static PyObject *
+MixerControl_IsActive(PyMixerControlObject *obj)
+{
+	return PyInt_FromLong( obj->cObj->cObj->IsActive( obj->iDest, obj->iConn, obj->iControl ) );
+}
+
+// ----------------------------------------------------------------
+static PyObject *
 MixerControl_SetActive(PyMixerControlObject *obj)
 {
 	obj->cObj->cObj->SetActive( obj->iDest, obj->iConn, obj->iControl );
@@ -774,6 +783,7 @@ static PyMethodDef mixer_control_methods[] =
 	{ GET_VALUE_NAME, (PyCFunction)MixerControl_GetValue, METH_NOARGS, GET_VALUE_DOC },
 	{ SET_VALUE_NAME, (PyCFunction)MixerControl_SetValue, METH_VARARGS, SET_VALUE_DOC },
 	{ SET_ACTIVE_NAME, (PyCFunction)MixerControl_SetActive, METH_NOARGS, SET_ACTIVE_DOC },
+	{ IS_ACTIVE_NAME, (PyCFunction)MixerControl_IsActive, METH_NOARGS, IS_ACTIVE_DOC },
 	{ NULL, NULL },
 };
 
@@ -1573,7 +1583,8 @@ res= a.asBands( 3, s1 )
 import pymedia.audio.sound as sound
 mixer= sound.Mixer()
 c= mixer.getControls()
-mm= c[ 0 ]['control']
+mm= c[ 17 ]['control']
+
 m= c[ 1 ]['control']
 m.setValue(1)
 

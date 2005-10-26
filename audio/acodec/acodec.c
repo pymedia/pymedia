@@ -221,6 +221,13 @@ static PyBufferProcs acstring_as_buffer = {
 };
 
 // ----------------------------------------------------------------
+static PyObject *
+acstring_str(PyACStringObject *self)
+{
+	return PyString_FromStringAndSize(self->pData, self->iLen);
+} 
+
+// ----------------------------------------------------------------
 static PyTypeObject ACStringType =
 {
 	PyObject_HEAD_INIT(NULL)
@@ -239,7 +246,7 @@ static PyTypeObject ACStringType =
 	0,				//tp_as_mapping
 	0,					/* tp_hash */
 	0,					/* tp_call */
-	0,					/* tp_str */
+	&acstring_str,					/* tp_str */
 	PyObject_GenericGetAttr,		/* tp_getattro */
 	0,					/* tp_setattro */
 	&acstring_as_buffer,					/* tp_as_buffer */
@@ -1100,5 +1107,31 @@ def aplayer( name ):
 #aplayer( "c:\\music\ATB\\No Silence (2004)\\02 - Ecstasy.flac" )
 #aplayer( "c:\\bors\\media\\test.wma" )
 aplayer( "c:\\bors\\media\\test.aac" )
+
+def dectest( name ):
+	import pymedia.muxer as muxer, pymedia.audio.acodec as acodec
+	dm= muxer.Demuxer( str.split( name, '.' )[ -1 ].lower() )
+	f= open( name, 'rb' )
+	snd= dec= None
+	s= f.read( 32000 )
+	frames= dm.parse( s )
+	sTmp= ''
+	if frames:
+		for fr in frames:
+			# Assume for now only audio streams
+			if dec== None:
+				#print dm.getInfo(), dm.streams[ fr[ 0 ] ]
+				dec= acodec.Decoder( dm.streams[ fr[ 0 ] ] )
+      
+			r= dec.decode( fr[ 1 ] )
+			if r and r.data:
+				#print type( r.data )
+				sTmp+= str( r.data )
+				print len( sTmp )
+
+#dectest( "c:\\music\ATB\\No Silence (2004)\\02 - Ecstasy.flac" )
+#aplayer( "c:\\bors\\media\\test.wma" )
+#aplayer( "c:\\bors\\media\\test.aac" )
+dectest( "c:\\bors\\media\\test.mp3" )
 
 */

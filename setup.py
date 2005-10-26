@@ -30,12 +30,13 @@ def disable_fPIC():
     raise
   
   cv = distutils.sysconfig._config_vars
-  for var in "CCSHARED","GCCSHARED","CFLAGS","OPT":
-    if var in cv:
+  for var in cv: #"CCSHARED","GCCSHARED","CFLAGS","OPT","CONFIG_ARGS":
+    if type(cv[var])== str:
       cv[var] = cv[var].replace('-fPIC','')
   for var in ("CXX",):
     if var in cv:
-      cv[var] = cv[var].replace('gcc','g++')
+      if type(cv[var])== str:
+        cv[var] = cv[var].replace('gcc','g++')
 
 MMX_FILES= [
 			'i386/cputest.c',

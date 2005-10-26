@@ -42,9 +42,9 @@ RSC=rc.exe
 # PROP Output_Dir "libavformat/Release"
 # PROP Intermediate_Dir "libavformat/Release"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
 # ADD CPP /nologo /MD /W3 /GX /O2 /I "." /I "../../libvorbis-1.0.1/include" /I "../../libogg-1.1/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "CONFIG_VORBIS" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -68,9 +68,9 @@ LIB32=link.exe -lib
 # PROP Output_Dir "libavformat/Debug"
 # PROP Intermediate_Dir "libavformat/Debug"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
 # ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /I "../../libvorbis-1.0.1/include" /I "../../libogg-1.1/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /D "CONFIG_VORBIS" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -94,9 +94,9 @@ LIB32=link.exe -lib
 # PROP Output_Dir "libavformat/Debug_Static"
 # PROP Intermediate_Dir "libavformat/Debug_Static"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /GZ /c
 # ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -120,9 +120,9 @@ LIB32=link.exe -lib
 # PROP Output_Dir "libavformat/Release_Static"
 # PROP Intermediate_Dir "libavformat/Release_Static"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /GZ /c
 # ADD CPP /nologo /ML /W3 /GX /O2 /Ob2 /I "." /D "WIN32" /D "_NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_AV_CONFIG_H" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -184,14 +184,6 @@ SOURCE=libavformat\mov.c
 # Begin Source File
 
 SOURCE=libavformat\mpeg.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\mpegaudio.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\libavcodec\mpegaudiodec.c
 # End Source File
 # Begin Source File
 
