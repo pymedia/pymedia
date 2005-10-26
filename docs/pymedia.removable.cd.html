@@ -32,7 +32,8 @@ To&nbsp;access&nbsp;content&nbsp;of&nbsp;each&nbsp;individual&nbsp;drive&nbsp;in
 <dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial">Error
+<dt><font face="helvetica, arial"><a href="pymedia.removable.cd.html#CDError">CDError</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.removable.cd.html#CDError">CDError</a>
 </font></dt></dl>
 </dd>
 <dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
@@ -54,6 +55,8 @@ Once&nbsp;created,&nbsp;the&nbsp;following&nbsp;methods&nbsp;are&nbsp;available:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-isReady">isReady</a>()&nbsp;-&gt;&nbsp;ready<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-eject">eject</a>()&nbsp;-&gt;&nbsp;None<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-open">open</a>(&nbsp;name&nbsp;)&nbsp;-&gt;&nbsp;File<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-getPathName">getPathName</a>()&nbsp;-&gt;&nbsp;path<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-getName">getName</a>()&nbsp;-&gt;&nbsp;name<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
@@ -64,6 +67,9 @@ Eject&nbsp;tray</tt></dd></dl>
 
 <dl><dt><a name="CD-getName"><strong>getName</strong></a>(...)</dt><dd><tt><a href="#CD-getName">getName</a>()&nbsp;-&gt;&nbsp;name<br>
 Return&nbsp;the&nbsp;name&nbsp;of&nbsp;the&nbsp;drive</tt></dd></dl>
+
+<dl><dt><a name="CD-getPathName"><strong>getPathName</strong></a>(...)</dt><dd><tt><a href="#CD-getPathName">getPathName</a>()&nbsp;-&gt;&nbsp;path<br>
+Return&nbsp;the&nbsp;path&nbsp;where&nbsp;the&nbsp;drive&nbsp;was&nbsp;mounted&nbsp;if&nbsp;any</tt></dd></dl>
 
 <dl><dt><a name="CD-getProperties"><strong>getProperties</strong></a>(...)</dt><dd><tt><a href="#CD-getProperties">getProperties</a>()&nbsp;-&gt;&nbsp;props<br>
 Return&nbsp;properties&nbsp;for&nbsp;a&nbsp;selected&nbsp;ROM&nbsp;as&nbsp;a&nbsp;dictionary<br>
@@ -105,21 +111,35 @@ Track&nbsp;supports&nbsp;following&nbsp;methods:<br>
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x011568F8&gt;<dd><tt>T.<a href="#CD-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x01012018&gt;<dd><tt>T.<a href="#CD-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ffc8d8">
 <td colspan=3 valign=bottom>&nbsp;<br>
-<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+<font color="#000000" face="helvetica, arial"><a name="CDError">class <strong>CDError</strong></a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
     
 <tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
-<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+<dl><dt><a name="CDError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+<dl><dt><a name="CDError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+<dl><dt><a name="CDError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class CDError</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="CDError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="CDError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="CDError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
 
 </td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -144,6 +164,6 @@ quit&nbsp;cdrom&nbsp;subsystem</tt></dd></dl>
 <td width="100%"><strong>SEEK_CUR</strong> = 1<br>
 <strong>SEEK_END</strong> = 2<br>
 <strong>SEEK_SET</strong> = 0<br>
-<strong>build</strong> = 1911<br>
+<strong>build</strong> = 1<br>
 <strong>version</strong> = '2'</td></tr></table>
 </body></html>

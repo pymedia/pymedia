@@ -10,10 +10,9 @@
 ><td align=right valign=bottom
 ><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C|/python23/lib/site-packages/pymedia/audio/acodec.pyd">c:\python23\lib\site-packages\pymedia\audio\acodec.pyd</a></font></td></tr></table>
     <p><tt>Audio&nbsp;decoding&nbsp;module:<br>
--&nbsp;Decode&nbsp;strings&nbsp;of&nbsp;sound&nbsp;information&nbsp;into&nbsp;raw&nbsp;PCM&nbsp;format<br>
+-&nbsp;Decode&nbsp;frames&nbsp;of&nbsp;data&nbsp;into&nbsp;the&nbsp;raw&nbsp;PCM&nbsp;format<br>
 -&nbsp;Encodes&nbsp;raw&nbsp;PCM&nbsp;data&nbsp;into&nbsp;any&nbsp;available&nbsp;format(&nbsp;see&nbsp;acodec.formats&nbsp;)<br>
--&nbsp;Parse&nbsp;and&nbsp;find&nbsp;additional&nbsp;information&nbsp;available&nbsp;in&nbsp;a&nbsp;header&nbsp;or&nbsp;special&nbsp;zones(&nbsp;tags&nbsp;)&nbsp;in&nbsp;a&nbsp;compressed&nbsp;file<br>
--&nbsp;Provides&nbsp;all&nbsp;formats&nbsp;with&nbsp;the&nbsp;same&nbsp;interface</tt></p>
+-&nbsp;Provides&nbsp;all&nbsp;codecs&nbsp;with&nbsp;the&nbsp;same&nbsp;interface</tt></p>
 <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ee77aa">
@@ -25,7 +24,8 @@
 <dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial">Error
+<dt><font face="helvetica, arial"><a href="pymedia.audio.acodec.html#ACodecError">ACodecError</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.audio.acodec.html#ACodecError">ACodecError</a>
 </font></dt></dl>
 </dd>
 <dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
@@ -37,6 +37,20 @@
 </dd>
 </dl>
  <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="ACodecError">class <strong>ACodecError</strong></a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="ACodecError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="ACodecError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="ACodecError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+
+</td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ffc8d8">
 <td colspan=3 valign=bottom>&nbsp;<br>
@@ -53,18 +67,8 @@ The&nbsp;following&nbsp;methods&nbsp;available:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bitrate<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;channels<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Decoder-hasHeader">hasHeader</a>()&nbsp;-&gt;&nbsp;{&nbsp;true&nbsp;|&nbsp;false&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns&nbsp;whether&nbsp;header&nbsp;presented&nbsp;or&nbsp;not<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Decoder-reset">reset</a>()&nbsp;-&gt;&nbsp;None<br>
-Reset&nbsp;current&nbsp;state&nbsp;of&nbsp;codec<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Decoder-getInfo">getInfo</a>()&nbsp;-&gt;&nbsp;info<br>
-Return&nbsp;all&nbsp;information&nbsp;known&nbsp;by&nbsp;the&nbsp;codec&nbsp;as&nbsp;a&nbsp;dictionary.&nbsp;Predefined&nbsp;dictionary&nbsp;entries&nbsp;are:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frames&nbsp;-&nbsp;returns&nbsp;number&nbsp;of&nbsp;frames&nbsp;in&nbsp;a&nbsp;file<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;title&nbsp;-&nbsp;title&nbsp;for&nbsp;the&nbsp;song&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;artist&nbsp;-&nbsp;author&nbsp;for&nbsp;the&nbsp;song&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;album&nbsp;-&nbsp;song&nbsp;album&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;track&nbsp;-&nbsp;track&nbsp;number&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;year&nbsp;-&nbsp;year&nbsp;of&nbsp;album<br>&nbsp;</tt></td></tr>
+Reset&nbsp;current&nbsp;state&nbsp;of&nbsp;codec<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
 <dl><dt><a name="Decoder-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#Decoder-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
@@ -77,27 +81,12 @@ bitrate<br>
 channels<br>
 data</tt></dd></dl>
 
-<dl><dt><a name="Decoder-getInfo"><strong>getInfo</strong></a>(...)</dt><dd><tt><a href="#Decoder-getInfo">getInfo</a>()&nbsp;-&gt;&nbsp;info<br>
-Return&nbsp;all&nbsp;information&nbsp;known&nbsp;by&nbsp;the&nbsp;codec&nbsp;as&nbsp;a&nbsp;dictionary.&nbsp;Predefined&nbsp;dictionary&nbsp;entries&nbsp;are:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frames&nbsp;-&nbsp;returns&nbsp;number&nbsp;of&nbsp;frames&nbsp;in&nbsp;a&nbsp;file<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;title&nbsp;-&nbsp;title&nbsp;for&nbsp;the&nbsp;song&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;artist&nbsp;-&nbsp;author&nbsp;for&nbsp;the&nbsp;song&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;album&nbsp;-&nbsp;song&nbsp;album&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;track&nbsp;-&nbsp;track&nbsp;number&nbsp;if&nbsp;exists<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;year&nbsp;-&nbsp;year&nbsp;of&nbsp;album</tt></dd></dl>
-
-<dl><dt><a name="Decoder-getParams"><strong>getParams</strong></a>(...)</dt><dd><tt><a href="#Decoder-getParams">getParams</a>()&nbsp;-&gt;&nbsp;params<br>
-Parameters&nbsp;that&nbsp;represents&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
-
-<dl><dt><a name="Decoder-hasHeader"><strong>hasHeader</strong></a>(...)</dt><dd><tt><a href="#Decoder-hasHeader">hasHeader</a>()&nbsp;-&gt;&nbsp;{&nbsp;true&nbsp;|&nbsp;false&nbsp;}<br>
-Returns&nbsp;whether&nbsp;header&nbsp;presented&nbsp;or&nbsp;not</tt></dd></dl>
-
 <dl><dt><a name="Decoder-reset"><strong>reset</strong></a>(...)</dt><dd><tt><a href="#Decoder-reset">reset</a>()&nbsp;-&gt;&nbsp;None<br>
 Reset&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x10074258&gt;<dd><tt>T.<a href="#Decoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x010A52C0&gt;<dd><tt>T.<a href="#Decoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -122,36 +111,26 @@ Encodes&nbsp;audio&nbsp;frame(s).&nbsp;It&nbsp;accepts&nbsp;audio&nbsp;samples<b
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;as&nbsp;string,&nbsp;buffers&nbsp;them,&nbsp;and&nbsp;returns&nbsp;list&nbsp;of&nbsp;encoded&nbsp;frames.&nbsp;Note,&nbsp;that&nbsp;its<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;behaviour&nbsp;is&nbsp;different&nbsp;from&nbsp;vcodec&nbsp;-&nbsp;vcodec&nbsp;returns&nbsp;only&nbsp;one&nbsp;frame.</tt></dd></dl>
 
-<dl><dt><a name="Encoder-flush"><strong>flush</strong></a>(...)</dt><dd><tt><a href="#Encoder-flush">flush</a>()&nbsp;-&gt;&nbsp;str<br>
-Returns&nbsp;last&nbsp;stream&nbsp;data</tt></dd></dl>
-
 <dl><dt><a name="Encoder-getParams"><strong>getParams</strong></a>(...)</dt><dd><tt><a href="#Encoder-getParams">getParams</a>()&nbsp;-&gt;&nbsp;params<br>
 Parameters&nbsp;that&nbsp;represents&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;codec</tt></dd></dl>
 
-<dl><dt><a name="Encoder-mux"><strong>mux</strong></a>(...)</dt><dd><tt><a href="#Encoder-mux">mux</a>(&nbsp;[&nbsp;strings&nbsp;]&nbsp;)&nbsp;-&gt;&nbsp;header_str<br>
-Returns&nbsp;stream&nbsp;data&nbsp;as&nbsp;string&nbsp;from&nbsp;the&nbsp;list&nbsp;of&nbsp;frames</tt></dd></dl>
-
-<dl><dt><a name="Encoder-setInfo"><strong>setInfo</strong></a>(...)</dt><dd><tt><a href="#Encoder-setInfo">setInfo</a>(&nbsp;{&nbsp;'album':&nbsp;..,&nbsp;'artist',..&nbsp;})&nbsp;-&gt;&nbsp;<br>
-Sets&nbsp;the&nbsp;header&nbsp;for&nbsp;the&nbsp;compressed&nbsp;file.&nbsp;The&nbsp;following&nbsp;supported&nbsp;at&nbsp;the&nbsp;moment:<br>
-album,&nbsp;artist,&nbsp;year,&nbsp;track,&nbsp;title,&nbsp;comment,&nbsp;copyright</tt></dd></dl>
-
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x10074318&gt;<dd><tt>T.<a href="#Encoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x010A5380&gt;<dd><tt>T.<a href="#Encoder-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ffc8d8">
 <td colspan=3 valign=bottom>&nbsp;<br>
-<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class ACodecError</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
     
 <tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
-<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+<dl><dt><a name="ACodecError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+<dl><dt><a name="ACodecError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+<dl><dt><a name="ACodecError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
 
 </td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -160,7 +139,7 @@ Data and other attributes defined here:<br>
 <font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
     
 <tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><dl><dt><a name="-getCodecId"><strong>getCodecId</strong></a>(...)</dt><dd><tt><a href="#-getCodecId">getCodecId</a>(name)&nbsp;-&nbsp;returns&nbsp;internal&nbsp;numerical&nbsp;codec&nbsp;id&nbsp;for&nbsp;its&nbsp;name</tt></dd></dl>
+<td width="100%"><dl><dt><a name="-getCodecID"><strong>getCodecID</strong></a>(...)</dt><dd><tt><a href="#-getCodecID">getCodecID</a>(name)&nbsp;-&nbsp;returns&nbsp;internal&nbsp;numerical&nbsp;codec&nbsp;id&nbsp;for&nbsp;its&nbsp;name</tt></dd></dl>
 </td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#55aa55">
@@ -168,7 +147,6 @@ Data and other attributes defined here:<br>
 <font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><strong>build</strong> = 1911<br>
-<strong>extensions</strong> = ['ogg', 'wma', 'mp2', 'mp3', 'ac3', 'aac', 'm4a', 'mp4']<br>
-<strong>version</strong> = '2'</td></tr></table>
+<td width="100%"><strong>build</strong> = 1<br>
+<strong>version</strong> = '1.3.5.0'</td></tr></table>
 </body></html>

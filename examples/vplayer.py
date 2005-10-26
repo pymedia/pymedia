@@ -148,8 +148,12 @@ class VPlayer:
           if ovl:
             t= time.time()
             # Display it
-            ovl.set_data( vfr.data )
-            ovl.display()
+            try:
+              ovl.set_data( vfr.data )
+              ovl.display()
+            except: 
+              ovl.display( vfr.data )
+            
             self.ovlTime+= time.time()- t
           
           self.vDelay= frRate

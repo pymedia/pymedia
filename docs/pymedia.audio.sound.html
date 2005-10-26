@@ -35,7 +35,8 @@ Here&nbsp;is&nbsp;the&nbsp;simple&nbsp;player&nbsp;for&nbsp;a&nbsp;pcm&nbsp;file
 <dt><font face="helvetica, arial"><a href="exceptions.html#Exception">exceptions.Exception</a>
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial">Error
+<dt><font face="helvetica, arial"><a href="pymedia.audio.sound.html#SoundError">SoundError</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pymedia.audio.sound.html#SoundError">SoundError</a>
 </font></dt></dl>
 </dd>
 <dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
@@ -93,7 +94,7 @@ Stops&nbsp;grabbing&nbsp;sound&nbsp;data</tt></dd></dl>
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x008470C0&gt;<dd><tt>T.<a href="#Input-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00848148&gt;<dd><tt>T.<a href="#Input-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -109,7 +110,7 @@ Opens&nbsp;mixer&nbsp;device&nbsp;for&nbsp;access.<br>&nbsp;</tt></td></tr>
 <dl><dt><a name="Mixer-__getattribute__"><strong>__getattribute__</strong></a>(...)</dt><dd><tt>x.<a href="#Mixer-__getattribute__">__getattribute__</a>('name')&nbsp;&lt;==&gt;&nbsp;x.name</tt></dd></dl>
 
 <dl><dt><a name="Mixer-getControls"><strong>getControls</strong></a>(...)</dt><dd><tt>get&nbsp;controls&nbsp;in&nbsp;a&nbsp;list.<br>
-Returned&nbsp;list&nbsp;contains&nbsp;dictionary&nbsp;with&nbsp;the&nbsp;following&nbsp;ietms:<br>
+Returned&nbsp;list&nbsp;contains&nbsp;dictionary&nbsp;with&nbsp;the&nbsp;following&nbsp;items:<br>
 .'destination'&nbsp;-&nbsp;destination&nbsp;name(&nbsp;playback&nbsp;or&nbsp;recording&nbsp;)<br>
 'connection'&nbsp;-&nbsp;name&nbsp;of&nbsp;connection&nbsp;for&nbsp;the&nbsp;control<br>
 'name'&nbsp;-&nbsp;name&nbsp;of&nbsp;the&nbsp;control(&nbsp;Line-In,&nbsp;Volume,&nbsp;etc&nbsp;)<br>
@@ -117,7 +118,7 @@ Returned&nbsp;list&nbsp;contains&nbsp;dictionary&nbsp;with&nbsp;the&nbsp;followi
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x008474A0&gt;<dd><tt>T.<a href="#Mixer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00848568&gt;<dd><tt>T.<a href="#Mixer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -136,6 +137,13 @@ accepts&nbsp;raw&nbsp;strings&nbsp;of&nbsp;data&nbsp;and&nbsp;allows&nbsp;to&nbs
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-getChannels">getChannels</a>()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-getRate">getRate</a>()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-getLeft">getLeft</a>()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-getSpace">getSpace</a>()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-getVolume">getVolume</a>()&nbsp;-&gt;&nbsp;(&nbsp;0..0xffff&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Current&nbsp;volume&nbsp;level&nbsp;for&nbsp;sound&nbsp;channel<br>
+()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-setVolume">setVolume</a>(&nbsp;volume&nbsp;)&nbsp;-&gt;&nbsp;None<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set&nbsp;volume&nbsp;level&nbsp;of&nbsp;sound&nbsp;channel<br>
+()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Output-isPlaying">isPlaying</a>()<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
@@ -154,6 +162,12 @@ Position&nbsp;is&nbsp;calculated&nbsp;from&nbsp;the&nbsp;last&nbsp;full&nbsp;sto
 <dl><dt><a name="Output-getRate"><strong>getRate</strong></a>(...)</dt><dd><tt><a href="#Output-getRate">getRate</a>()&nbsp;-&gt;&nbsp;rate<br>
 Current&nbsp;frequency&nbsp;rate</tt></dd></dl>
 
+<dl><dt><a name="Output-getSpace"><strong>getSpace</strong></a>(...)</dt><dd><tt><a href="#Output-getSpace">getSpace</a>()&nbsp;-&gt;&nbsp;secs&nbsp;<br>
+Number&nbsp;of&nbsp;seconds&nbsp;left&nbsp;in&nbsp;a&nbsp;buffer&nbsp;to&nbsp;enqueue&nbsp;without&nbsp;blocking</tt></dd></dl>
+
+<dl><dt><a name="Output-getVolume"><strong>getVolume</strong></a>(...)</dt><dd><tt><a href="#Output-getVolume">getVolume</a>()&nbsp;-&gt;&nbsp;(&nbsp;0..0xffff&nbsp;)<br>
+Current&nbsp;volume&nbsp;level&nbsp;for&nbsp;sound&nbsp;channel</tt></dd></dl>
+
 <dl><dt><a name="Output-isPlaying"><strong>isPlaying</strong></a>(...)</dt><dd><tt><a href="#Output-isPlaying">isPlaying</a>()&nbsp;-&gt;&nbsp;{0|1}<br>
 Whether&nbsp;sound&nbsp;is&nbsp;playing</tt></dd></dl>
 
@@ -164,6 +178,9 @@ If&nbsp;fragment&nbsp;is&nbsp;not&nbsp;playing,&nbsp;it&nbsp;has&nbsp;effect</tt
 <dl><dt><a name="Output-play"><strong>play</strong></a>(...)</dt><dd><tt><a href="#Output-play">play</a>(&nbsp;fragment&nbsp;)&nbsp;-&gt;&nbsp;None<br>
 Play&nbsp;raw&nbsp;frangment&nbsp;using&nbsp;settings&nbsp;specified&nbsp;during&nbsp;output&nbsp;creation</tt></dd></dl>
 
+<dl><dt><a name="Output-setVolume"><strong>setVolume</strong></a>(...)</dt><dd><tt><a href="#Output-setVolume">setVolume</a>(&nbsp;volume&nbsp;)&nbsp;-&gt;&nbsp;None<br>
+Set&nbsp;volume&nbsp;level&nbsp;of&nbsp;sound&nbsp;channel</tt></dd></dl>
+
 <dl><dt><a name="Output-stop"><strong>stop</strong></a>(...)</dt><dd><tt><a href="#Output-stop">stop</a>()&nbsp;-&gt;&nbsp;None&nbsp;<br>
 Stops&nbsp;currently&nbsp;played&nbsp;fragment</tt></dd></dl>
 
@@ -173,7 +190,7 @@ If&nbsp;fragment&nbsp;is&nbsp;not&nbsp;paused,&nbsp;it&nbsp;has&nbsp;no&nbsp;eff
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00847220&gt;<dd><tt>T.<a href="#Output-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x008482D8&gt;<dd><tt>T.<a href="#Output-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -202,7 +219,21 @@ Resamples&nbsp;audio&nbsp;stream&nbsp;from-&gt;to&nbsp;certain&nbsp;format.</tt>
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00847580&gt;<dd><tt>T.<a href="#Resampler-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00848648&gt;<dd><tt>T.<a href="#Resampler-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="SoundError">class <strong>SoundError</strong></a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
+<dl><dt><a name="SoundError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="SoundError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+
+<dl><dt><a name="SoundError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -211,9 +242,10 @@ Data and other attributes defined here:<br>
 <font color="#000000" face="helvetica, arial"><a name="SpectrAnalyzer">class <strong>SpectrAnalyzer</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#SpectrAnalyzer">SpectrAnalyzer</a>(&nbsp;samples_in,&nbsp;frequencies&nbsp;)&nbsp;-&gt;&nbsp;SpectAnalyzer<br>
-Allow&nbsp;to&nbsp;analyze&nbsp;audio&nbsp;stream&nbsp;for&nbsp;frequencies.&nbsp;It&nbsp;will&nbsp;convert&nbsp;mono&nbsp;audio&nbsp;samples&nbsp;<br>
-into&nbsp;list&nbsp;of&nbsp;integers&nbsp;where&nbsp;every&nbsp;item&nbsp;represnts&nbsp;each&nbsp;frequency&nbsp;in&nbsp;0..sample_rate/4&nbsp;interval.<br>
+<td colspan=2><tt><a href="#SpectrAnalyzer">SpectrAnalyzer</a>(&nbsp;channels,&nbsp;samples_in,&nbsp;frequencies&nbsp;)&nbsp;-&gt;&nbsp;SpectAnalyzer<br>
+Allow&nbsp;to&nbsp;analyze&nbsp;audio&nbsp;stream&nbsp;for&nbsp;frequencies.&nbsp;It&nbsp;will&nbsp;convert&nbsp;audio&nbsp;samples&nbsp;with&nbsp;specified&nbsp;<br>
+number&nbsp;of&nbsp;channels&nbsp;into&nbsp;list&nbsp;of&nbsp;integers&nbsp;where&nbsp;every&nbsp;item&nbsp;represnts&nbsp;each&nbsp;frequency&nbsp;<br>
+in&nbsp;0..sample_rate/4&nbsp;interval.<br>
 For&nbsp;instance&nbsp;if&nbsp;you&nbsp;want&nbsp;10&nbsp;frequencies&nbsp;for&nbsp;44100&nbsp;KHz,&nbsp;the&nbsp;frequencies&nbsp;will&nbsp;be:<br>
 ~1KHz&nbsp;~2KHz&nbsp;~3KHz&nbsp;~4KHz&nbsp;~5KHz&nbsp;~6KHz&nbsp;~7KHz&nbsp;~8KHz&nbsp;~9KHz&nbsp;~10Khz<br>
 Also&nbsp;note&nbsp;that&nbsp;bass&nbsp;takes&nbsp;frequencies:&nbsp;200-800&nbsp;Hz,&nbsp;treble:&nbsp;1400-10Khz<br>
@@ -243,21 +275,21 @@ IMPORTANT:&nbsp;Please&nbsp;note&nbsp;that&nbsp;only&nbsp;mono&nbsp;signals&nbsp
 
 <hr>
 Data and other attributes defined here:<br>
-<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00847670&gt;<dd><tt>T.<a href="#SpectrAnalyzer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
+<dl><dt><strong>__new__</strong> = &lt;built-in method __new__ of type object at 0x00848738&gt;<dd><tt>T.<a href="#SpectrAnalyzer-__new__">__new__</a>(S,&nbsp;...)&nbsp;-&gt;&nbsp;a&nbsp;new&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;with&nbsp;type&nbsp;S,&nbsp;a&nbsp;subtype&nbsp;of&nbsp;T</tt></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ffc8d8">
 <td colspan=3 valign=bottom>&nbsp;<br>
-<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class Error</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
+<font color="#000000" face="helvetica, arial"><strong>error</strong> = <a name="error">class SoundError</a>(<a href="exceptions.html#Exception">exceptions.Exception</a>)</font></td></tr>
     
 <tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%">Methods inherited from <a href="exceptions.html#Exception">exceptions.Exception</a>:<br>
-<dl><dt><a name="Error-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
+<dl><dt><a name="SoundError-__getitem__"><strong>__getitem__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__init__"><strong>__init__</strong></a>(...)</dt></dl>
+<dl><dt><a name="SoundError-__init__"><strong>__init__</strong></a>(...)</dt></dl>
 
-<dl><dt><a name="Error-__str__"><strong>__str__</strong></a>(...)</dt></dl>
+<dl><dt><a name="SoundError-__str__"><strong>__str__</strong></a>(...)</dt></dl>
 
 </td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -294,6 +326,6 @@ additional&nbsp;data&nbsp;may&nbsp;include&nbsp;OS/device&nbsp;specific&nbsp;inf
 <strong>AFMT_U16_BE</strong> = 256<br>
 <strong>AFMT_U16_LE</strong> = 128<br>
 <strong>AFMT_U8</strong> = 8<br>
-<strong>build</strong> = 1911<br>
+<strong>build</strong> = 1<br>
 <strong>version</strong> = '1'</td></tr></table>
 </body></html>

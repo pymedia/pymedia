@@ -57,8 +57,12 @@ def videoDecodeBenchmark( inFile, opt ):
             ovl= pygame.Overlay( YV12, d.size )
           q.append( d )
           if len( q )> 4:
-            ovl.set_data( q[0].data )
-            ovl.display()
+            try:
+              ovl.set_data( q[0].data )
+              ovl.display()
+            except:
+              ovl.display(q[0].data)
+            
             del( q[0] )
       elif opt!= 'noaudio' and fr[ 0 ]== a_id:
         d= ac.decode( fr[ 1 ] )
