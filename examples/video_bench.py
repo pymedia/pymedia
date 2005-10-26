@@ -16,7 +16,7 @@ def videoDecodeBenchmark( inFile, opt ):
   print 'Assume video stream at %d index: ' % v_id
   
   a= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_AUDIO, dm.streams )
-  if len( v )== 0:
+  if len( a )== 0:
     print 'There is no audio stream in a file %s. Ignoring audio.' % inFile
     opt= 'noaudio'
   else:

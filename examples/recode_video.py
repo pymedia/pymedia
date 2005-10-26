@@ -35,7 +35,7 @@ def recodeVideo( inFile, outFile, outCodec ):
 					e= vcodec.Encoder( params )
 				if e and d:
 					dw= e.encode( d )
-					#print 'Frame size ', len( dw )
+					print 'Frame size ', len( dw )
 					fw.write( dw )
 		
 		s= f.read( 400000 )

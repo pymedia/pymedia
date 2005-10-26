@@ -149,7 +149,7 @@ class VPlayer:
           continue
         
         try:
-          vfr= vc.decode( d[ 1 ] )
+          vfr= vc.decode( d[ 1 ] , d[ 3 ])
           #if hurry== 0:
           #  time.sleep( .035 )
         except:
@@ -163,10 +163,10 @@ class VPlayer:
             offs= [ x.get_offset() for x in surfaces ]
             #print 'Surfaces allocated', offs
             vc.setBuffers( st[ 0 ][ 1 ], offs )
-            vfr= vc.decode( d[ 1 ] )
+            vfr= vc.decode( d[ 1 ], d[ 3 ]  )
           else:
             raise
-        
+                
         if vfr and vfr.data:
           if self.skipSound:
             self.frameNum= 0
@@ -174,19 +174,28 @@ class VPlayer:
             vPTS= 0
           
           if self.vBitRate== 0: self.vBitRate= vfr.bitrate
-          #print d[3]
-          if d[ 3 ]> 0:
-            # Calc frRate
-            if lastPts< d[3] and self.frameNum:
-              lastPts= d[3]
-              vPTS= float( d[ 3 ] ) / 90000
-              frRate= vPTS / self.frameNum
-              if frRate> .04:
-                frRate= .04
-              
-              sndDelay= -.5
-              #print 'PTS: ', vPTS, self.getAPTS(), self.frameNum
           
+          if vfr.pict_type == 1 or vfr.pict_type == 2:
+            if self.frameNum > 0 and vfr.frame_pts > 0:
+              vPTS = vfr.frame_pts
+            else:
+              vPTS= lastPts + 90000*vfr.rate_base/vfr.rate     
+          else:
+            vPTS= lastPts + 90000*vfr.rate_base/vfr.rate 
+          lastPts = vPTS
+          vPTS= float( vPTS ) / 90000
+          print 'VPTS =',lastPts, vPTS * 90000 , vfr.frame_pts, 'FRAME=',vfr.pict_type
+          #print d[3]
+          #if d[ 3 ]> 0:
+            # Calc frRate
+            #if lastPts< d[3] and self.frameNum:
+              #lastPts= d[3]
+              #vPTS= float( d[ 3 ] ) / 90000
+              #frRate= vPTS / self.frameNum
+              #if frRate> .04:
+                #frRate= .04
+              
+              #sndDelay= -.5
           if self.overlayLoc and self.overlay== None:
             self.overlay= pygame.Overlay( YV12, vfr.size )
             if vfr.aspect_ratio> .0:
@@ -198,14 +207,14 @@ class VPlayer:
           if self.frameNum> 0:
             # use audio clock
             aPTS= self.getAPTS()
-            if aPTS== 0:
+            if aPTS == 0:
               # use our internal clock instead
               aPTS= time.time()- clock
             
             delay= vPTS- aPTS+ sndDelay  # mpeg2 +.3, avi -.2
-            print 'Delay', delay, self.frameNum, vPTS, aPTS, frRate
-            if delay< 0:
-              hurry= -delay/ frRate
+            #print 'Delay', delay, self.frameNum, vPTS, aPTS, frRate
+            if delay < 0:
+              hurry= -delay / frRate
             else:
               hurry= 0
             if delay> 0 and delay< 2:
@@ -420,6 +429,7 @@ class VPlayer:
                           time.sleep( .01 )
                       f.seek( ( self.aBitRate+ self.vBitRate )/8* self.seek, 1 )
                       self.seek= 0
+                      dm.reset()
                       break
               
               s= f.read( 10000 )
@@ -461,5 +471,6 @@ else:
   from pycar import menu
 
 """
-./ffmpeg -i /home/bors/Forrest.Gump\(\ DVDRip.DivX\ \).CD2.avi -vn -ar 48000 -ab 128 test.mp3
+/ffmpeg -i /home/bors/Forrest.Gump\(\ DVDRip.DivX\ \).CD2.avi -vn -ar =
+48000 -ab 128 test.mp3
 """
