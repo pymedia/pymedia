@@ -60,14 +60,8 @@
     { name, help, offsetof(AVCodecContext, field), FF_OPT_TYPE_RCOVERRIDE, 0,0, 0, NULL }
 #define AVOPTION_SUB(ptr) { NULL, (const char*)ptr }
 #define AVOPTION_END() AVOPTION_SUB(NULL)
- 
+
 struct AVOption;
-#ifdef HAVE_MMX
-extern const struct AVOption avoptions_common[3 + 5];
-#else
-extern const struct AVOption avoptions_common[3];
-#endif
-extern const struct AVOption avoptions_workaround_bug[11];
 
 #endif /* HAVE_AV_CONFIG_H */
 
@@ -217,7 +211,7 @@ extern const uint32_t inverse[256];
 #else
 #    define FASTDIV(a,b)   ((a)/(b))
 #endif
- 
+
 #ifdef ARCH_X86
 // avoid +32 for shift optimization (gcc should do that ...)
 static inline  int32_t NEG_SSR32( int32_t a, int8_t s){
@@ -257,7 +251,7 @@ typedef struct PutBitContext {
     int64_t data_out_size; /* in bytes */
 } PutBitContext;
 
-void init_put_bits(PutBitContext *s, 
+void init_put_bits(PutBitContext *s,
                    uint8_t *buffer, int buffer_size,
                    void *opaque,
                    void (*write_data)(void *, uint8_t *, int));
@@ -340,7 +334,7 @@ static inline void put_bits(PutBitContext *s, int n, unsigned int value)
 #endif
     //    printf("put_bits=%d %x\n", n, value);
     assert(n == 32 || value < (1U << n));
-    
+
     bit_buf = s->bit_buf;
     bit_left = s->bit_left;
 
@@ -398,9 +392,9 @@ static inline void put_bits(PutBitContext *s, int n, unsigned int value)
 #        else
     int index= s->index;
     uint32_t *ptr= ((uint32_t *)s->buf)+(index>>5);
-    
-    value<<= 32-n; 
-    
+
+    value<<= 32-n;
+
     ptr[0] |= be2me_32(value>>(index&31));
     ptr[1]  = be2me_32(value<<(32-(index&31)));
 //if(n>24) printf("%d %d\n", n, value);
@@ -428,7 +422,7 @@ static inline void put_bits(PutBitContext *s, int n, unsigned int value)
 #        else
     int index= s->index;
     uint32_t *ptr= (uint32_t*)(((uint8_t *)s->buf)+(index>>3));
-    
+
     ptr[0] |= be2me_32(value<<(32-n-(index&7) ));
     ptr[1] = 0;
 //if(n>24) printf("%d %d\n", n, value);
@@ -677,9 +671,9 @@ static inline int get_bits_count(GetBitContext *s){
 
 /**
  * read mpeg1 dc style vlc (sign bit + mantisse with no MSB).
- * if MSB not set it is negative 
+ * if MSB not set it is negative
  * @param n length in bits
- * @author BERO  
+ * @author BERO
  */
 static inline int get_xbits(GetBitContext *s, int n){
     register int tmp;
@@ -845,11 +839,11 @@ static inline int get_vlc(GetBitContext *s, VLC *vlc)
 {
     int code;
     VLC_TYPE (*table)[2]= vlc->table;
-    
+
     OPEN_READER(re, s)
     UPDATE_CACHE(re, s)
 
-    GET_VLC(code, re, s, table, vlc->bits, 3)    
+    GET_VLC(code, re, s, table, vlc->bits, 3)
 
     CLOSE_READER(re, s)
     return code;
@@ -857,17 +851,17 @@ static inline int get_vlc(GetBitContext *s, VLC *vlc)
 
 /**
  * parses a vlc code, faster then get_vlc()
- * @param bits is the number of bits which will be read at once, must be 
+ * @param bits is the number of bits which will be read at once, must be
  *             identical to nb_bits in init_vlc()
  * @param max_depth is the number of times bits bits must be readed to completly
- *                  read the longest vlc code 
+ *                  read the longest vlc code
  *                  = (max_vlc_length + bits - 1) / bits
  */
 static always_inline int get_vlc2(GetBitContext *s, VLC_TYPE (*table)[2],
                                   int bits, int max_depth)
 {
     int code;
-    
+
     OPEN_READER(re, s)
     UPDATE_CACHE(re, s)
 
@@ -883,7 +877,7 @@ static always_inline int get_vlc2(GetBitContext *s, VLC_TYPE (*table)[2],
 
 static inline void print_bin(int bits, int n){
     int i;
-    
+
     for(i=n-1; i>=0; i--){
         printf("%d", (bits>>i)&1);
     }
@@ -893,7 +887,7 @@ static inline void print_bin(int bits, int n){
 
 static inline int get_bits_trace(GetBitContext *s, int n, char *file, char *func, int line){
     int r= get_bits(s, n);
-    
+
     print_bin(r, n);
     printf("%5d %2d %3d bit @%5d in %s %s:%d\n", r, n, r, get_bits_count(s)-n, file, func, line);
     return r;
@@ -904,16 +898,16 @@ static inline int get_vlc_trace(GetBitContext *s, VLC_TYPE (*table)[2], int bits
     int r= get_vlc2(s, table, bits, max_depth);
     int len= get_bits_count(s) - pos;
     int bits2= show>>(24-len);
-    
+
     print_bin(bits2, len);
-    
+
     printf("%5d %2d %3d vlc @%5d in %s %s:%d\n", bits2, len, r, pos, file, func, line);
     return r;
 }
 static inline int get_xbits_trace(GetBitContext *s, int n, char *file, char *func, int line){
     int show= show_bits(s, n);
     int r= get_xbits(s, n);
-    
+
     print_bin(show, n);
     printf("%5d %2d %3d xbt @%5d in %s %s:%d\n", show, n, r, get_bits_count(s)-n, file, func, line);
     return r;
@@ -1029,9 +1023,9 @@ static inline int ff_sqrt(int a)
     int ret=0;
     int s;
     int ret_sq=0;
-    
+
     if(a<128) return ff_sqrt_tab[a];
-    
+
     for(s=15; s>=0; s--){
         int b= ret_sq + (1<<(s*2)) + (ret<<s)*2;
         if(b<=a){

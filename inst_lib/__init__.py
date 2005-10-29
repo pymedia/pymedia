@@ -18,6 +18,8 @@
 """
 PyMedia is a set of Python modules designed to be used in media centers.
 Small footprint, fast and reliable library for embedded environments
+For more examples and documentation use the tutorial section on pymedia web site:
+http://pymedia.org/tut/
 """
 
 __all__= [ 'muxer', 'audio', 'video', 'removable' ]

@@ -8,7 +8,7 @@ except:
   raise
 
 MODULE_NAME= 'pymedia'
-VERSION= '1.3.5.0-pre1'
+VERSION= '1.3.5.0-pre2'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.

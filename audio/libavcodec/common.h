@@ -13,7 +13,7 @@
 #define floorf(x) floor(x)
 #define strcasecmp(x,y) stricmp(x,y)
 #endif
- 
+
 //#define ALT_BITSTREAM_WRITER
 //#define ALIGNED_BITSTREAM_WRITER
 
@@ -877,12 +877,6 @@ if((y)<(x)){\
 #define CLAMP_TO_8BIT(d) ((d > 0xff) ? 0xff : (d < 0) ? 0 : d)
 
 struct AVOption;
-#ifdef HAVE_MMX
-extern const struct AVOption avoptions_common[3 + 5];
-#else
-extern const struct AVOption avoptions_common[3];
-#endif
-extern const struct AVOption avoptions_workaround_bug[11];
 
 #define CHECKED_ALLOCZ(p, size)\
 {\

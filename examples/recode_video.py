@@ -21,19 +21,20 @@ def recodeVideo( inFile, outFile, outCodec ):
 		for fr in r:
 			if fr[ 0 ]== v_id:
 				d= c.decode( fr[ 1 ] )
-				if e== None and d:
-					params= c.getParams()
-					params[ 'id' ]= vcodec.getCodecID( outCodec )
-					# Just try to achive max quality( 2.7 MB/sec mpeg1 and 9.8 for mpeg2 )
-					if outCodec== 'mpeg1video':
-						params[ 'bitrate' ]= 2700000
-					else:
-						params[ 'bitrate' ]= 9800000
-					# It should be some logic to work with frame rates and such.
-					# I'm not aware of what it would be...
-					print 'Setting codec to ', params
-					e= vcodec.Encoder( params )
-				if e and d:
+				if d and d.data:
+					if e== None:
+						params= c.getParams()
+						params[ 'id' ]= vcodec.getCodecID( outCodec )
+						# Just try to achive max quality( 2.7 MB/sec mpeg1 and 9.8 for mpeg2 )
+						if outCodec== 'mpeg1video':
+							params[ 'bitrate' ]= 2700000
+						else:
+							params[ 'bitrate' ]= 9800000
+						# It should be some logic to work with frame rates and such.
+						# I'm not aware of what it would be...
+						print 'Setting codec to ', params
+						e= vcodec.Encoder( params )
+					
 					dw= e.encode( d )
 					print 'Frame size ', len( dw )
 					fw.write( dw )

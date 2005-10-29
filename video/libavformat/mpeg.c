@@ -511,36 +511,36 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
   int * iBuffer;
   int len, size, startcode, i, c, flags, header_len, type, codec_id, pos;
   int64_t pts, dts;
-  
+
   sBuffer = (ByteIOContext *)&s->pb;
   cBuffer = sBuffer->buf_ptr;
   if (get_mem_buffer_size( &s->pb ) < 4)
     return AVILIB_NEED_DATA;
-  for ( i = 0 ; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
+  for ( i = 0 ; i < get_mem_buffer_size( &s->pb )-3; i++ ) {
     if((  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
        || (  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0x0 ))
-      break; 
+      break;
   }
   url_fskip(&s->pb,i);
   len = i;
   if (get_mem_buffer_size( &s->pb ) < 4)
     return AVILIB_NEED_DATA;
-    
-  for ( i++; i < get_mem_buffer_size( &s->pb )-3; i++ ) {  
+
+  for ( i++; i < get_mem_buffer_size( &s->pb )-3; i++ ) {
     if((  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0xb3 )
        ||
        (  *(cBuffer+i) == 0 && *(cBuffer+1+i) == 0 && *(cBuffer+2+i) == 1 && *(cBuffer+3+i) == 0x0 )){
 
-      /* no stream found: add a new stream */	
+      /* no stream found: add a new stream */
       if (s->nb_streams == 0){
-	st = av_new_stream(s, 1);	
+	st = av_new_stream(s, 1);
 	st->codec.codec_type = CODEC_TYPE_VIDEO;
-	st->codec.codec_id = CODEC_ID_MPEG1VIDEO;	
+	st->codec.codec_id = CODEC_ID_MPEG1VIDEO;
       }
       av_new_packet(pkt, i-len);
       get_buffer(&s->pb, pkt->data, pkt->size);
       pts = AV_NOPTS_VALUE;
-      dts = AV_NOPTS_VALUE;    
+      dts = AV_NOPTS_VALUE;
       pkt->pts = pts;
       pkt->dts = dts;
       pkt->stream_index = 0;
@@ -767,7 +767,7 @@ static int mpegps_read_close(AVFormatContext *s)
     return 0;
 }
 
-static AVOutputFormat mpeg1system_mux = {
+AVOutputFormat mpeg1system_mux = {
     "mpeg",
     "MPEG1 System format",
     "video/mpeg",
@@ -780,7 +780,7 @@ static AVOutputFormat mpeg1system_mux = {
     mpeg_mux_end,
 };
 
-static AVOutputFormat mpeg1vcd_mux = {
+AVOutputFormat mpeg1vcd_mux = {
     "vcd",
     "MPEG1 System format (VCD)",
     "video/mpeg",
@@ -793,7 +793,7 @@ static AVOutputFormat mpeg1vcd_mux = {
     mpeg_mux_end,
 };
 
-static AVOutputFormat mpeg2vob_mux = {
+AVOutputFormat mpeg2vob_mux = {
     "vob",
     "MPEG2 PS format (VOB)",
     "video/mpeg",

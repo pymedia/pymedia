@@ -163,7 +163,7 @@ InputName=cputest
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -232,7 +232,7 @@ InputName=dsputil
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -301,7 +301,7 @@ InputName=dsputil_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -370,7 +370,7 @@ InputName=fdct_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -439,7 +439,7 @@ InputName=idct_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -508,7 +508,7 @@ InputName=imgconvert
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -577,7 +577,7 @@ InputName=imgresample
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -646,7 +646,7 @@ InputName=motion_est_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -715,7 +715,7 @@ InputName=mpegvideo_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
@@ -784,7 +784,7 @@ InputName=simple_idct_mmx
 
 "$(OutDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	PATH=%PATH%;c:\cygwin\bin 
-	gcc -c -O3 -march=i586 -mcpu=i686 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
+	gcc -c -O3 -march=i586 -fomit-frame-pointer -finline -finline-functions -DSYS_CYGWIN -DHAVE_AV_CONFIG_H -DHAVE_MMX -pipe -mno-cygwin -mdll -I$(ProjDir) $(InputPath) -o $(OutDir)\$(InputName).obj 
 	
 # End Custom Build
 
