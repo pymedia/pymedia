@@ -55,7 +55,7 @@ static char *dsp=PATH_DEV_DSP;
 char *mixer = PATH_DEV_MIXER;
 const int MAX_INT_BUFFERS= 20;
 const int OPEN_FLAGS= (O_WRONLY|O_NONBLOCK);
-const int OPEN_FLAGS_READ= (O_RDONLY|O_NONBLOCK);
+const int OPEN_FLAGS_READ= (O_RDONLY);
 
 // -------------------------------------------------------------------
 int GetDevicesCount()
@@ -333,7 +333,7 @@ public:
 
 		if(ioctl( this->GetDevice(), SNDCTL_DSP_GETODELAY, &r)!=-1)
 			 return r;
-		
+
 		this->iErr= errno;
 		sprintf( &this->sErr[ 0 ], "%s at %s", strerror( errno ), "SNDCTL_DSP_GETODELAY");
 		return -1;
@@ -799,7 +799,7 @@ public:
 				}
 			}
 			else
-				piValues[ 0 ]= iChannel ? 
+				piValues[ 0 ]= iChannel ?
 					(int)( (float)( ( iVal & 0xff00 ) >> 8 )* 655.35 ):
 					(int)( (float)( iVal & 0xff )* 655.35 );
 		}
@@ -847,7 +847,7 @@ public:
 						iVal= this->aiChannel[ i ].iVolume;
 					}
 				else
-					iVal= iChannel ?  
+					iVal= iChannel ?
 						( iVal & 0xff ) | ( iNewVal << 8 ):
 						( iVal & 0xff00 ) | iNewVal;
 
@@ -859,7 +859,7 @@ public:
 				status = ioctl( this->dev, MIXER_WRITE(i), &iVal );
 
 			/* set gain */
-			if (status == -1) 
+			if (status == -1)
 			{
 				this->FormatError();
 				return false;
@@ -897,7 +897,7 @@ public:
 		ioctl(this->dev, SOUND_MIXER_WRITE_RECSRC, &i);
 		return this->Refresh();
 	}
-	
+
 	// ----------------------------------------------
 	// Return control values
 	bool GetControlValues( int iDest, int iConn, int iControl, int *piMin, int* piMax, int *piStep, int *piType, int* piChannels  )
