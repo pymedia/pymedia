@@ -225,10 +225,13 @@ class VPlayer:
           if self.overlay and vfr.data:
             if surfaces:
               self.overlay.surface().blit( surfaces[ vfr.index ], (0,0) )
+              self.overlay.display()
             else:
-              self.overlay.set_data( vfr.data )
-            
-            self.overlay.display()
+              try:
+                self.overlay.set_data( vfr.data )
+                self.overlay.display()
+              except:
+                self.overlay.display( vfr.data )
           
           self.frameNum+= 1
           vPTS+= frRate
