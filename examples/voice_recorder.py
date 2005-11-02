@@ -2,15 +2,15 @@ import time, sys
 import pymedia.audio.sound as sound
 import pymedia.audio.acodec as acodec
 
-def voiceRecorder( secs, name ):
+def voiceRecorder( secs, channels, name ):
   f= open( name, 'wb' )
   # Minimum set of parameters we need to create Encoder
   cparams= { 'id': acodec.getCodecID( 'mp3' ),
              'bitrate': 128000,
              'sample_rate': 44100,
-             'channels': 2 } 
+             'channels': channels } 
   ac= acodec.Encoder( cparams )
-  snd= sound.Input( 44100, 2, sound.AFMT_S16_LE )
+  snd= sound.Input( 44100, channels, sound.AFMT_S16_LE )
   snd.start()
   
   # Loop until recorded position greater than the limit specified
@@ -32,7 +32,7 @@ def voiceRecorder( secs, name ):
 # Specify length and output file name
 # http://pymedia.org/
 if __name__ == "__main__":
-  if len( sys.argv )!= 3:
-    print 'Usage: voice_recorder <seconds> <file_name>'
+  if len( sys.argv )!= 4:
+    print 'Usage: voice_recorder <seconds> <channels> <file_name>'
   else:
-    voiceRecorder( int( sys.argv[ 1 ] ), sys.argv[ 2 ]  )
+    voiceRecorder( int( sys.argv[ 1 ] ), int( sys.argv[ 2 ] ), sys.argv[ 3 ]  )
