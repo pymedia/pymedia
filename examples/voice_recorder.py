@@ -5,7 +5,7 @@ import pymedia.audio.acodec as acodec
 def voiceRecorder( secs, name ):
   f= open( name, 'wb' )
   # Minimum set of parameters we need to create Encoder
-  cparams= { 'id': acodec.getCodecId( 'mp3' ),
+  cparams= { 'id': acodec.getCodecID( 'mp3' ),
              'bitrate': 128000,
              'sample_rate': 44100,
              'channels': 2 } 
