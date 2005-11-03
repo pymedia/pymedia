@@ -24,6 +24,7 @@ http://pymedia.org/tut/
 
 __all__= [ 'muxer', 'audio', 'video', 'removable' ]
 import muxer, audio, video, removable
+from player import Player
 
 muxer.error = muxer.MuxerError
 __version__= "1.3.5"

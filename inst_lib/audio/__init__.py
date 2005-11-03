@@ -25,5 +25,9 @@ Modules to deal with the audio data. It includes:
 __all__= [ 'acodec', 'sound' ]
 import acodec, sound
 
-acodec.error = acodec.ACodecError
-sound.error = sound.SoundError 
+try:
+  acodec.error = acodec.ACodecError
+  sound.error = sound.SoundError 
+except:
+  # no worry if cannot import new style Exceptions
+  pass
