@@ -25,6 +25,8 @@ http://pymedia.org/tut/
 __all__= [ 'muxer', 'audio', 'video', 'removable' ]
 import muxer, audio, video, removable
 from player import Player
+from meta import getMetaData
 
 muxer.error = muxer.MuxerError
+muxer.extensions= muxer.audio_extensions+ muxer.video_extensions
 __version__= "1.3.5"

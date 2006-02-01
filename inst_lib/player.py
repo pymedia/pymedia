@@ -1,14 +1,15 @@
 
-import sys, thread, time, traceback, Queue, os
+import sys, thread, time, traceback
 
 import pymedia.muxer as muxer
 import pymedia.audio.acodec as acodec
 import pymedia.video.vcodec as vcodec
 import pymedia.audio.sound as sound
 
-SEEK_IN_PROGRESS= -1
+SEEK_IN_PROGRESS= -2
 PAUSE_SLEEP= 0.003
-VIDEO_FILE_CHUNK= 300000
+FILE_CHUNK= 300000
+EXITING_FLAG=-1
 
 ########################################################################3
 # Simple video player 
@@ -66,13 +67,13 @@ class Player:
     self.aDelta= 0
     self.aBitRate= 0
     self.vBitRate= 0
-    self.seek= 0
+    self.seek= -1
     self.vc= None
     self.ac= None
     self.ovlTime= 0
     self.playingFile= None
     self.endPos= None
-    self.loops= 1
+    self.loops= 0
     self.volume= 0xffff
     self.startPos= 0
     self.initADelta= -1
@@ -82,6 +83,7 @@ class Player:
     self.audioCard= 0
     self.callback= callback
     self.metaData= {}
+    self.fileFormat= 'mp3'
   
   # ------------------------------------
   def _resetAudio( self ):
@@ -108,7 +110,7 @@ class Player:
     self.decodeTime= self.vBitRate= self.frameNum= \
     self.sndDelay= self.hurry= self.videoPTS= \
     self.lastPTS= self.frRate= self.vDelay= 0
-    self.seek= 0
+    self.seek= -1
     self.pictureSize= None
     if self.initADelta!= -1:
       self.seekADelta= self.initADelta
@@ -140,30 +142,27 @@ class Player:
   # ------------------------------------
   def _getStreamLength( self, format, dm, f, fr ):
     # Demux frames from the beginning and from the end and get the PTS diff
-    if dm.hasHeader():
-      # Return fixed value for now (10 secs)
-      return
-    
-    startPTS= -1
-    for d in fr:
-      if d[ 3 ]> 0:
-        startPTS= d[ 3 ] / 90
-        break
-      
-    # Seek to the end and get the PTS from the end of the file
-    if startPTS> 0:
-      pos= f.tell()
-      f.seek( 0, 0 )
-      dm1= muxer.Demuxer( format )
-      s= f.read( VIDEO_FILE_CHUNK )
-      r= dm1.parse( s )
-      endPTS= startPTS
+    if not dm.hasHeader():
+      startPTS= -1
       for d in fr:
         if d[ 3 ]> 0:
-          endPTS= d[ 3 ] / 90
-        
-      f.seek( pos, 0 )
-      self.length= endPTS- startPTS
+          startPTS= d[ 3 ] / 90
+          break
+
+      # Seek to the end and get the PTS from the end of the file
+      if startPTS> 0:
+        pos= f.tell()
+        f.seek( 0, 0 )
+        dm1= muxer.Demuxer( format )
+        s= f.read( FILE_CHUNK )
+        r= dm1.parse( s )
+        endPTS= startPTS
+        for d in fr:
+          if d[ 3 ]> 0:
+            endPTS= d[ 3 ] / 90
+
+        f.seek( pos, 0 )
+        self.length= endPTS- startPTS
   
   # ------------------------------------
   def _getVStreamParams( self, vindex, vparams, r ):
@@ -215,7 +214,7 @@ class Player:
       if vfr:
         if self.seek== SEEK_IN_PROGRESS and not forced:
           if vfr.data:
-            self.seek= 0
+            self.seek= -1
           else:
             # We decode video frame after seek, but no I frame so far
             return 0
@@ -258,7 +257,7 @@ class Player:
         return
       
       # If delay
-      #print '!!', self.vDelay, self.frameNum, videoPTS, self.getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self.getSndLeft(), self.seekADelta
+      #print '!!', self.vDelay, self.frameNum, videoPTS, self._getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self._getSndLeft(), self.seekADelta
       if self.vDelay> 0 and self._getSndLeft()> self.vDelay:
         time.sleep( self.vDelay / 6 )
         #print 'Delay', self.vDelay, self.getSndLeft()
@@ -277,8 +276,8 @@ class Player:
         
         # Skip frame if no data inside, but assume it was a valid frame though
         if vfr.data:
-          if self.callback:
-            self.callback.onVideoReady( vfr )
+          try: self.callback.onVideoReady( vfr )
+          except: pass
           
           self.vDelay= frRate
   
@@ -332,9 +331,12 @@ class Player:
         afr= self.aDecodedFrames.pop(0)
         s= afr.data
         if self.callback:
-          afr1= self.callback.onAudioReady( afr )
-          if afr1:
-            s= afr1
+          try:
+            afr1= self.callback.onAudioReady( afr )
+            if afr1:
+              s= afr1
+          except:
+            pass
         
         # See if we need to resample the audio data
         if self.resampler:
@@ -363,12 +365,14 @@ class Player:
     """
     self.stopPlayback()
     if self.callback:
-      self.callback.removeOverlay()
+      try: self.callback.removeOverlay()
+      except: pass
+    
     # Turn the flag to exist the main thread
-    self.exitFlag= 1
+    self.exitFlag= EXITING_FLAG
   
   # ------------------------------------
-  def startPlayback( self, file, paused= False ):
+  def startPlayback( self, file, format= 'mp3', paused= False ):
     """
     Starts playback of the file passed as string or file like object.
     Player should already be started otherwise this call has no effect.
@@ -380,6 +384,7 @@ class Player:
     self.stopPlayback()
     # Set the new file for playing
     self.paused= paused
+    self.fileFormat= format
     self.playingFile= file
   
   # ------------------------------------
@@ -424,7 +429,7 @@ class Player:
     It will look for a first key frame and start playing from that position.
     In some files key frames could resides up to 10 seconds apart.
     """
-    while self.seek:
+    while self.seek>= 0:
       time.sleep( 0.01 )
     
     self.seek= secs
@@ -432,15 +437,15 @@ class Player:
   # ------------------------------------
   def isPlaying( self ):
     """ Returns whether playback is active """
-    return self.playingFile!= None
+    return self.playingFile!= None and self.isRunning()
   
   # ------------------------------------
-  def isActive( self ):
+  def isRunning( self ):
     """
     Returns whether Player object can do the playback.
     It will return False after you issue stop()
     """
-    return self.exitFlag== 0
+    return self.exitFlag in ( EXITING_FLAG, 0 )
   
   # ------------------------------------
   def setLoops( self, loops ):
@@ -472,6 +477,16 @@ class Player:
     volume = [ 0..255 ]
     """
     self.volume= volume
+    if self.snd:
+      self.snd.setVolume( self.volume )
+  
+  # ------------------------------------
+  def getVolume( self ):
+    """
+    Get volume for the playing media track 
+    """
+    if self.snd:
+      return self.snd.getVolume()
   
   # ------------------------------------
   def getPictureSize( self ):
@@ -499,6 +514,27 @@ class Player:
     return self.metaData
 
   # ------------------------------------
+  def getSampleRate( self ):
+    """
+    Get sample rate of the playing file
+    """
+    return self.sampleRate
+
+  # ------------------------------------
+  def getABitRate( self ):
+    """
+    Get bitrate for the audio stream if present
+    """
+    return self.aBitRate
+
+  # ------------------------------------
+  def getPosition( self ):
+    """
+    Returns current position for the media
+    """
+    return self._getPTS()
+  
+  # ------------------------------------
   def _hasQueue( self ):
     queue= 0
     if self.aindex!= -1:
@@ -507,7 +543,7 @@ class Player:
       queue+= len( self.rawFrames )+ len( self.decodedFrames )
     
     return queue> 0
-  
+
   # ------------------------------------
   def _getPTS( self ):
     if self.aindex== -1:
@@ -541,22 +577,34 @@ class Player:
           time.sleep( 0.01 )
           continue
         
-        self.frameNum= -1
-        format= self.playingFile.split( '.' )[ -1 ].lower()
+        self.length= self.frameNum= -1
         # Initialize demuxer and read small portion of the file to have more info on the format
-        dm= muxer.Demuxer( format )
-        if type( self.playingFile )== str:
+        self.err= []
+        if type( self.playingFile ) in ( str, unicode ):
           try:
             f= open( self.playingFile, 'rb' )
+            format= self.playingFile.split( '.' )[ -1 ].lower()
           except:
+            traceback.print_exc()
             self.err.append( sys.exc_info()[1] )
-            raise
+            self.playingFile= None
+            continue
         else:
+          format= self.fileFormat
           f= self.playingFile
         
-        s= f.read( VIDEO_FILE_CHUNK )
+        try:
+          dm= muxer.Demuxer( format )
+        except:
+          traceback.print_exc()
+          self.err.append( sys.exc_info()[1] )
+          self.playingFile= None
+          continue
+        
+        s= f.read( FILE_CHUNK )
         r= dm.parse( s )
-        self.metaData= dm.getInfo()
+        try: self.metaData= dm.getHeaderInfo()
+        except: self.metaData= {}
         
         # This seek sets the seeking position already at the desired offset from the beginning
         if self.startPos:
@@ -591,26 +639,38 @@ class Player:
         while len(s) and len( self.err )== 0 and \
             self.exitFlag== 0 and self.playingFile and len( streams ) and \
             self.playingFile== currentFile:
+          
           if self.isPaused():
             time.sleep( PAUSE_SLEEP )
             continue
-          
+        
           for d in r:
-            if not self.playingFile:
+            if self.playingFile!= currentFile:
               break
             
             # Seeking stuff
-            if not self.seek in ( 0, SEEK_IN_PROGRESS ):
-              f.seek( self.seek, 0 )
-              self._resetAudio()
-              self._resetVideo()
+            if self.seek>= 0:
+              f.seek( self.seek* self.getABitRate()/ 8, 0 )
+              seek= self.seek
+              self.aDecodedFrames= []
+              self.aDelta= seek
+              if self.ac:
+                self.ac.reset()
+                self.snd.stop()
               self.rawFrames= []
               self.decodedFrames= []
-              self.seek= SEEK_IN_PROGRESS
+              if self.vc:
+                self.vc.reset()
+              if self.vindex== -1:
+                # Seek immediately if only audio stream is available
+                self.seek= -1
+              else:
+                # Wait for a key video frame to arrive
+                self.seek= SEEK_IN_PROGRESS
               break
             
             # See if we reached the end position of the video clip
-            if self.endPos and self.getPTS()* 1000> self.endPos:
+            if self.endPos and self._getPTS()* 1000> self.endPos:
               # Seek at the end and close the reading loop instantly 
               f.seek( 0, 2 )
               break
@@ -618,42 +678,48 @@ class Player:
             try:
               # Demux file into streams
               if d[ 0 ]== self.vindex:
-                #print 'V', self.seek, self.aindex
                 # Process video frame
                 self._processVideoFrame( d )
-                #print 'VV'
               elif d[ 0 ]== self.aindex and self.seek!= SEEK_IN_PROGRESS:
-                #print 'A'
                 # Decode and play audio frame
                 self._processAudioFrame( d )
-                #print 'AA'
             except:
               traceback.print_exc()
               raise
           
           # Read next encoded chunk and demux it
-          s= f.read( 10000 )
+          s= f.read( 512 )
           r= dm.parse( s )
         
         if f: f.close()
+
         # Close current file when error detected
         if len( self.err ):
-          self.stopPlayback( False )
-          
+          self.stopPlayback()
+        
         # Wait until all frames are played
         while self._hasQueue()> 0 and self.isPlaying():
-          print len( self.decodedFrames ), len( self.rawFrames ), len( self.aDecodedFrames )
           self._processVideoFrame( None, True )
           self._processAudio()
+        
+        while self.aindex!= -1 and self._getSndLeft()> 0 and self.isPlaying():
+          time.sleep( 0.01 )
         
         self._resetAudio()
         self._resetVideo()
         
-        self.loops-= 1
-        if self.loops!= 0:
+        if self.loops> 0:
+          self.loops-= 1
           continue
         
-        self.playingFile= None
+        # Report the file end
+        try: f= self.callback.onPlaybackEnd
+        except: f= None
+        if f: 
+          f( self )
+        else:
+          self.playingFile= None
     except:
       traceback.print_exc()
-
+    
+    self.exitFlag= 1
