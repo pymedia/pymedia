@@ -21,19 +21,18 @@ extern "C" {
 #define LIBAVCODEC_IDENT	"FFmpeg" LIBAVCODEC_VERSION "b" LIBAVCODEC_BUILD_STR
 
 enum CodecID {
-    CODEC_ID_NONE,
+    CODEC_ID_NONE, 
     CODEC_ID_MPEG1VIDEO,
     CODEC_ID_MPEG2VIDEO, /* prefered ID for MPEG Video 1 or 2 decoding */
     CODEC_ID_MPEG2VIDEO_XVMC,
+    CODEC_ID_H261,
     CODEC_ID_H263,
     CODEC_ID_RV10,
-    CODEC_ID_MP2,
-    CODEC_ID_MP3, /* prefered ID for MPEG Audio layer 1, 2 or3 decoding */
-    CODEC_ID_VORBIS,
-    CODEC_ID_AC3,
+    CODEC_ID_RV20,
     CODEC_ID_MJPEG,
     CODEC_ID_MJPEGB,
     CODEC_ID_LJPEG,
+    CODEC_ID_SP5X,
     CODEC_ID_MPEG4,
     CODEC_ID_RAWVIDEO,
     CODEC_ID_MSMPEG4V1,
@@ -47,18 +46,12 @@ enum CodecID {
     CODEC_ID_SVQ1,
     CODEC_ID_SVQ3,
     CODEC_ID_DVVIDEO,
-    CODEC_ID_DVAUDIO,
-    CODEC_ID_WMAV1,
-    CODEC_ID_WMAV2,
-    CODEC_ID_MACE3,
-    CODEC_ID_MACE6,
     CODEC_ID_HUFFYUV,
     CODEC_ID_CYUV,
     CODEC_ID_H264,
     CODEC_ID_INDEO3,
     CODEC_ID_VP3,
-    CODEC_ID_AAC,
-    CODEC_ID_MPEG4AAC,
+    CODEC_ID_THEORA,
     CODEC_ID_ASV1,
     CODEC_ID_ASV2,
     CODEC_ID_FFV1,
@@ -70,9 +63,44 @@ enum CodecID {
     CODEC_ID_INTERPLAY_VIDEO,
     CODEC_ID_XAN_WC3,
     CODEC_ID_XAN_WC4,
+    CODEC_ID_RPZA,
+    CODEC_ID_CINEPAK,
+    CODEC_ID_WS_VQA,
+    CODEC_ID_MSRLE,
+    CODEC_ID_MSVIDEO1,
+    CODEC_ID_IDCIN,
+    CODEC_ID_8BPS,
+    CODEC_ID_SMC,
+    CODEC_ID_FLIC,
+    CODEC_ID_TRUEMOTION1,
+    CODEC_ID_VMDVIDEO,
+    CODEC_ID_MSZH,
+    CODEC_ID_ZLIB,
+    CODEC_ID_QTRLE,
+    CODEC_ID_SNOW,
+    CODEC_ID_TSCC,
+    CODEC_ID_ULTI,
+    CODEC_ID_QDRAW,
+    CODEC_ID_VIXL,
+    CODEC_ID_QPEG,
+    CODEC_ID_XVID,
+    CODEC_ID_PNG,
+    CODEC_ID_PPM,
+    CODEC_ID_PBM,
+    CODEC_ID_PGM,
+    CODEC_ID_PGMYUV,
+    CODEC_ID_PAM,
+    CODEC_ID_FFVHUFF,
+    CODEC_ID_RV30,
+    CODEC_ID_RV40,
+    CODEC_ID_VC9,
+    CODEC_ID_WMV3,
+    CODEC_ID_LOCO,
+    CODEC_ID_WNV1,
+    CODEC_ID_AASC,
 
     /* various pcm "codecs" */
-    CODEC_ID_PCM_S16LE,
+    CODEC_ID_PCM_S16LE= 0x10000,
     CODEC_ID_PCM_S16BE,
     CODEC_ID_PCM_U16LE,
     CODEC_ID_PCM_U16BE,
@@ -82,28 +110,62 @@ enum CodecID {
     CODEC_ID_PCM_ALAW,
 
     /* various adpcm codecs */
-    CODEC_ID_ADPCM_IMA_QT,
+    CODEC_ID_ADPCM_IMA_QT= 0x11000,
     CODEC_ID_ADPCM_IMA_WAV,
     CODEC_ID_ADPCM_IMA_DK3,
     CODEC_ID_ADPCM_IMA_DK4,
+    CODEC_ID_ADPCM_IMA_WS,
+    CODEC_ID_ADPCM_IMA_SMJPEG,
     CODEC_ID_ADPCM_MS,
     CODEC_ID_ADPCM_4XM,
+    CODEC_ID_ADPCM_XA,
+    CODEC_ID_ADPCM_ADX,
+    CODEC_ID_ADPCM_EA,
+    CODEC_ID_ADPCM_G726,
+    CODEC_ID_ADPCM_CT,
+    CODEC_ID_ADPCM_SWF,
 
-	/* AMR */
-    CODEC_ID_AMR_NB,
+    /* AMR */
+    CODEC_ID_AMR_NB= 0x12000,
+    CODEC_ID_AMR_WB,
+
     /* RealAudio codecs*/
-    CODEC_ID_RA_144,
+    CODEC_ID_RA_144= 0x13000,
     CODEC_ID_RA_288,
 
     /* various DPCM codecs */
-    CODEC_ID_ROQ_DPCM,
+    CODEC_ID_ROQ_DPCM= 0x14000,
     CODEC_ID_INTERPLAY_DPCM,
     CODEC_ID_XAN_DPCM,
-
-    CODEC_ID_FLAC,
+    CODEC_ID_SOL_DPCM,
     
-    CODEC_ID_MPEG2TS, /* _FAKE_ codec to indicate a raw MPEG2 transport
-                         stream (only used by libavformat) */ };
+    CODEC_ID_MP2= 0x15000,
+    CODEC_ID_MP3, /* prefered ID for MPEG Audio layer 1, 2 or3 decoding */
+    CODEC_ID_AAC,
+    CODEC_ID_MPEG4AAC,
+    CODEC_ID_AC3,
+    CODEC_ID_DTS,
+    CODEC_ID_VORBIS,
+    CODEC_ID_DVAUDIO,
+    CODEC_ID_WMAV1,
+    CODEC_ID_WMAV2,
+    CODEC_ID_MACE3,
+    CODEC_ID_MACE6,
+    CODEC_ID_VMDAUDIO,
+    CODEC_ID_SONIC,
+    CODEC_ID_SONIC_LS,
+    CODEC_ID_FLAC,
+    CODEC_ID_MP3ADU,
+    CODEC_ID_MP3ON4,
+    CODEC_ID_SHORTEN,
+    CODEC_ID_ALAC,
+    CODEC_ID_WESTWOOD_SND1,
+    
+    CODEC_ID_OGGTHEORA= 0x16000, 
+    
+    CODEC_ID_MPEG2TS= 0x20000, /* _FAKE_ codec to indicate a raw MPEG2 transport
+                         stream (only used by libavformat) */ 
+};
 
  enum CodecType {
     CODEC_TYPE_UNKNOWN = -1,
@@ -1640,6 +1702,21 @@ typedef enum {
  * integer resulting value
  */
 int avcodec(void* handle, avc_cmd_t cmd, void* pin, void* pout);
+
+/* endian macros */
+#if !defined(BE_16) || !defined(BE_32) || !defined(LE_16) || !defined(LE_32)
+#define BE_16(x)  ((((uint8_t*)(x))[0] << 8) | ((uint8_t*)(x))[1])
+#define BE_32(x)  ((((uint8_t*)(x))[0] << 24) | \
+                   (((uint8_t*)(x))[1] << 16) | \
+                   (((uint8_t*)(x))[2] << 8) | \
+                    ((uint8_t*)(x))[3])
+#define LE_16(x)  ((((uint8_t*)(x))[1] << 8) | ((uint8_t*)(x))[0])
+#define LE_32(x)  ((((uint8_t*)(x))[3] << 24) | \
+                   (((uint8_t*)(x))[2] << 16) | \
+                   (((uint8_t*)(x))[1] << 8) | \
+                    ((uint8_t*)(x))[0])
+#endif
+ 
 
 /* memory */
 void *av_malloc(unsigned int size);

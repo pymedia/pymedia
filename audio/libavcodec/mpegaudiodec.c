@@ -313,6 +313,7 @@ static int mpeg_reset(AVCodecContext * avctx)
     s->inbuf = &s->inbuf1[s->inbuf_index][BACKSTEP_SIZE];
 		memset( &s->inbuf1[s->inbuf_index^1], 0, BACKSTEP_SIZE );
     s->inbuf_ptr = s->inbuf;
+    return 1;
 }
  
 static int decode_init(AVCodecContext * avctx)

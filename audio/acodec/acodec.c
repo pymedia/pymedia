@@ -759,7 +759,7 @@ Codec_New( PyObject* cObj, PyTypeObject *type, int bDecoder )
 	//codec->cCodec= (AVCodecContext*)av_mallocz( sizeof( AVCodecContext ));
 	if( !p )
 	{
-		PyErr_Format(g_cErr, "cannot find codec with id %d. Check the id in params you pass.", iId );
+		PyErr_Format(g_cErr, "cannot find codec with id %x. Check the id in params you pass.", iId );
 		Py_DECREF( codec );
 		return NULL;
 	}
@@ -982,7 +982,12 @@ initacodec(void)
 	PCM_CODEC(CODEC_ID_PCM_U8, pcm_u8);
 	PCM_CODEC(CODEC_ID_PCM_ALAW, pcm_alaw);
 	PCM_CODEC(CODEC_ID_PCM_MULAW, pcm_mulaw);
- 
+
+  PCM_CODEC(CODEC_ID_ADPCM_IMA_QT, adpcm_ima_qt);
+  PCM_CODEC(CODEC_ID_ADPCM_IMA_WAV, adpcm_ima_wav);
+  PCM_CODEC(CODEC_ID_ADPCM_MS, adpcm_ms);
+  PCM_CODEC(CODEC_ID_ADPCM_4XM, adpcm_4xm);
+  
 	PyModule_AddStringConstant(m, "__doc__", PYDOC );
 	PyModule_AddStringConstant(m, "version", PYMEDIA_VERSION_FULL );
 	PyModule_AddIntConstant(m, "build", PYBUILD );
@@ -1084,6 +1089,7 @@ def aplayer( name ):
 	s= f.read( 32000 )
 	while len( s ):
 		frames= dm.parse( s )
+		print 'demux produced %d frames' % len( frames )
 		if frames:
 			for fr in frames:
 				# Assume for now only audio streams
@@ -1130,8 +1136,8 @@ def dectest( name ):
 				print len( sTmp )
 
 #dectest( "c:\\music\ATB\\No Silence (2004)\\02 - Ecstasy.flac" )
-#aplayer( "c:\\bors\\media\\test.wma" )
+aplayer( "c:\\bors\\media\\test.wma" )
 #aplayer( "c:\\bors\\media\\test.aac" )
-dectest( "c:\\bors\\media\\test.mp3" )
+dectest( "c:\\bors\\medias\\test.mp3" )
 
 */
