@@ -211,6 +211,10 @@ static int find_tag(ByteIOContext *pb, UINT32 tag1)
         size = get_le32(pb);
         if (tag == tag1)
             break;
+
+	      if( get_mem_buffer_size( pb )< size+ 8 )
+		      return AVILIB_NEED_DATA;
+
         url_fseek(pb, size, SEEK_CUR);
     }
     if (size < 0)
@@ -259,7 +263,10 @@ static int wav_read_header(AVFormatContext *s,
     if (!st)
         return AVERROR_NOMEM;
 
-    get_wav_header(pb, &st->codec, (size >= 18));
+	  if( get_mem_buffer_size( pb )< size )
+		  return AVILIB_NEED_DATA;
+
+    get_wav_header(pb, &st->codec, size );
     
     size = find_tag(pb, MKTAG('d', 'a', 't', 'a'));
     if (size < 0)
@@ -302,6 +309,9 @@ static AVInputFormat wav_iformat = {
     wav_read_header,
     wav_read_packet,
     wav_read_close,
+    NULL,
+		0,
+		"wav",
 };
 
 static AVOutputFormat wav_oformat = {

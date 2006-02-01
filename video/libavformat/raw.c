@@ -23,7 +23,39 @@
 #define ALBUM_STR "album"
 #define TRACK_STR "tracknumber"
 #define YEAR_STR "year"
+#define GENRE_STR "genre"
 
+#define ID3_GENRE_MAX 125
+
+static const char *GENRE_TAB[ID3_GENRE_MAX + 1] = {
+    "Blues", "Classic Rock", "Country", "Dance", "Disco",
+    "Funk","Grunge","Hip-Hop","Jazz","Metal",
+    "New Age","Oldies","Other","Pop","R&B",
+    "Rap", "Reggae", "Rock","Techno","Industrial",
+    "Alternative","Ska","Death Metal","Pranks","Soundtrack",
+    "Euro-Techno","Ambient","Trip-Hop","Vocal","Jazz+Funk",
+    "Fusion",    "Trance",    "Classical",    "Instrumental",    "Acid",
+    "House","Game","Sound Clip","Gospel","Noise",
+    "AlternRock","Bass", "Soul","Punk","Space",
+    "Meditative","Instrumental Pop","Instrumental Rock","Ethnic","Gothic",
+    "Darkwave","Techno-Industrial","Electronic","Pop-Folk","Eurodance",
+    "Dream","Southern Rock","Comedy","Cult","Gangsta",
+    "Top 40","Christian Rap","Pop/Funk","Jungle","Native American",
+    "Cabaret","New Wave","Psychadelic","Rave","Showtunes",
+    "Trailer","Lo-Fi","Tribal","Acid Punk","Acid Jazz",
+    "Polka","Retro","Musical","Rock & Roll","Hard Rock",
+    "Folk","Folk-Rock","National Folk","Swing","Fast Fusion",
+    "Bebob","Latin","Revival","Celtic","Bluegrass",
+    "Avantgarde", "Gothic Rock","Progressive Rock","Psychedelic Rock","Symphonic Rock",
+    "Slow Rock", "Big Band","Chorus","Easy Listening","Acoustic",
+    "Humour","Speech", "Chanson","Opera","Chamber Music",
+    "Sonata","Symphony","Booty Bass","Primus","Porn Groove",
+    "Satire","Slow Jam",   "Club","Tango","Samba",
+    "Folklore","Ballad","Power Ballad","Rhythmic Soul","Freestyle",
+    "Duet","Punk Rock","Drum Solo","A capella","Euro-House",
+    "Dance Hall",
+};
+ 
 // ---------------------------------------------------------------------------------
 typedef struct
 {
@@ -495,6 +527,13 @@ static int mp3_read_header(AVFormatContext *s,
 		get_mp3_id3v2_tag( NULL, s->album, "TALB", sTmp1, iLen1 );
 		get_mp3_id3v2_tag( NULL, s->track, "TRCK", sTmp1, iLen1 );
 		get_mp3_id3v2_tag( NULL, s->year, "TYER", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->genre, "TCON", sTmp1, iLen1 );
+    // Check reference in ID3v2 tag
+    if( s->genre[ 0 ]== '(' )
+    {
+      s->genre[ strchr( s->genre, ')' )- s->genre ]= 0;
+      strcpy( s->genre, GENRE_TAB[ atoi( s->genre+ 1 ) ] );
+    }
 		//get_mp3_id3v2_tag( &s->album_cover, NULL, "APIC", sTmp1, iLen1 );
 
 		av_free( sTmp1 );
@@ -504,6 +543,7 @@ static int mp3_read_header(AVFormatContext *s,
 	{
 		/* Almost sure we have id3 tag in here */
 		ID3INFO* id3_info= (ID3INFO*)sTmp;
+    int i;
 		if( get_mem_buffer_size( pb )< 125 )
 			/* No enough data to get the correct tag info( hopefully it won't happen ever... ) */
 			return 0;
@@ -512,9 +552,23 @@ static int mp3_read_header(AVFormatContext *s,
 
 		// Populate title/author/album/year/track etc
 		strncpy( s->title, id3_info->szTitle, 30 );
+    i= 29;
+    while( s->title[ i ]== ' ' )
+      s->title[ i-- ]= 0;
 		strncpy( s->author, id3_info->szArtist, 30 );
+    i= 29;
+    while( s->author[ i ]== ' ' )
+      s->author[ i-- ]= 0;
 		strncpy( s->album, id3_info->szAlbum, 30 );
+    i= 29;
+    while( s->album[ i ]== ' ' )
+      s->album[ i-- ]= 0;
 		strncpy( s->year, id3_info->szYear, 4 );
+		// Process genre from the extrnal tab
+    if( id3_info->genre> ID3_GENRE_MAX )
+  		strcpy( s->genre, "unknown" );
+    else
+		  strcpy( s->genre, GENRE_TAB[ id3_info->genre ] );
 		s->has_header= 1;
 	}
 	else

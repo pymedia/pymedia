@@ -246,6 +246,7 @@ typedef struct AVFormatContext {
     char year[4];
     char copyright[512];
     char comment[512];
+    char genre[64];
 		unsigned char *album_cover;
 		int has_header;
 		int flags; /* format specific flags */

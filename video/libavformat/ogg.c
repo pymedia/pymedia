@@ -24,7 +24,7 @@ typedef struct OggContext {
     /* input */
     ogg_sync_state oy ;
 } OggContext ;
- 
+
 
 #define TITLE_STR "title"
 #define ARTIST_STR "artist"
@@ -32,18 +32,31 @@ typedef struct OggContext {
 #define TRACK_STR "tracknum"
 #define YEAR_STR "year"
 
-static int ogg_write_header(AVFormatContext *avfcontext) 
+#ifndef WIN32
+int strnicmp( char *s, char* s1, int iCnt )
+{
+  int i;
+  for( i= 0; i< iCnt && !s[ i ] && !s1[ i ]; i++ )
+    if( tolower( s[ i ] )!= tolower( s1[ i ] ) )
+      return -1;
+
+  return 0;
+}
+
+#endif
+
+static int ogg_write_header(AVFormatContext *avfcontext)
 {
     OggContext *context = avfcontext->priv_data;
-    ogg_packet *op= &context->op;    
+    ogg_packet *op= &context->op;
     int n, i;
 
     ogg_stream_init(&context->os, 31415);
-    
+
     for(n = 0 ; n < avfcontext->nb_streams ; n++) {
         AVCodecContext *codec = &avfcontext->streams[n]->codec;
         uint8_t *p= codec->extradata;
-        
+
         av_set_pts_info(avfcontext->streams[n], 60, 1, AV_TIME_BASE);
 
         for(i=0; i < codec->extradata_size; i+= op->bytes){
@@ -60,7 +73,7 @@ static int ogg_write_header(AVFormatContext *avfcontext)
 
 		context->header_handled = 0 ;
     }
-    
+
     return 0 ;
 }
 
@@ -93,19 +106,19 @@ static int ogg_write_packet(AVFormatContext *avfcontext, AVPacket *pkt)
     op->granulepos= pts;
 
     /* correct the fields in the packet -- essential for streaming */
-                                                        
-    ogg_stream_packetin(&context->os, op);              
-                                                        
+
+    ogg_stream_packetin(&context->os, op);
+
     while(ogg_stream_pageout(&context->os, &og)) {
         put_buffer(&avfcontext->pb, og.header, og.header_len);
-	put_buffer(&avfcontext->pb, og.body, og.body_len);     
+	put_buffer(&avfcontext->pb, og.body, og.body_len);
 	put_flush_packet(&avfcontext->pb);
-    }                                                   
+    }
     op->packetno++;
 
     return 0;
 }
- 
+
 static int ogg_write_trailer(AVFormatContext *avfcontext) {
     OggContext *context = avfcontext->priv_data ;
     ogg_page og ;
@@ -119,14 +132,14 @@ static int ogg_write_trailer(AVFormatContext *avfcontext) {
     ogg_stream_clear(&context->os) ;
     return 0 ;
 }
- 
+
 /* --------------------------------------------------------------------------------- */
 void get_ogg_tag( char* sDest, char* sFrameName, char** sBufs, int iCount, int* piLens )
 {
 	int iLen= strlen( sFrameName );
 	int i= 0;
 	for( ; i< iCount; i++ )
-		if( !strncmp( sBufs[ i ], sFrameName, iLen ) && sBufs[ i ][ iLen ]== '=' )
+		if( !strnicmp( sBufs[ i ], sFrameName, iLen ) && sBufs[ i ][ iLen ]== '=' )
 		{
 			/* We found the frame, just write it to the buffer provided */
 			strncpy( sDest, &sBufs[ i ][ iLen+ 1 ], piLens[ i ]- iLen- 1 );
@@ -245,7 +258,6 @@ static int ogg_read_header(AVFormatContext *avfcontext, AVFormatParameters *ap)
 
     ast->codec.codec_type = CODEC_TYPE_AUDIO ;
     ast->codec.codec_id = CODEC_ID_VORBIS ;
-
     return 0;
 }
 
@@ -305,7 +317,7 @@ static AVOutputFormat ogg_oformat = {
     ogg_write_trailer,
 } ;
 
-int ogg_init(void) 
+int ogg_init(void)
 {
     av_register_input_format(&ogg_iformat);
     av_register_output_format(&ogg_oformat);
