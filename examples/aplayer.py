@@ -21,7 +21,7 @@ def aplayer( name, card, rate, tt ):
       for fr in frames:
         # Assume for now only audio streams
         if dec== None:
-          print dm.getInfo(), dm.streams
+          print dm.getHeaderInfo(), dm.streams
           dec= acodec.Decoder( dm.streams[ fr[ 0 ] ] )
         
         r= dec.decode( fr[ 1 ] )
