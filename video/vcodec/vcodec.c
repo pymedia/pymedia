@@ -102,7 +102,7 @@ const char* PYDOC=
 #define PICT_TYPE "pict_type"
 #define FRAME_NUMBER "frame_number"
 // Add By Vadim Grigoriev
-#define FRAME_PTS "frame_pts"
+#define PTS "pts"
 
 
 
@@ -116,7 +116,6 @@ char* FRAME_RATE_B= "frame_rate_base";
 char* GOP_SIZE="gop_size";
 char* MAX_B_FRAMES="max_b_frames";
 char* DEINTERLACE="deinterlace";
-char* PTS="pts";
 
 PyDoc_STRVAR(decoder_doc,
 DECODER_NAME"( codecParams ) -> "DECODER_NAME"\n\
@@ -180,7 +179,18 @@ typedef struct
 typedef struct
 {
 	PyObject_HEAD
-	PyObject* cData[ 3 ];
+	void *pBase;
+	void *pData;
+	int iLen;
+	int iPlane;
+	PyCodecObject* cObj;
+} PyVCStringObject;
+
+// ---------------------------------------------------------------------------------
+typedef struct
+{
+	PyObject_HEAD
+	PyVCStringObject* cData[ 3 ];
 	int width;
 	int height;
 	float aspect_ratio;
@@ -192,19 +202,8 @@ typedef struct
 	int pict_type;
 	int frame_number;
 // Add By Vadim Grigoriev
-	int64_t frame_pts;
+	int64_t pts;
 } PyVFrameObject;
-
-// ---------------------------------------------------------------------------------
-typedef struct
-{
-	PyObject_HEAD
-	void *pBase;
-	void *pData;
-	int iLen;
-	int iPlane;
-	PyCodecObject* cObj;
-} PyVCStringObject;
 
 /* -----------------------------------------------------------------------------------------------*/
 typedef struct AVILIBError
@@ -318,7 +317,7 @@ int SetCodecParams( PyCodecObject* obj, PyObject* cObj )
 
 
 // ---------------------------------------------------------------------------------
-static PyObject *VCString_New( PyCodecObject* obj, int iPlane )
+static PyVCStringObject *VCString_New( PyCodecObject* obj, int iPlane )
 {
 	PyVCStringObject* cStr= (PyVCStringObject*)PyObject_New( PyVCStringObject, &VCStringType );
 	if( !cStr )
@@ -337,13 +336,13 @@ static PyObject *VCString_New( PyCodecObject* obj, int iPlane )
 	if( !iPlane )
 		avcodec_default_incref_buffer(obj->cCodec, cStr->pData );
 
-	return (PyObject*)cStr;
+	return cStr;
 }
 
 // ----------------------------------------------------------------
 static void VCString_Del( PyVCStringObject *str )
 {
-	if( !str->iPlane )
+	if( !str->iPlane && str->pBase )
 		avcodec_default_decref_buffer(str->cObj->cCodec, str->pData );
 
 	Py_DECREF( str->cObj );
@@ -611,7 +610,7 @@ frame_get_data(PyVFrameObject *frame, void *closure)
 		// One plane
 		default:
 			Py_INCREF( frame->cData[ 0 ] );
-			return frame->cData[ 0 ];
+			return (PyObject*)frame->cData[ 0 ];
 	};
 }
 
@@ -644,13 +643,16 @@ int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame)
 			return -1;
 		}
 
-		PyArg_Parse( cFrame->cData[i], "s#", &frame->data[i], &iLen );
+		PyArg_Parse( (PyObject*)cFrame->cData[i], "s#", &frame->data[i], &iLen );
 		if (!i)
 			frame->linesize[i] =  iLen / frame_get_height(cFrame); //cFrame->cDec->cCodec->width;
 		else
 			frame->linesize[i] = iLen* 2 / frame_get_height(cFrame); // cFrame->cDec->cCodec->width/2;
 //		printf ("linesize:%d\n",frame->linesize[i]);
 	}
+  frame->pict_type= cFrame->pict_type;
+  frame->display_picture_number= cFrame->frame_number;
+  frame->pts= cFrame->pts;
 	return 0;
 }
 
@@ -750,10 +752,10 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	cRes->width= cSrc->width;
 	cRes->pix_fmt= iFormat;
 	cRes->pict_type= cSrc->pict_type;
-        cRes->frame_pts= -1;
+        cRes->pts= -1;
 	// Copy string(s)
 	for( i= 0; i< iPlanes; i++ )
-		cRes->cData[ i ]= acPlanes[ i ];
+		cRes->cData[ i ]= (PyVCStringObject*)acPlanes[ i ];
 
 	return (PyObject*)cRes;
 }
@@ -783,7 +785,7 @@ static PyMemberDef frame_members[] =
 	{PICT_TYPE, T_INT, offsetof(PyVFrameObject,pict_type), 0, "Type of the frame( 1-I, 2-P, 3-B ) "},
 	{FRAME_NUMBER, T_INT, offsetof(PyVFrameObject,frame_number), 0, "Frame number in a stream"},
 // Add By Vadim Grigoriev
-	{FRAME_PTS, T_LONG, offsetof(PyVFrameObject,frame_pts), 0, "Frame PTS"},
+	{PTS, T_LONG, offsetof(PyVFrameObject,pts), 0, "Frame PTS"},
 	{NULL},
 };
 
@@ -815,11 +817,11 @@ static PyObject* PyNewVFrame( PyTypeObject *type, PyObject *args, PyObject *kwds
 	//memset( &cFrame->cData[ 0 ], 0, sizeof( cFrame->cData ) );
 
 	// Store
-	cFrame->cData[ 0 ]= y;
+	cFrame->cData[ 0 ]= (PyVCStringObject*)y;
 	Py_INCREF( y );
-	cFrame->cData[ 1 ]= u;
+	cFrame->cData[ 1 ]= (PyVCStringObject*)u;
 	Py_INCREF( u );
-	cFrame->cData[ 2 ]= v;
+	cFrame->cData[ 2 ]= (PyVCStringObject*)v;
 	Py_INCREF( v );
 	cFrame->width= iWidth;
 	cFrame->height= iHeight;
@@ -997,7 +999,48 @@ static PyObject* Frame_New_LAVC( PyCodecObject* obj )
 	cRes->pict_type= obj->frame.pict_type;
 	cRes->frame_number= obj->cCodec->frame_number;
 // add by Vadim Grigoriev
-	cRes->frame_pts= obj->frame.pts;
+	cRes->pts= obj->frame.pts;
+	return (PyObject*)cRes;
+}
+
+// ---------------------------------------------------------------------------------
+// New frame for libavcodec codecs
+//
+static PyObject* Frame_New_LAVC_Enc( PyCodecObject* obj, char* sBuf, int iLen )
+{
+	PyVFrameObject* cRes= (PyVFrameObject*)PyObject_New( PyVFrameObject, &VFrameType );
+	if( !cRes )
+		return NULL;
+
+	// Start assembling result into frame
+	memset( &cRes->cData[ 0 ], 0, sizeof( cRes->cData ) );
+
+	cRes->cData[0]= (PyVCStringObject*)PyObject_New( PyVCStringObject, &VCStringType );
+	if( !cRes->cData[0] )
+  {
+    Py_DECREF( cRes );
+		return NULL;
+  }
+
+	cRes->cData[0]->iLen= iLen;
+	cRes->cData[0]->pBase= NULL;
+	cRes->cData[0]->pData= sBuf;
+	cRes->cData[0]->iPlane= 0;
+  cRes->cData[0]->cObj= obj;
+  Py_INCREF( obj );
+
+	cRes->aspect_ratio= obj->cCodec->aspect_ratio;
+	cRes->frame_rate= obj->cCodec->frame_rate;
+	cRes->frame_rate_base= obj->cCodec->frame_rate_base;
+	cRes->pix_fmt= -1;
+	cRes->width= obj->cCodec->width;
+	cRes->height= obj->cCodec->height;
+	cRes->bit_rate= obj->cCodec->bit_rate;
+	cRes->resync= obj->cCodec->resync;
+	cRes->pict_type= obj->frame.pict_type;
+	cRes->frame_number= obj->cCodec->frame_number;
+// add by Vadim Grigoriev
+	cRes->pts= obj->frame.pts;
 	return (PyObject*)cRes;
 }
 
@@ -1131,7 +1174,7 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	int iLen = 0;
 	AVFrame picture;
 
-#define ENCODE_OUTBUF_SIZE 100000
+#define ENCODE_OUTBUF_SIZE 300000
 
 	char sOutbuf[ ENCODE_OUTBUF_SIZE ];
 	if (!PyArg_ParseTuple(args, "O!", &VFrameType, &cFrame ))
@@ -1161,7 +1204,7 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	PyVFrame2AVFrame(cFrame, &picture );
 	iLen = avcodec_encode_video(obj->cCodec, sOutbuf, ENCODE_OUTBUF_SIZE,	&picture);
 	if (iLen > 0)
-		cRes = PyString_FromStringAndSize((const char*)sOutbuf,iLen );
+		cRes= Frame_New_LAVC_Enc( obj, sOutbuf, iLen );
 	else
 		PyErr_Format(g_cErr, "Failed to encode frame( error code is %d )", iLen );
 
@@ -1562,6 +1605,56 @@ try: t= time.time()- t
 except: t= time.time()- t
 
 print 'Decoded %d frames in %.2f secs( %.2f fps )' % ( frames, t, float( frames )/ t )
+
+
+
+import sys
+import pymedia.muxer as muxer
+import pymedia.video.vcodec as vcodec
+
+def recodeVideo( inFile, outFile, outCodec ):
+  dm= muxer.Demuxer( inFile.split( '.' )[ -1 ] )
+  f= open( inFile, 'rb' )
+  fw= open( outFile, 'wb' )
+  s= f.read( 400000 )
+  r= dm.parse( s )
+  v= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_VIDEO, dm.streams )
+  if len( v )== 0:
+	  raise 'There is no video stream in a file %s' % inFile
+  
+  v_id= v[ 0 ][ 'index' ]
+  print 'Assume video stream at %d index: ' % v_id
+  c= vcodec.Decoder( dm.streams[ v_id ] )
+  e= None
+  while len( s )> 0:
+	  for fr in r:
+		  if fr[ 0 ]== v_id:
+			  d= c.decode( fr[ 1 ] )
+			  if d and d.data:
+				  if e== None:
+					  params= c.getParams()
+					  params[ 'id' ]= vcodec.getCodecID( outCodec )
+					  # Just try to achive max quality( 2.7 MB/sec mpeg1 and 9.8 for mpeg2 )
+					  if outCodec== 'mpeg1video':
+						  params[ 'bitrate' ]= 2700000
+					  else:
+						  params[ 'bitrate' ]= 9800000
+					  # It should be some logic to work with frame rates and such.
+					  # I'm not aware of what it would be...
+					  print 'Setting codec to ', params
+					  e= vcodec.Encoder( params )
+				  
+				  print '------------------'
+          dw= e.encode( d )
+				  print '..................'
+          print 'Format %d, Datasize %d, Rate %d, Rate Base %d, Pict Type %d, Frame Number %d' % ( dw.format, len( dw.data ), dw.rate, dw.rate_base, dw.pict_type, dw.frame_number )
+	  
+	  s= f.read( 400000 )
+	  r= dm.parse( s )
+
+recodeVideo( 'c:\\movies\\Office.Space.1.avi', 'test.mpg', 'mpeg1video' )
+
+ 
 
 */
 
