@@ -32,6 +32,16 @@ extern PyTypeObject MuxerType ;
 #define TRACK "track"
 #define COPYRIGHT "copyright"
 #define COMMENT "comment"
+#define GENRE "genre"
+
+#define AUTHOR_U "ARTIST"
+#define TITLE_U "TITLE"
+#define YEAR_U "YEAR"
+#define ALBUM_U "ALBUM"
+#define TRACK_U "TRACK"
+#define COPYRIGHT_U "COPYRIGHT"
+#define COMMENT_U "COMMENT"
+#define GENRE_U "GENRE"
 
 #define RETURN_NONE return (Py_INCREF(Py_None), Py_None); 
 

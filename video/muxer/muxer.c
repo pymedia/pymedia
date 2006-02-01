@@ -343,14 +343,11 @@ static PyObject* Muxer_AddStream( PyMuxerObject* obj, PyObject *args)
 // ----------------------------------------------------------------
 static PyObject* Muxer_Start( PyMuxerObject* obj)
 {
-//FD: this constant is stolen from aviobuf.c
-#	define IO_BUFFER_SIZE 32768
-
+	PyObject* cRes = NULL;
 	// Validate that start() was called. No action if that's the case
 	if( obj->bStarted )
 		RETURN_NONE
 
-	PyObject* cRes = NULL;
 	if (init_put_byte(&obj->oc.pb) < 0)
 	{
 		PyErr_Format(g_cErr, START_NAME"(): Error initialising init_put_byte");
