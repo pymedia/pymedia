@@ -88,11 +88,17 @@ class Dependency_unix:
                 self.inc_dir = dir
                 break
         for dir in libdirs:
-            path = os.path.join(dir, libname+ '.a')
-            if os.path.isfile(path):
+            path1 = os.path.join(dir, libname+ '.a')
+	    path2 = os.path.join(dir, libname+ '.so')
+            if os.path.isfile(path1):
                 self.lib_dir = dir
                 self.lib= self.lib[ 3: ]
                 break
+	    if os.path.isfile(path2):
+                self.lib_dir = dir
+                self.lib= self.lib[ 3: ]
+                break
+		
                 
         if self.lib_dir and self.inc_dir:
             print self.name + '             '[len(self.name):] + ': found'

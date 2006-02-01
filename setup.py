@@ -8,7 +8,7 @@ except:
   raise
 
 MODULE_NAME= 'pymedia'
-VERSION= '1.3.5.0-pre2'
+VERSION= '1.3.5.0'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.
@@ -86,6 +86,7 @@ FILES={
 			'mdct.c',
 			'ac3enc.c',
 			'flac.c',
+			'adpcm.c',
 		),
 	},
 	'muxer':
@@ -93,8 +94,8 @@ FILES={
 		'#dir': 'video',
 		'':
 		(
-			'muxer/demuxer.cpp',
-			'muxer/muxer.cpp',
+			'muxer/demuxer.c',
+			'muxer/muxer.c',
 			'mem.c',
 			'common.c'
 		),
@@ -221,7 +222,7 @@ else:
 			'/usr/include', 
 			'/usr/local/include', 
 			'/usr/local/include/lame',]
-		lib_hunt = [ '/usr/lib', '/usr/local/lib', ]
+		lib_hunt = [ '/usr/lib64', '/usr/lib', '/usr/local/lib64', '/usr/local/lib' ]
 		LIBS= []
 		DEFINES+= [
 			('PATH_DEV_DSP', '"/dev/dsp"' ), 
@@ -249,6 +250,7 @@ DEPS = [
 		dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
 		dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
 		dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
+		dep('ALSA', 'libasound','alsa/asoundlib.h','libasound', 'CONFIG_ALSA').configure(inc_hunt,lib_hunt),
 ]
 
 DEPS= filter( lambda x: x.found, DEPS )
