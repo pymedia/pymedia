@@ -22,22 +22,26 @@
 
 #include <Python.h>
 #include <structmember.h>
-   
+#define USE_ALSA
+
 #if defined( WIN32 ) || defined( SYS_CYGWIN )
-#include "audio_win.h" 
+#include "audio_win.h"
 #else
-#include "audio_unix.h"
+ #if defined CONFIG_ALSA
+  #include "audio_alsa.h"
+ #else
+  #include "audio_unix.h"
+ #endif
 #endif
 
-#include "version.h"
 #include "resample.h"
 #include "fft.h"
- 
+
 #ifndef BUILD_NUM
-#define BUILD_NUM 1
+#define BUILD_NUM 1 
 #endif
 
-#define MODULE_NAME "pymedia"PYMEDIA_VERSION".audio.sound"
+#define MODULE_NAME "pymedia.audio.sound"
 
 #define RETURN_NONE	Py_INCREF( Py_None ); return Py_None;
 
@@ -100,7 +104,6 @@ Here is the simple player for a pcm file\n\
 #define COUNT_NAME "count"
 #define GET_VALUE_NAME "getValue"
 #define SET_VALUE_NAME "setValue"
-#define IS_ACTIVE_NAME "isActive"
 #define SET_ACTIVE_NAME "setActive"
 #define PROP_CHANNELS_NAME "channels"
 #define GET_VOLUME_NAME "getVolume"
@@ -132,7 +135,7 @@ Here is the simple player for a pcm file\n\
 #define GET_DATA_DOC GET_DATA_NAME"() -> data \n\treturns data from the sound device as string.\n"
 #define IS_PLAYING_DOC IS_PLAYING_NAME"() -> {0|1}\n\tWhether sound is playing\n"
 #define GET_LEFT_DOC GET_LEFT_NAME"() -> secs \n\tNumber of seconds left in a buffer to play\n"
-#define GET_SPACE_DOC GET_SPACE_NAME"() -> secs \n\tNumber of seconds left in a buffer to enqueue without blocking\n"
+#define GET_SPACE_DOC GET_SPACE_NAME"() -> secs \n\tNumber of bytes left in a buffer to enqueue without blocking\nOn Windows data allocated in 10K chunks. So if you enqueue less than 10K at once it will use the whole chunk."
 #define RESAMPLE_DOC RESAMPLE_NAME"( data ) -> data\n\t\tstring with resampled audio samples\n"\
 				"Resamples audio stream from->to certain format."
 #define AS_FREQS_DOC AS_FREQS_NAME"( data ) -> [ ( freqs* ) ]\nList of frequency lists.\nFor every n( given as number of samples ) it returns \n"\
@@ -205,8 +208,6 @@ const char* OUTPUT_DOC=
 		"\n\t"GETRATE_NAME"()"
 		"\n\t"GET_LEFT_NAME"()"
 		"\n\t"GET_SPACE_NAME"()"
-		"\n\t"GETVOLUME_DOC"()"
-		"\n\t"SETVOLUME_DOC"()"
 		"\n\t"IS_PLAYING_NAME"()";
 
 const char* INPUT_DOC=
@@ -531,25 +532,6 @@ Sound_Unpause( PyOSoundObject* obj)
 
 // ---------------------------------------------------------------------------------
 static PyObject *
-Sound_GetVolume( PyOSoundObject* obj)
-{
-	return PyLong_FromLong( obj->cObj->GetVolume() & 0xffff );
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
-Sound_SetVolume( PyOSoundObject* obj, PyObject *args)
-{
-	int iVolume;
-	if (!PyArg_ParseTuple(args, "i:setVolume", &iVolume ))
-		return NULL;
-
-	obj->cObj->SetVolume( iVolume | ( ((unsigned int)iVolume) << 16 ) );
-	RETURN_NONE
-}
-
-// ---------------------------------------------------------------------------------
-static PyObject *
 Sound_GetRate( PyOSoundObject* obj)
 {
 	return PyInt_FromLong( obj->cObj->GetRate() );
@@ -589,7 +571,6 @@ Sound_GetLeft( PyOSoundObject* obj)
   Py_END_ALLOW_THREADS 
   if( d< -0.01 )
 	{
-		printf( GET_LEFT_NAME"() failed because of %d:%s( %f )", obj->cObj->GetLastError(), obj->cObj->GetErrorString(), d ); 
  		PyErr_Format( g_cErr, GET_LEFT_NAME"() failed because of %d:%s", obj->cObj->GetLastError(), obj->cObj->GetErrorString() ); 
 		return NULL;
 	}
@@ -598,7 +579,7 @@ Sound_GetLeft( PyOSoundObject* obj)
 
 // ---------------------------------------------------------------------------------
 static PyObject *
-Sound_GetSpace( PyOSoundObject* obj) 
+Sound_GetSpace( PyOSoundObject* obj)
 {
 	int i;
   Py_BEGIN_ALLOW_THREADS
@@ -610,6 +591,25 @@ Sound_GetSpace( PyOSoundObject* obj)
 		return NULL;
 	}
   return PyInt_FromLong( i );
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject *
+Sound_GetVolume( PyOSoundObject* obj)
+{
+	return PyLong_FromLong( obj->cObj->GetVolume() & 0xffff );
+}
+
+// ---------------------------------------------------------------------------------
+static PyObject *
+Sound_SetVolume( PyOSoundObject* obj, PyObject *args)
+{
+	int iVolume;
+	if (!PyArg_ParseTuple(args, "i:setVolume", &iVolume ))
+		return NULL;
+
+	obj->cObj->SetVolume( iVolume | ( ((unsigned int)iVolume) << 16 ) );
+	RETURN_NONE
 }
 
 // ---------------------------------------------------------------------------------
@@ -727,13 +727,6 @@ MixerControl_GetName(PyMixerControlObject *obj, void *closure)
 
 // ----------------------------------------------------------------
 static PyObject *
-MixerControl_IsActive(PyMixerControlObject *obj)
-{
-	return PyInt_FromLong( obj->cObj->cObj->IsActive( obj->iDest, obj->iConn, obj->iControl ) );
-}
-
-// ----------------------------------------------------------------
-static PyObject *
 MixerControl_SetActive(PyMixerControlObject *obj)
 {
 	obj->cObj->cObj->SetActive( obj->iDest, obj->iConn, obj->iControl );
@@ -783,7 +776,6 @@ static PyMethodDef mixer_control_methods[] =
 	{ GET_VALUE_NAME, (PyCFunction)MixerControl_GetValue, METH_NOARGS, GET_VALUE_DOC },
 	{ SET_VALUE_NAME, (PyCFunction)MixerControl_SetValue, METH_VARARGS, SET_VALUE_DOC },
 	{ SET_ACTIVE_NAME, (PyCFunction)MixerControl_SetActive, METH_NOARGS, SET_ACTIVE_DOC },
-	{ IS_ACTIVE_NAME, (PyCFunction)MixerControl_IsActive, METH_NOARGS, IS_ACTIVE_DOC },
 	{ NULL, NULL },
 };
 
@@ -1192,7 +1184,7 @@ static PyObject* Analyzer_AsBands( PyAnalyzerObject* obj, PyObject *args)
 		return NULL;
 
 	// Calc some static data
-	float octaves= (float)( log( (double)( HIGH_FREQ/ LOW_FREQ ) )/ log( (double)2 ) );
+	float octaves= (float)( log( (double)HIGH_FREQ/ LOW_FREQ )/ log( (double)2 ) );
   float octaves_per_band = octaves / iBands;
   float mult = powf( 2.0f, octaves_per_band ); // each band's highest freq.
 	float fFreqDelta= ( HIGH_FREQ- LOW_FREQ )/ ( obj->analyzer->GetNumFreq() / 2 );
@@ -1357,10 +1349,6 @@ static PyObject* GetOutputDevices( PyObject* obj )
 {
 	// Query operating system for a list of devices
 	OutputDevices cDevs;
-	if( cDevs.Count()== 0 )
-	{
-		RETURN_NONE
-	}
 
 	// Create as many members as we have output devices
 	PyObject* cRes= PyTuple_New( cDevs.Count() );
@@ -1389,11 +1377,6 @@ static PyObject* GetInputDevices( PyObject* obj )
 {
 	// Query operating system for a list of devices
 	InputDevices cDevs;
-	if( cDevs.Count()== 0 )
-	{
-		RETURN_NONE
-	}
-
 	// Create as many members as we have output devices
 	PyObject* cRes= PyTuple_New( cDevs.Count() );
 	if( !cRes )
@@ -1583,8 +1566,7 @@ res= a.asBands( 3, s1 )
 import pymedia.audio.sound as sound
 mixer= sound.Mixer()
 c= mixer.getControls()
-mm= c[ 17 ]['control']
-
+mm= c[ 0 ]['control']
 m= c[ 1 ]['control']
 m.setValue(1)
 

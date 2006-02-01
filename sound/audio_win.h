@@ -869,7 +869,7 @@ public:
 		double fPos1= this->GetPosition();
 		for( int i= 0; i< this->iBuffers; i++ )
 			fPos+= ((double)this->headers[ ( this->iProcessed+ i ) % MAX_HEADERS ].dwBufferLength )/ ((double)( 2* this->iChannels* this->iRate ));
-		return ( fPos- fPos1 ) < 0 ? 0: ( fPos- fPos1 );
+    return ( fPos- fPos1 ) < 0 ? 0: (this->iBuffers ? ( fPos- fPos1 ): 0 );
 	}
 	// ---------------------------------------------------------------------------------------------------
 	int GetSpace()
