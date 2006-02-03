@@ -29,4 +29,4 @@ from meta import getMetaData
 
 muxer.error = muxer.MuxerError
 muxer.extensions= muxer.audio_extensions+ muxer.video_extensions
-__version__= "1.3.5"
+__version__= "1.3.7.0"
