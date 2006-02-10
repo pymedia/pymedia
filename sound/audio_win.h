@@ -27,7 +27,7 @@
 #include <mmsystem.h>
 #include "afmt.h"
 
-const int MAX_HEADERS= 20;
+const int MAX_HEADERS= 40;
 const int BUFFER_SIZE= 10000;
 
 static void CALLBACK wave_callback(HWAVE hWave, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2);
