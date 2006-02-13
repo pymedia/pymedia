@@ -169,6 +169,7 @@ private:
 	bool RefreshDevice( int i )
 	{
 	char *cname; 
+	char devname[20];
 	int err;
 
 	snd_pcm_hw_params_t *hwparams;
@@ -193,7 +194,12 @@ private:
 	unsigned int val2;
 	snd_pcm_t *handle;
 	//printf("<-opening->\n");
-	res = snd_pcm_open( &handle,"default",SND_PCM_STREAM_PLAYBACK,0);
+
+        if (i>0)
+	sprintf((char *) &devname[0],"hw:%d",i-1);
+	else
+	strcpy((char *)&devname[0],"default");
+	res = snd_pcm_open( &handle,(char *)&devname[0],SND_PCM_STREAM_PLAYBACK,0);
 	if (res < 0) 
 	return false;
 	//printf("<-opened->\n");		
@@ -290,6 +296,7 @@ private:
     int framesize;
     /* Mixer identification for this stream*/
     char *cardname;
+    char devname[20];
     char *controlname;
     int controlid;    
     unsigned int periods;
@@ -353,8 +360,16 @@ private:
 	}          
 	
 	}
+        if (iDev>0)
+	{
+	sprintf((char *)&this->devname,"hw:%d",iDev-1);
+	}
+	else
+	{
+	strcpy((char *)&this->devname,"default");
+	}
 	//printf("snd_pcm_open\n");
-	res = snd_pcm_open( &(this->handle),cardname,SND_PCM_STREAM_PLAYBACK,0); //SND_PCM_NONBLOCK
+	res = snd_pcm_open( &(this->handle),(char *)&this->devname,SND_PCM_STREAM_PLAYBACK,0); //SND_PCM_NONBLOCK
 	if (res < 0) 
 	return res;
 /*        res = snd_pcm_nonblock(this->handle, SND_PCM_NONBLOCK);
@@ -627,6 +642,7 @@ private:
     int framesize;
     /* Mixer identification for this stream*/
     char *cardname;
+    char devname[20];
     const char *controlname;
     int controlid;    
     snd_mixer_t *mixer_handle;
@@ -678,7 +694,16 @@ private:
 	    return err;
 	 }          
 	}
-	res = snd_pcm_open( &(this->handle),cardname,SND_PCM_STREAM_CAPTURE,0); //SND_PCM_NONBLOCK
+        if (iDev>0)
+	{
+	sprintf((char *)&this->devname,"hw:%d",iDev-1);
+	}
+	else
+	{
+	strcpy((char *)&this->devname,"default");
+	}
+
+	res = snd_pcm_open( &(this->handle),(char *)&this->devname,SND_PCM_STREAM_CAPTURE,0); //SND_PCM_NONBLOCK
 	if (res < 0) 
 	return res;
 	const char *cntrl_name=NULL;
@@ -1006,6 +1031,7 @@ public:
 	Mixer( int i ) : DeviceHandler()
 	{
 	char *cardname = "default";
+        char devname[20];
 	int err;
 	// Now open default mixer control for this stream
 	if(i>0)
@@ -1013,8 +1039,16 @@ public:
 	 err=snd_card_get_name(iDev,&cardname);
 	 if(err<0) return ;
 	}
+        if (iDev>0)
+	{
+	sprintf((char *)&devname,"hw:%d",iDev-1);
+	}
+	else
+	{
+	strcpy((char *)&devname,"default");
+	}
 
-	err = alsamixer_gethandle(cardname,&this->handle);
+	err = alsamixer_gethandle((char *)&devname,&this->handle);
 	if (err < 0) {
 
 	     snd_mixer_close(this->handle);
