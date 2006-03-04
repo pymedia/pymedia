@@ -8,7 +8,7 @@ except:
   raise
 
 MODULE_NAME= 'pymedia'
-VERSION= '1.3.5.0'
+VERSION= '1.3.7.0'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.
@@ -220,6 +220,7 @@ else:
 		dep= config.Dependency_unix
 		inc_hunt = [ 
 			'/usr/include', 
+                        '/usr/include/lame', 
 			'/usr/local/include', 
 			'/usr/local/include/lame',]
 		lib_hunt = [ '/usr/lib64', '/usr/lib', '/usr/local/lib64', '/usr/local/lib' ]
