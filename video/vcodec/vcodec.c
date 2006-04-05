@@ -615,7 +615,7 @@ frame_get_data(PyVFrameObject *frame, void *closure)
 }
 
 // -------------------------
-int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame)
+int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame, int iFrameData)
 {
 	int iPlanes= 3, i;
   switch( cFrame->pix_fmt )
@@ -650,9 +650,12 @@ int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame)
 			frame->linesize[i] = iLen* 2 / frame_get_height(cFrame); // cFrame->cDec->cCodec->width/2;
 //		printf ("linesize:%d\n",frame->linesize[i]);
 	}
-  frame->pict_type= cFrame->pict_type;
-  frame->display_picture_number= cFrame->frame_number;
-  frame->pts= cFrame->pts;
+  if( iFrameData )
+  {
+    frame->pict_type= cFrame->pict_type;
+    frame->display_picture_number= cFrame->frame_number;
+    frame->pts= cFrame->pts;
+  }
 	return 0;
 }
 
@@ -671,8 +674,8 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	if (!PyArg_ParseTuple(args, "i|(ii)", &iFormat, &iWidth, &iHeight ))
 		return NULL;
 
-	// Well, not very safe, but works
-	PyVFrame2AVFrame( obj, (AVFrame*)&cSrcPict );
+	// Make sure the frame data is not copied
+	PyVFrame2AVFrame( obj, (AVFrame*)&cSrcPict, 0 );
 	memset( &cDstPict.data[ 0 ], 0, sizeof( cDstPict.data ) );
 
 	// Create new VFrame
@@ -713,6 +716,7 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 		case PIX_FMT_MONOWHITE:
 		case PIX_FMT_MONOBLACK:
 		case PIX_FMT_PAL8:
+			//iDepth++;
 			iPlanes= 1;
 			break;
 		default:
@@ -1201,7 +1205,7 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	}
 
 	/* check codec params */
-	PyVFrame2AVFrame(cFrame, &picture );
+	PyVFrame2AVFrame(cFrame, &picture, 1 );
 	iLen = avcodec_encode_video(obj->cCodec, sOutbuf, ENCODE_OUTBUF_SIZE,	&picture);
 	if (iLen > 0)
 		cRes= Frame_New_LAVC_Enc( obj, sOutbuf, iLen );
@@ -1581,12 +1585,11 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 					if d.data:
 						print d.rate, d.rate_base, float(d.rate_base)/d.rate
 						frames+= 1
-						if dummy== 0:
-							dd= d.convert( fmt )
-							print len( dd.data[ 0 ] ), dd.size
-							if not dummy:
-								img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
-								pygame.image.save( img, outFilePattern % i )
+						dd= d.convert( fmt )
+						print len( dd.data[ 0 ] ), dd.size
+						if not dummy:
+							img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
+							pygame.image.save( img, outFilePattern % i )
 					else:
 						print 'Empty frame'
           
@@ -1598,7 +1601,7 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 	f.close()
 	return frames
 
-frames= dumpVideo( 'c:\\movies\\mpeg4.avi', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
+frames= dumpVideo( 'c:\\movies\\Master.Margarita.06.kva.RUS.avi', 'c:\\bors\\hmedia\\libs\\pymedia\\examples\\dump\\test_%d.bmp', 2 )
 
 t= time.time()
 try: t= time.time()- t
