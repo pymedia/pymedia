@@ -251,8 +251,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 get_le32(pb); /* start */
                 nb_frames = get_le32(pb);
                 st->start_time = 0;
-                st->duration = nb_frames * 
-                    st->codec.frame_rate_base * AV_TIME_BASE / 
+                st->duration = ( (int64_t)nb_frames * 
+                    (int64_t)st->codec.frame_rate_base * (int64_t)AV_TIME_BASE ) / 
                     st->codec.frame_rate;
                 if (avi->type == 1 ) {
                     AVStream *st;
@@ -374,7 +374,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
         }
         return -1;
     }
-
+    s->has_header= 1;
     return 0;
 }
 
@@ -394,8 +394,9 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
     memset(d, -1, sizeof(int)*8);
 
 		/* See if we have enough data in a buffer for header */
-		if( get_mem_buffer_size( pb )< 20 )
+		if( get_mem_buffer_size( pb )< 200 )
 			return AVILIB_NEED_DATA;
+
     if (avi->type == 1 && avi->stream_index) {
         /* duplicate DV packet */
         av_init_packet(pkt);
@@ -467,7 +468,7 @@ static int avi_read_packet(AVFormatContext *s, AVPacket *pkt)
             && i + size <= avi->movi_end) {
 
      				/* See if we have enough data in a buffer for header */
-						if( get_mem_buffer_size( pb )< size )
+						if( get_mem_buffer_size( pb )< size+ 1 )
 						{
 							url_fseek( pb, pos, SEEK_SET );
 							return AVILIB_NEED_DATA;

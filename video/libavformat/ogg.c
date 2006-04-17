@@ -36,7 +36,7 @@ typedef struct OggContext {
 int strnicmp( char *s, char* s1, int iCnt )
 {
   int i;
-  for( i= 0; i< iCnt && !s[ i ] && !s1[ i ]; i++ )
+  for( i= 0; i< iCnt && s[ i ]!= '\0' && s1[ i ]!= '\0'; i++ )
     if( tolower( s[ i ] )!= tolower( s1[ i ] ) )
       return -1;
 
@@ -138,6 +138,7 @@ void get_ogg_tag( char* sDest, char* sFrameName, char** sBufs, int iCount, int* 
 {
 	int iLen= strlen( sFrameName );
 	int i= 0;
+	sDest[ 0 ]= '\0';
 	for( ; i< iCount; i++ )
 		if( !strnicmp( sBufs[ i ], sFrameName, iLen ) && sBufs[ i ][ iLen ]== '=' )
 		{
@@ -324,4 +325,4 @@ int ogg_init(void)
     return 0 ;
 }
 
-#endif CONFIG_VORBIS
+#endif /* CONFIG_VORBIS */

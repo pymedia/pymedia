@@ -531,8 +531,13 @@ static int mp3_read_header(AVFormatContext *s,
     // Check reference in ID3v2 tag
     if( s->genre[ 0 ]== '(' )
     {
+      int iGenre= 0;
       s->genre[ strchr( s->genre, ')' )- s->genre ]= 0;
-      strcpy( s->genre, GENRE_TAB[ atoi( s->genre+ 1 ) ] );
+      iGenre= atoi( s->genre+ 1 );
+      if( iGenre> ID3_GENRE_MAX )
+        strcpy( s->genre, "unknown" );
+      else
+        strcpy( s->genre, GENRE_TAB[ iGenre ] );
     }
 		//get_mp3_id3v2_tag( &s->album_cover, NULL, "APIC", sTmp1, iLen1 );
 
