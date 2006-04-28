@@ -286,20 +286,16 @@ void StartStreams( PyDemuxerObject* obj )
 int AppendStreamData( PyDemuxerObject* obj, AVPacket* cPkt )
 {
   // Just a sanitary check
-  
-  if( cPkt->stream_index>= obj->ic.nb_streams || cPkt->stream_index< 0 ){
+  PyObject* cRes;
+  if( cPkt->stream_index>= obj->ic.nb_streams || cPkt->stream_index< 0 )
     return 1;
-  }
 
-  {
-	 PyObject* cRes;
-    if( !obj->cBuffer )
-      obj->cBuffer= PyList_New( 0 );
-    /* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
-    cRes= Py_BuildValue( "[is#iLL]", cPkt->stream_index, (const char*)cPkt->data, cPkt->size, cPkt->size, cPkt->pts ,cPkt->dts );
-    PyList_Append( obj->cBuffer, cRes );
-    Py_DECREF( cRes );
-  }
+  if( !obj->cBuffer )
+    obj->cBuffer= PyList_New( 0 );
+  /* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
+  cRes= Py_BuildValue( "[is#iLL]", cPkt->stream_index, (const char*)cPkt->data, cPkt->size, cPkt->size, cPkt->pts ,cPkt->dts );
+  PyList_Append( obj->cBuffer, cRes );
+  Py_DECREF( cRes );
   return 1;
 }
 
@@ -722,7 +718,7 @@ initmuxer(void)
  
 import pymedia.muxer as muxer
 dm= muxer.Demuxer( 'avi' )
-f= open( 'c:\\movies\\Lost.In.Translation\\Lost.In.Translation.CD2.avi', 'rb' )
+f= open( 'c:\\movies\\old\\Office Space (1999) Cd2 Dvdrip Xvid Ac3.6Ch Shc.avi', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
