@@ -362,6 +362,8 @@ public:
 		if( devs & SOUND_MASK_PCM )
 			ioctl(fd, SOUND_MIXER_READ_PCM, &v);
 		close( fd );
+		// Make sure the volume is adjusted to match 16 bit
+		v= ( v & 0xff00 ) | 0xff;
 		return v;
 	}
 
@@ -385,6 +387,8 @@ public:
 		}
 
 		ioctl( fd, SOUND_MIXER_READ_DEVMASK, &devs );
+		// Adjust volume to match 16 bit
+		iVolume= ( iVolume >> 8 ) | ( iVolume & 0xff00 );
 		if( devs & SOUND_MASK_PCM )
 			ioctl( fd, SOUND_MIXER_WRITE_PCM, &iVolume);
 
