@@ -41,7 +41,7 @@ def makeVideo( inPattern, outFile, outCodec ):
       bmpFrame= vcodec.VFrame( vcodec.formats.PIX_FMT_RGB24, s.get_size(), (ss,None,None))
       yuvFrame= bmpFrame.convert( vcodec.formats.PIX_FMT_YUV420P )
       d= e.encode( yuvFrame )
-      fw.write( d )
+      fw.write( d.data )
       i+= 1
     else:
       print '%d frames written in %.2f secs( %.2f fps )' % ( i, time.time()- t, float( i )/ ( time.time()- t ) )
