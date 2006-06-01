@@ -454,7 +454,7 @@ int mp3_read_packet(AVFormatContext *s, AVPacket *pkt)
 }
 
 /* --------------------------------------------------------------------------------- */
-void get_mp3_id3v2_tag( char** sDest1, char* sDest, char* sFrameName, char* sBuf, int iLen )
+void get_mp3_id3v2_tag( char** sDest1, char* sDest, char* sFrameName, char* sBuf, int iLen, int iMaxLen )
 {
 	/* HACK. Locate desired frame in a buffer and get the data from there */
 	int iPos= 0;
@@ -475,7 +475,7 @@ void get_mp3_id3v2_tag( char** sDest1, char* sDest, char* sFrameName, char* sBuf
 					if( !sDest )
 						return;
 				}
-				memcpy( sDest, sTmp+ 11, iSize- 1 );
+        memcpy( sDest, sTmp+ 11, ( iMaxLen< iSize ) ? iMaxLen- 1: iSize- 1 );
 			}
 			return;
 		}
@@ -522,12 +522,12 @@ static int mp3_read_header(AVFormatContext *s,
 			return AVERROR_NOMEM;
 
 		get_str( pb, sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->title, "TIT2", sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->author, "TPE1", sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->album, "TALB", sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->track, "TRCK", sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->year, "TYER", sTmp1, iLen1 );
-		get_mp3_id3v2_tag( NULL, s->genre, "TCON", sTmp1, iLen1 );
+		get_mp3_id3v2_tag( NULL, s->title, "TIT2", sTmp1, iLen1, sizeof( s->title ) );
+		get_mp3_id3v2_tag( NULL, s->author, "TPE1", sTmp1, iLen1, sizeof( s->author ) );
+		get_mp3_id3v2_tag( NULL, s->album, "TALB", sTmp1, iLen1, sizeof( s->album ) );
+		get_mp3_id3v2_tag( NULL, s->track, "TRCK", sTmp1, iLen1, sizeof( s->track ) );
+		get_mp3_id3v2_tag( NULL, s->year, "TYER", sTmp1, iLen1, sizeof( s->year ) );
+		get_mp3_id3v2_tag( NULL, s->genre, "TCON", sTmp1, iLen1, sizeof( s->genre ) );
     // Check reference in ID3v2 tag
     if( s->genre[ 0 ]== '(' )
     {
