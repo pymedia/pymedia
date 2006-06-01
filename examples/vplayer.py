@@ -7,10 +7,10 @@ import pymedia.audio.acodec as acodec
 import pymedia.video.vcodec as vcodec
 import pymedia.audio.sound as sound
 
-if os.environ.has_key( 'PYCAR_DISPLAY' ) and os.environ[ 'PYCAR_DISPLAY' ]== 'directfb':
+try:
   import pydfb as pygame
   YV12= pygame.PF_YV12
-else:
+except:
   import pygame
   YV12= pygame.YV12_OVERLAY
 
@@ -300,7 +300,7 @@ class VPlayer:
       
   # ------------------------------------
   def isPlaying( self ):
-    return self.overlay!= None
+    return self.playingFile!= None
   
   # ------------------------------------
   def getPTS( self ):
@@ -356,8 +356,6 @@ class VPlayer:
               f.seek( self.seek, 1 )
               self.resetAudio()
               self.resetVideo()
-              self.rawFrames= []
-              self.decodedFrames= []
               self.seek= SEEK_IN_PROGRESS
               break
             
@@ -385,6 +383,7 @@ class VPlayer:
           self.stopPlayback( False )
           self.playingFile= None
     except:
+      traceback.print_exc()
       self.err.append( sys.exc_info()[ 1 ] )
     
     print 'Main video loop has closed'
@@ -421,6 +420,7 @@ if __name__ == "__main__":
     
     if len( player.err ):
       raise player.err[ 0 ]
+    
   
   ########################################################################3
   # Simple cache replacer for standalone testing

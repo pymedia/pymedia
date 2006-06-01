@@ -36,7 +36,7 @@ class PlayerCallback:
   # ------------------------------------
   # Process incoming audio data ( usefull for visualization or sound post processing )
   # You can return audio stream as a string once you did something to it
-  def onAudioReady( self, afr ):
+  def onAudioReady( self, data, sampleRate, channels ):
     pass
   
   # ------------------------------------
@@ -94,9 +94,11 @@ def run( file ):
           if e.key== pygame.K_ESCAPE: 
             stopped= True
           if e.key== pygame.K_LEFT:
-            print 'seek backward'
+            print 'seek backward', player.getPosition(), player.getLength()
+            player.seekTo( player.getPosition()- 20 )
           if e.key== pygame.K_RIGHT:
-            print 'seek forward'
+            print 'seek forward', player.getPosition(), player.getLength()
+            player.seekTo( player.getPosition()+ 10 )
           if e.key== pygame.K_UP:
             br= True
             break
@@ -108,6 +110,10 @@ def run( file ):
       
       if br:
         break
+  
+  if len( player.getError() )> 0:
+    print 'Error detected'
+    print player.getError()[ 0 ][ 1 ]
   
   player.stopPlayback()
   player.stop()
