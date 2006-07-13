@@ -63,7 +63,6 @@ class Player:
     self.pictureSize= None
     self.paused= 0
     self.snd= None
-    self.err= []
     self.aDelta= 0
     self.aBitRate= 0
     self.vBitRate= 0
@@ -76,6 +75,7 @@ class Player:
     self.loops= 0
     self.volume= 0xffff
     self.startPos= 0
+    self.fileSize= 0
     self.initADelta= -1
     # Set length to 1 sec by default
     self.length= -1
@@ -84,6 +84,9 @@ class Player:
     self.callback= callback
     self.metaData= {}
     self.fileFormat= 'mp3'
+    self.aPTS= self.aindex= self.vindex= -1
+    self.clearError()
+    self.maxBufSize= -1
   
   # ------------------------------------
   def _resetAudio( self ):
@@ -101,8 +104,9 @@ class Player:
       self._resetAudio()
       # Initializing audio codec
       self.ac= acodec.Decoder( params )
+      self.aindex= -1
     except:
-      self.err.append( sys.exc_info()[1] )
+      self.err.append( sys.exc_info() )
   
   # ------------------------------------
   def _resetVideo( self ):
@@ -128,6 +132,7 @@ class Player:
       # Set the initial sound delay to 0 for now
       # It defines initial offset from video in the beginning of the stream
       self.initADelta= -1
+      self.vindex= -1
       self._resetVideo()
       self.seekADelta= 0
       # Setting up the HW video codec
@@ -141,6 +146,12 @@ class Player:
   
   # ------------------------------------
   def _getStreamLength( self, format, dm, f, fr ):
+    # Get file size if possible
+    pos= f.tell()
+    f.seek( 0, 2 )
+    self.fileSize= f.tell()
+    f.seek( pos, 0 )
+  
     # Demux frames from the beginning and from the end and get the PTS diff
     if not dm.hasHeader():
       startPTS= -1
@@ -163,7 +174,16 @@ class Player:
 
         f.seek( pos, 0 )
         self.length= endPTS- startPTS
-  
+    else:
+      lStreams= filter( lambda x: x and ( x[ 'length' ]> 0 ), dm.streams )
+      if len( lStreams ):
+        self.length= max( [ x[ 'length' ] for x in lStreams ] )
+      else:
+        self.length= -1
+        # Check file size against length and bitrates
+        #if self.length* ( self.getBitRate()/ 8 )< self.fileSize:
+        #  self.length= self.fileSize/ ( self.getBitRate()/ 8 )
+    
   # ------------------------------------
   def _getVStreamParams( self, vindex, vparams, r ):
     # Decode one video frame and 1 audio frame to get stream data
@@ -181,9 +201,10 @@ class Player:
             else:
               self.pictureSize= vfr.size
             
+            self.vBitRate= vfr.bitrate
             break
       except:
-        self.err.append( sys.exc_info()[1] )
+        self.err.append( sys.exc_info() )
         break
   
   # ------------------------------------
@@ -251,10 +272,20 @@ class Player:
       self.vDelay= videoPTS- self.seekADelta- self._getPTS()
       frRate= float( vfr.rate_base )/ vfr.rate
       res= self._decodeVideoFrame()
-      #print '<<', res, self.vDelay, self.frameNum, videoPTS, self.getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self.getSndLeft()
+      #print '<<', res, self.vDelay, self.frameNum, videoPTS, self._getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self._getSndLeft(), self.aindex, self.isPaused()
       #if res== -1 or ( self.snd and self.getSndLeft()< frRate ) or ( res== -2 and self.vDelay> 0 and self.getSndLeft()< self.vDelay and not forced ):
       if res== -1 or ( res== -2 and self.vDelay> 0 and self._getSndLeft()< self.vDelay and not forced ):
         return
+      
+      # If audio queue is empty and we still have video frames, add 1 audio frame per every video frame
+      if self.vDelay> 0 and self._getSndLeft()< 0.01 and self.aindex!= -1 and len( self.aDecodedFrames )== 0 and self._getPTS()> 0:
+        if self.vDelay> frRate:
+          self.vDelay= frRate
+          
+        #print 'Appending dummy audio...', self.vDelay, frRate
+        self._appendDummyAudio( self.vDelay )
+        time.sleep( self.vDelay )
+        self.vDelay= 0
       
       # If delay
       #print '!!', self.vDelay, self.frameNum, videoPTS, self._getPTS(), len( self.decodedFrames ), len( self.rawFrames ), self._getSndLeft(), self.seekADelta
@@ -282,6 +313,13 @@ class Player:
           self.vDelay= frRate
   
   # ------------------------------------
+  def _appendDummyAudio( self, length ):
+    # Get PCM length of the audio frame
+    l= self.aSampleRate* self.aChannels* 2* length
+    self.aDecodedFrames.append( ( '\0'* int( l ), self.aSampleRate, self.aChannels ) )
+    self._processAudio()
+  
+  # ------------------------------------
   def _processAudioFrame( self, d ):
     # Decode audio frame
     afr= self.ac.decode( d[ 1 ] )
@@ -293,19 +331,23 @@ class Player:
         self.aChannels= afr.channels
         try:
           # Hardcoded S16 ( 16 bit signed ) for now
+          #print 'Opening sound', afr.sample_rate, afr.channels, sound.AFMT_S16_LE, self.audioCard
           self.snd= sound.Output( afr.sample_rate, afr.channels, sound.AFMT_S16_LE, self.audioCard )
-          self.snd.setVolume( self.volume )
           self.resampler= None
         except:
           try:
             # Create a resampler when no multichannel sound is available
             self.resampler= sound.Resampler( (afr.sample_rate,afr.channels), (afr.sample_rate,2) )
             # Fallback to 2 channels
+            #print 'Falling back to', afr.sample_rate, 2, sound.AFMT_S16_LE, self.audioCard
             self.snd= sound.Output( afr.sample_rate, 2, sound.AFMT_S16_LE, self.audioCard )
-            self.snd.setVolume( self.volume )
           except:
-            self.err.append( sys.exc_info()[1] )
+            self.err.append( sys.exc_info() )
             raise
+         
+        # Calc max buf size for better audio handling
+        if self.maxBufSize== -1:
+          self.maxBufSize= self.snd.getSpace()
       
       # Handle the PTS accordingly
       snd= self.snd
@@ -315,7 +357,17 @@ class Player:
       
       # Play the raw data if we have it
       if len( afr.data )> 0:
-        self.aDecodedFrames.append( afr )
+        # Split the audio data if the size of data chunk larger than the buffer size
+        data= afr.data
+        if len( data )> self.maxBufSize:
+          data= str( data )
+        
+        while len( data )> self.maxBufSize:
+          chunk= data[ : self.maxBufSize ]
+          data= data[ self.maxBufSize: ]
+          self.aDecodedFrames.append( ( chunk, afr.sample_rate, afr.channels ) )
+        
+        self.aDecodedFrames.append( ( data, afr.sample_rate, afr.channels ) )
         self._processAudio()
   
   # ------------------------------------
@@ -323,26 +375,25 @@ class Player:
     snd= self.snd
     while len( self.aDecodedFrames ) and snd:
       # See if we can play sound chunk without clashing with the video frame
-      if len( self.aDecodedFrames[ 0 ].data )> snd.getSpace() and self.vindex!= -1:
+      if len( self.aDecodedFrames[ 0 ][ 0 ] )> snd.getSpace() and self.vindex!= -1:
         break
       
       #print 'player SOUND LEFT:', self.snd.getLeft(), self.snd.getSpace(), self.isPlaying()
       if self.isPlaying():
-        afr= self.aDecodedFrames.pop(0)
-        s= afr.data
+        data, sampleRate, channnels= self.aDecodedFrames.pop(0)
         if self.callback:
           try:
-            afr1= self.callback.onAudioReady( afr )
-            if afr1:
-              s= afr1
+            data1= self.callback.onAudioReady( data, sampleRate, channnels )
+            if data1:
+              data= data1
           except:
             pass
         
         # See if we need to resample the audio data
         if self.resampler:
-          s= self.resampler.resample( s )
+          data= self.resampler.resample( data )
         
-        snd.play( s )
+        snd.play( data )
   
   # ------------------------------------
   def start( self ):
@@ -386,6 +437,10 @@ class Player:
     self.paused= paused
     self.fileFormat= format
     self.playingFile= file
+    try:
+      self.setVolume( vars.volume )
+    except:
+      pass
   
   # ------------------------------------
   def stopPlayback( self ):
@@ -432,6 +487,9 @@ class Player:
     while self.seek>= 0:
       time.sleep( 0.01 )
     
+    if secs< 0:
+      secs= 0
+    
     self.seek= secs
   
   # ------------------------------------
@@ -446,6 +504,20 @@ class Player:
     It will return False after you issue stop()
     """
     return self.exitFlag in ( EXITING_FLAG, 0 )
+  
+  # ------------------------------------
+  def getError( self ):
+    """
+    Return error list if any
+    """
+    return self.err
+  
+  # ------------------------------------
+  def clearError( self ):
+    """
+    Clear all errors
+    """
+    self.err= []
   
   # ------------------------------------
   def setLoops( self, loops ):
@@ -474,19 +546,25 @@ class Player:
   def setVolume( self, volume ):
     """
     Set volume for the media track to play
-    volume = [ 0..255 ]
+    volume = [ 0..65535 ]
     """
     self.volume= volume
-    if self.snd:
-      self.snd.setVolume( self.volume )
+    # Asume the very first is the the Master volume
+    conns= sound.Mixer().getControls()
+    if len( conns ):
+      conns[ 0 ][ 'control' ].setValue( self.volume )
   
   # ------------------------------------
   def getVolume( self ):
     """
-    Get volume for the playing media track 
+    Get volume for the playing media track 0..65535
     """
-    if self.snd:
-      return self.snd.getVolume()
+    # Asume the very first is the the Master volume
+    conns= sound.Mixer().getControls()
+    if len( conns ):
+      return conns[ 0 ][ 'control' ].getValue()
+    
+    return 0
   
   # ------------------------------------
   def getPictureSize( self ):
@@ -525,14 +603,27 @@ class Player:
     """
     Get bitrate for the audio stream if present
     """
-    return self.aBitRate
+    if self.aindex!= -1:
+      return self.aBitRate
+    
+    return 0
+
+  # ------------------------------------
+  def getBitRate( self ):
+    """
+    Get bitrate for the full stream
+    """
+    return self.getABitRate()+ self.vBitRate
 
   # ------------------------------------
   def getPosition( self ):
     """
     Returns current position for the media
     """
-    return self._getPTS()
+    if self.isPlaying():
+      return self._getPTS()
+    
+    return 0
   
   # ------------------------------------
   def _hasQueue( self ):
@@ -553,7 +644,7 @@ class Player:
       return time.time()- self.aPTS
     
     if self.snd== None:
-        return 0
+      return 0
     
     p= self.snd.getPosition()
     return p+ self.aDelta
@@ -579,14 +670,14 @@ class Player:
         
         self.length= self.frameNum= -1
         # Initialize demuxer and read small portion of the file to have more info on the format
-        self.err= []
+        self.clearError()
         if type( self.playingFile ) in ( str, unicode ):
           try:
             f= open( self.playingFile, 'rb' )
             format= self.playingFile.split( '.' )[ -1 ].lower()
           except:
             traceback.print_exc()
-            self.err.append( sys.exc_info()[1] )
+            self.err.append( sys.exc_info() )
             self.playingFile= None
             continue
         else:
@@ -595,14 +686,14 @@ class Player:
         
         try:
           dm= muxer.Demuxer( format )
+          s= f.read( FILE_CHUNK )
+          r= dm.parse( s )
         except:
           traceback.print_exc()
-          self.err.append( sys.exc_info()[1] )
+          self.err.append( sys.exc_info() )
           self.playingFile= None
           continue
         
-        s= f.read( FILE_CHUNK )
-        r= dm.parse( s )
         try: self.metaData= dm.getHeaderInfo()
         except: self.metaData= {}
         
@@ -611,7 +702,7 @@ class Player:
           self.seekTo( self.startPos )
         
         # Setup video( only first matching stream will be used )
-        self.err= []
+        self.clearError()
         self.vindex= -1
         streams= filter( lambda x: x, dm.streams )
         for st in streams:
@@ -633,7 +724,8 @@ class Player:
         currentFile= self.playingFile
         if self.vindex>= 0:
           self._getVStreamParams( self.vindex, streams[ self.vindex ], r )
-          self._getStreamLength( format, dm, f, r )
+        
+        self._getStreamLength( format, dm, f, r )
         
         # Play until no exit flag, not eof, no errs and file still the same
         while len(s) and len( self.err )== 0 and \
@@ -650,20 +742,31 @@ class Player:
             
             # Seeking stuff
             if self.seek>= 0:
-              f.seek( self.seek* self.getABitRate()/ 8, 0 )
+              # Find the file position first
+              if self.length> 0 and self.fileSize> 0:
+                #print self.seek, self.length, self.fileSize, ( float( self.seek ) / self.length )* self.fileSize
+                f.seek( ( float( self.seek ) / self.length )* self.fileSize, 0 )
+              else:
+                f.seek( self.seek* self.getBitRate()/ 8, 0 )
+                #print self.seek, self.getBitRate(), f.tell()
+              
+              #print 'seek to', self.seek, f.tell()
               seek= self.seek
               self.aDecodedFrames= []
-              self.aDelta= seek
               if self.ac:
                 self.ac.reset()
-                self.snd.stop()
+                if self.snd:
+                  self.snd.stop()
               self.rawFrames= []
               self.decodedFrames= []
               if self.vc:
                 self.vc.reset()
+              
+              dm.reset()
               if self.vindex== -1:
                 # Seek immediately if only audio stream is available
                 self.seek= -1
+                self.aDelta= seek
               else:
                 # Wait for a key video frame to arrive
                 self.seek= SEEK_IN_PROGRESS
@@ -676,20 +779,39 @@ class Player:
               break
             
             try:
+              # Update length if not set already
+              if self.getLength()== -1 and self.getBitRate()> 0:
+                # Check file size against length and bitrates
+                self.length= self.fileSize/ ( self.getBitRate()/ 8 )
+              
               # Demux file into streams
               if d[ 0 ]== self.vindex:
                 # Process video frame
+                seek= self.seek
                 self._processVideoFrame( d )
+                if self.seek!= SEEK_IN_PROGRESS and seek== SEEK_IN_PROGRESS:
+                  # If key frame was found, change the time position
+                  self.videoPTS= ( float( f.tell() )/ self.fileSize )* self.length
+                  self.aDelta= self.videoPTS+ self.initADelta
+                  #print '---->position', f.tell(), self.aDelta
               elif d[ 0 ]== self.aindex and self.seek!= SEEK_IN_PROGRESS:
                 # Decode and play audio frame
                 self._processAudioFrame( d )
             except:
               traceback.print_exc()
-              raise
+              self.err.append( sys.exc_info() )
+              self.playingFile= None
+              break
           
           # Read next encoded chunk and demux it
-          s= f.read( 512 )
-          r= dm.parse( s )
+          try:
+            s= f.read( 512 )
+            r= dm.parse( s )
+          except:
+            traceback.print_exc()
+            self.err.append( sys.exc_info() )
+            self.playingFile= None
+            continue
         
         if f: f.close()
 
