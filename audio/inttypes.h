@@ -2,7 +2,7 @@
 #if !defined( __INTTYPES_H__ )
 #define __INTTYPES_H__
 
-#if defined( _STDINT_H ) 
+#if defined( _STDINT_H )
 
 	typedef unsigned short UINT16;
 	typedef signed short INT16;
@@ -34,7 +34,7 @@
 
 #else /* _STDINT_H */
 
-#if !defined( _SYS_TYPES_H_ ) 
+#if !defined( _SYS_TYPES_H_ )
 
 	typedef unsigned short UINT16;
 	typedef signed short INT16;
@@ -55,6 +55,9 @@
 	typedef UINT16 uint16_t;
 	typedef UINT32 uint32_t;
 	typedef UINT64 uint64_t;
+
+#define INT16_MAX 0x7fff
+#define INT16_MIN (-0x7fff-1)
 
 #    ifdef WIN32
 #        define int64_t_C(c)     (c ## i64)
