@@ -185,9 +185,9 @@ class Player:
         #  self.length= self.fileSize/ ( self.getBitRate()/ 8 )
     
   # ------------------------------------
-  def _getVStreamParams( self, vindex, vparams, r ):
+  def _getStreamParams( self, vindex, aindex, vparams, aparams, r ):
     # Decode one video frame and 1 audio frame to get stream data
-    vDec= None
+    vDec= aDec= None
     for d in r:
       try:
         # Demux file into streams
@@ -202,7 +202,18 @@ class Player:
               self.pictureSize= vfr.size
             
             self.vBitRate= vfr.bitrate
-            break
+            if aindex== -1 or aDec:
+              break
+        elif d[ 0 ]== aindex:
+          if not aDec:
+            aDec= acodec.Decoder( aparams )
+          afr= aDec.decode( d[ 1 ] )
+          if afr and afr.data:
+            self.aBitRate= afr.bitrate
+            self.aSampleRate= afr.sample_rate
+            self.aChannels= afr.channels
+            if vindex== -1 or vDec:
+              break
       except:
         self.err.append( sys.exc_info() )
         break
@@ -325,14 +336,16 @@ class Player:
     afr= self.ac.decode( d[ 1 ] )
     if afr:
       # See if we have to set up the sound
-      if self.snd== None:
+      if self.aBitRate== -1:
         self.aBitRate= afr.bitrate
         self.aSampleRate= afr.sample_rate
         self.aChannels= afr.channels
+      
+      if self.snd== None:
         try:
           # Hardcoded S16 ( 16 bit signed ) for now
           #print 'Opening sound', afr.sample_rate, afr.channels, sound.AFMT_S16_LE, self.audioCard
-          self.snd= sound.Output( afr.sample_rate, afr.channels, sound.AFMT_S16_LE, self.audioCard )
+          self.snd= sound.Output( self.aSampleRate, self.aChannels, sound.AFMT_S16_LE, self.audioCard )
           self.resampler= None
         except:
           try:
@@ -697,10 +710,6 @@ class Player:
         try: self.metaData= dm.getHeaderInfo()
         except: self.metaData= {}
         
-        # This seek sets the seeking position already at the desired offset from the beginning
-        if self.startPos:
-          self.seekTo( self.startPos )
-        
         # Setup video( only first matching stream will be used )
         self.clearError()
         self.vindex= -1
@@ -722,10 +731,18 @@ class Player:
         
         # Open current file for playing
         currentFile= self.playingFile
-        if self.vindex>= 0:
-          self._getVStreamParams( self.vindex, streams[ self.vindex ], r )
+        as= vs= None
+        if self.aindex!= -1:
+          as= streams[ self.aindex ]
+        if self.vindex!= -1:
+          vs= streams[ self.vindex ]
         
+        self._getStreamParams( self.vindex, self.aindex, vs, as, r )
         self._getStreamLength( format, dm, f, r )
+        
+        # This seek sets the seeking position already at the desired offset from the beginning
+        if self.startPos:
+          self.seekTo( self.startPos )
         
         # Play until no exit flag, not eof, no errs and file still the same
         while len(s) and len( self.err )== 0 and \
@@ -773,7 +790,7 @@ class Player:
               break
             
             # See if we reached the end position of the video clip
-            if self.endPos and self._getPTS()* 1000> self.endPos:
+            if self.endPos and self._getPTS()> self.endPos:
               # Seek at the end and close the reading loop instantly 
               f.seek( 0, 2 )
               break
