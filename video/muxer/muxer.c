@@ -113,11 +113,18 @@ static int SetStreamParams(PyObject* cParams,AVCodecContext* cCodec)
 				if( !SetStructVal( &cCodec->width, cParams, PM_WIDTH ))
 					s= PM_WIDTH;
 
-				if( !SetStructVal( &cCodec->frame_rate, cParams, PM_FRAME_RATE ))
+				if( !SetStructVal( &cCodec->frame_rate, cParams, PM_FRAME_RATE ) ||
+            !SetStructVal( &cCodec->time_base.num, cParams, PM_FRAME_RATE ))
+        {
 					s= PM_FRAME_RATE;
+        }
 
-				if( !SetStructVal( &cCodec->frame_rate_base, cParams, PM_FRAME_RATE_B ))
+				if( !SetStructVal( &cCodec->frame_rate_base, cParams, PM_FRAME_RATE_B ) ||
+            !SetStructVal( &cCodec->time_base.den, cParams, PM_FRAME_RATE_B ))
+        {
 					cCodec->frame_rate_base= 1;
+          cCodec->time_base.den= 1;
+        }
 
 				if( !SetStructVal( &cCodec->gop_size, cParams, PM_GOP_SIZE))
 					cCodec->gop_size= 12;
@@ -133,6 +140,9 @@ static int SetStreamParams(PyObject* cParams,AVCodecContext* cCodec)
 		case CODEC_TYPE_AUDIO:
 			if (cParams) 
 			{
+				if( !SetStructVal( (int*)&cCodec->codec_id, cParams, PM_ID ))
+					s= PM_ID;
+
 				if( !SetStructVal( &cCodec->bit_rate, cParams, PM_BITRATE ))
 					s= PM_BITRATE;
 
@@ -683,11 +693,10 @@ def recodeAudio( fName, fOutput, type, bitrate= None ):
   
   f.close()
   
-  if fw:
-    if mx:
-      ss= mx.end()
-      if ss:
-        fw.write(ss)
+  if fw and mx:
+    ss= mx.end()
+    if ss:
+      fw.write(ss)
     fw.close()
 
 recodeAudio( 'c:\\bors\\media\\test.ac3', 'test.ogg', 'ogg' )

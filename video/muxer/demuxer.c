@@ -28,12 +28,13 @@
 
 #include "version.h"
 #include "muxer.h"
+#include "libavformat/crc.h"
 
 #ifndef BUILD_NUM
 #define BUILD_NUM 1
 #endif
  
-#define MODULE_NAME "pymedia"PYMEDIA_VERSION".muxer"
+#define MODULE_NAME "pymedia.muxer"
 #define DEMUXER_NAME "Demuxer"
 #define MUXER_NAME "Muxer"
 
@@ -618,8 +619,16 @@ initmuxer(void)
 	avienc_init();
 	mov_init();
 	mpegts_init();
+	mpegtsenc_init();
 	mpegps_init();
 
+  av_crc04C11DB7= av_mallocz(sizeof(AVCRC) * 257);
+  av_crc8005    = av_mallocz(sizeof(AVCRC) * 257);
+  av_crc07      = av_mallocz(sizeof(AVCRC) * 257);   
+  av_crc_init(av_crc04C11DB7, 0, 32, AV_CRC_32_IEEE, sizeof(AVCRC)*257);
+  av_crc_init(av_crc8005    , 0, 16, AV_CRC_16     , sizeof(AVCRC)*257);
+  av_crc_init(av_crc07      , 0,  8, AV_CRC_8_ATM  , sizeof(AVCRC)*257);
+ 
   // Video extensions
 	cExtensions = PyList_New(0);
   for(fmt = first_iformat; fmt != NULL; fmt = fmt->next)
@@ -717,11 +726,23 @@ initmuxer(void)
 /*
  
 import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'avi' )
-f= open( 'c:\\movies\\old\\Office Space (1999) Cd2 Dvdrip Xvid Ac3.6Ch Shc.avi', 'rb' )
+import pymedia.video.vcodec as vcodec
+dm= muxer.Demuxer( 'ts' )
+#f= open( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\demo1\\TTOP7058272542511953.ts', 'rb' )
+f= open( 'c:\\tt.ts', 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 dm.streams
+v= [ x for x in dm.streams if x[ 'type' ]== muxer.CODEC_TYPE_VIDEO ]
+if len( v ):
+  c= vcodec.Decoder( v[ 0 ] )
+  vid= v[ 0 ][ 'index' ]
+  for fr in r:
+    if fr[ 0 ]== vid:
+      d= c.decode( fr[ 1 ] )
+      if d and d.data:
+        print d
+
 
 # wav testing
 import pymedia
