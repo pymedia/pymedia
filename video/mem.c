@@ -98,7 +98,7 @@ static void *xvid_malloc(size_t size, uint8_t alignment)
 			*mem_ptr = 0;
 
 			/* Return the mem_ptr pointer */
-			return (void *) mem_ptr++;
+			return (void *) mem_ptr;
 
 		}
 
@@ -116,7 +116,7 @@ static void *xvid_malloc(size_t size, uint8_t alignment)
 		{
 
 			/* Align the tmp pointer */
-			mem_ptr = (uint8_t *)((uint32_t)(tmp + alignment - 1)&(~(uint32_t)(alignment - 1)));
+			//mem_ptr = (uint8_t *)((uint32_t)(tmp + alignment - 1)&(~(uint32_t)(alignment - 1)));
 
 			/*
 			 * Special case where malloc have already satisfied the alignment
@@ -125,16 +125,16 @@ static void *xvid_malloc(size_t size, uint8_t alignment)
 			 * If we do not add alignment to mem_ptr then *(mem_ptr-1) points
 			 * to a forbidden memory space
 			 */
-			if(mem_ptr == tmp) mem_ptr += alignment;
+			//if(mem_ptr == tmp) mem_ptr += alignment;
 
 			/*
 			 * (mem_ptr - tmp) is stored in *(mem_ptr-1) so we are able to retrieve
 			 * the real malloc block allocated and free it in xvid_free
 			 */
-			*(mem_ptr - 1) = (uint8_t)(mem_ptr - tmp);
+			//*(mem_ptr - 1) = (uint8_t)(mem_ptr - tmp);
 
 			/* Return the aligned pointer */
-			return (void *) mem_ptr;
+			return (void *) tmp;
 
 		}
 	}
@@ -160,9 +160,10 @@ void av_free(void *ptr)
     /* XXX: this test should not be needed on most libcs */
     if (ptr)
 		{
+        free( ptr );
 //mem_allocated-= *(int*)( (uint8_t*)ptr - *((uint8_t*)ptr - 1)- 16 )- 64;
 //printf( "free: %d\n", *(int*)( (uint8_t*)ptr - *((uint8_t*)ptr - 1)- 16 )- 64 );
-         free((uint8_t*)ptr - *((uint8_t*)ptr - 1));
+         //free((uint8_t*)ptr - *((uint8_t*)ptr - 1));
 		}
 
 }
