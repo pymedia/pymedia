@@ -180,6 +180,9 @@ enum CodecType {
     CODEC_TYPE_UNKNOWN = -1,
     CODEC_TYPE_VIDEO,
     CODEC_TYPE_AUDIO,
+    CODEC_TYPE_DATA,
+    CODEC_TYPE_SUBTITLE,
+    CODEC_TYPE_NB 
 };
 
 /**
