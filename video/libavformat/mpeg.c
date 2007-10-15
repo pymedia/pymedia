@@ -344,13 +344,16 @@ static void flush_packet(AVFormatContext *ctx,
     stream->start_pts = -1;
 }
 
-static int mpeg_mux_write_packet(AVFormatContext *ctx, int stream_index,
-                                 uint8_t *buf, int size, int pts )
+static int mpeg_mux_write_packet(AVFormatContext *ctx, AVPacket *pkt )
 {
     MpegMuxContext *s = ctx->priv_data;
+    int stream_index= pkt->stream_index;
     AVStream *st = ctx->streams[stream_index];
     StreamInfo *stream = st->priv_data;
     int len;
+    uint8_t *buf= pkt->data;
+    int size= pkt->size;
+    int pts= pkt->pts;
 
     while (size > 0) {
         /* set pts */

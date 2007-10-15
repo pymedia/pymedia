@@ -962,6 +962,9 @@ static int handle_packets(AVFormatContext *s, int nb_packets)
         if (nb_packets != 0 && packet_num >= nb_packets)
             break;
         pos = url_ftell(pb);
+		if( get_mem_buffer_size( pb )< ts->raw_packet_size )
+			return AVILIB_NEED_DATA;
+		
         len = get_buffer(pb, packet, ts->raw_packet_size);
         if (len != ts->raw_packet_size)
             return AVERROR_IO;
@@ -1011,10 +1014,10 @@ static int mpegts_read_header(AVFormatContext *s,
     uint8_t buf[1024];
     int len, sid;
     int64_t pos;
-    MpegTSService *service;
+    MpegTSService *service;  
     
     /* read the first 1024 bytes to get packet size */
-    pos = url_ftell(pb);
+    pos = url_ftell(pb); 
     len = get_buffer(pb, buf, sizeof(buf));
     if (len != sizeof(buf))
         goto fail;
@@ -1102,7 +1105,7 @@ AVInputFormat mpegts_demux = {
     mpegts_read_close,
 		NULL,
     AVFMT_NOHEADER | AVFMT_SHOW_IDS,
-		"mpeg"
+		"ts"
 };
 
 int mpegts_init(void)

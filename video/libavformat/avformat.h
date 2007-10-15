@@ -212,6 +212,8 @@ typedef struct AVStream {
        seconds. */
     int64_t duration;
 
+    char language[4]; /** ISO 639 3-letter language code (empty string if undefined) */ 
+
     /* av_read_frame() support */
     int need_parsing;
     struct AVCodecParserContext *parser;

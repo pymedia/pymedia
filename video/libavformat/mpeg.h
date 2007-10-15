@@ -1,6 +1,6 @@
 /*
- * MPEG2 transport stream defines
- * Copyright (c) 2003 Fabrice Bellard.
+ * MPEG1/2 muxer and demuxer common defines
+ * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
  *
  * This file is part of FFmpeg.
  *
@@ -19,28 +19,28 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVFORMAT_MPEGTS_H
-#define AVFORMAT_MPEGTS_H
+#ifndef AVFORMAT_MPEG_H
+#define AVFORMAT_MPEG_H
 
-#include "avformat.h"
+#define PACK_START_CODE             ((unsigned int)0x000001ba)
+#define SYSTEM_HEADER_START_CODE    ((unsigned int)0x000001bb)
+#define SEQUENCE_END_CODE           ((unsigned int)0x000001b7)
+#define PACKET_START_CODE_MASK      ((unsigned int)0xffffff00)
+#define PACKET_START_CODE_PREFIX    ((unsigned int)0x00000100)
+#define ISO_11172_END_CODE          ((unsigned int)0x000001b9)
 
-#define TS_FEC_PACKET_SIZE 204
-#define TS_DVHS_PACKET_SIZE 192
-#define TS_PACKET_SIZE 188
-#define NB_PID_MAX 8192
-#define MAX_SECTION_SIZE 4096
+/* mpeg2 */
+#define PROGRAM_STREAM_MAP 0x1bc
+#define PRIVATE_STREAM_1   0x1bd
+#define PADDING_STREAM     0x1be
+#define PRIVATE_STREAM_2   0x1bf
 
-/* pids */
-#define PAT_PID                 0x0000
-#define SDT_PID                 0x0011
-
-/* table ids */
-#define PAT_TID   0x00
-#define PMT_TID   0x02
-#define SDT_TID   0x42
-
-/* descriptor ids */
-#define DVB_SUBT_DESCID             0x59
+#define AUDIO_ID 0xc0
+#define VIDEO_ID 0xe0
+#define AC3_ID   0x80
+#define DTS_ID   0x8a
+#define LPCM_ID  0xa0
+#define SUB_ID   0x20
 
 #define STREAM_TYPE_VIDEO_MPEG1     0x01
 #define STREAM_TYPE_VIDEO_MPEG2     0x02
@@ -51,18 +51,10 @@
 #define STREAM_TYPE_AUDIO_AAC       0x0f
 #define STREAM_TYPE_VIDEO_MPEG4     0x10
 #define STREAM_TYPE_VIDEO_H264      0x1b
-#define STREAM_TYPE_VIDEO_VC1       0xea
 
 #define STREAM_TYPE_AUDIO_AC3       0x81
 #define STREAM_TYPE_AUDIO_DTS       0x8a
 
-#define STREAM_TYPE_SUBTITLE_DVB    0x100
+static const int lpcm_freq_tab[4] = { 48000, 96000, 44100, 32000 };
 
-typedef struct MpegTSContext MpegTSContext;
-
-MpegTSContext *mpegts_parse_open(AVFormatContext *s);
-int mpegts_parse_packet(MpegTSContext *ts, AVPacket *pkt,
-                        const uint8_t *buf, int len);
-void mpegts_parse_close(MpegTSContext *ts);
-
-#endif /* AVFORMAT_MPEGTS_H */
+#endif /* AVFORMAT_MPEG_H */
