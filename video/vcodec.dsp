@@ -62,7 +62,7 @@ LINK32=link.exe
 TargetPath=.\vcodec\Release\vcodec.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy $(TargetPath) c:\python23\lib\site-packages\pymedia\video
+PostBuild_Cmds=copy $(TargetPath) c:\python25\lib\site-packages\pymedia\video
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "vcodec - Win32 Debug"
@@ -98,7 +98,7 @@ LINK32=link.exe
 TargetPath=.\vcodec\Debug\vcodec_d.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy $(TargetPath) c:\python23\lib\site-packages\pymedia\video
+PostBuild_Cmds=copy $(TargetPath) c:\python25\lib\site-packages\pymedia\video
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "vcodec - Win32 Debug_Static"

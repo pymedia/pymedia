@@ -62,7 +62,7 @@ LINK32=link.exe
 TargetPath=.\muxer\Release\muxer.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to Python lib path
-PostBuild_Cmds=copy       $(TargetPath)       c:\Python23\Lib\site-packages\pymedia\ 
+PostBuild_Cmds=copy        $(TargetPath)        c:\Python24\Lib\site-packages\pymedia\ 
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "muxer - Win32 Debug"
@@ -98,7 +98,7 @@ LINK32=link.exe
 TargetPath=.\muxer\Debug\muxer_d.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy       $(TargetPath)       c:\Python23\Lib\site-packages\pymedia\ 
+PostBuild_Cmds=copy        $(TargetPath)        c:\Python23\Lib\site-packages\pymedia\ 
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "muxer - Win32 Debug_Static"
@@ -113,9 +113,9 @@ PostBuild_Cmds=copy       $(TargetPath)       c:\Python23\Lib\site-packages\pyme
 # PROP Output_Dir "muxer/Debug_Static"
 # PROP Intermediate_Dir "muxer/Debug_Static"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 CPP=cl.exe
 # ADD BASE CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "MUXER_EXPORTS" /YX /FD /GZ /c
 # ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
@@ -141,9 +141,9 @@ LIB32=link.exe -lib
 # PROP Output_Dir "muxer/Release_Static"
 # PROP Intermediate_Dir "muxer/Release_Static"
 # PROP Target_Dir ""
-F90=df.exe
-MTL=midl.exe
 LINK32=link.exe
+MTL=midl.exe
+F90=df.exe
 CPP=cl.exe
 # ADD BASE CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
 # ADD CPP /nologo /ML /W3 /GX /O2 /I "." /D "WIN32" /D "_NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_LIB" /YX /FD /c
@@ -170,11 +170,11 @@ LIB32=link.exe -lib
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\muxer\demuxer.cpp
+SOURCE=.\muxer\demuxer.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\muxer\muxer.cpp
+SOURCE=.\muxer\muxer.c
 # End Source File
 # End Group
 # Begin Group "Header Files"

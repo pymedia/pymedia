@@ -100,6 +100,9 @@ stream type. Once demuxer is created the following methods are available:\n"\
 
 PyObject *g_cErr;
 
+// Max number of streams in muxed sourced
+#define MAX_STREAMS 10
+
 // ---------------------------------------------------------------------------------
 typedef struct
 {
@@ -114,6 +117,8 @@ typedef struct
 	int bTriedHeader;
 	PyObject* cBuffer;
 	PyObject* cDict;
+  char *asPacket[ MAX_STREAMS ];
+  int  aiStreamLen[ MAX_STREAMS ];
 } PyDemuxerObject;
 
 /* -----------------------------------------------------------------------------------------------*/
@@ -291,8 +296,36 @@ int AppendStreamData( PyDemuxerObject* obj, AVPacket* cPkt )
   if( cPkt->stream_index>= obj->ic.nb_streams || cPkt->stream_index< 0 )
     return 1;
 
-  if( !obj->cBuffer )
-    obj->cBuffer= PyList_New( 0 );
+  if( cPkt->data_pos== 0 && obj->asPacket[ cPkt->stream_index ] )
+  {
+    // Flush the previous buffer
+    cRes= Py_BuildValue( "[is#iLL]", 
+      cPkt->stream_index, 
+      (const char*)obj->asPacket[ cPkt->stream_index ], 
+      obj->aiStreamLen[ cPkt->stream_index ], 
+      obj->aiStreamLen[ cPkt->stream_index ], 
+      cPkt->pts,
+      cPkt->dts );
+    PyList_Append( obj->cBuffer, cRes );
+    Py_DECREF( cRes );
+    obj->aiStreamLen[ cPkt->stream_index ]= 0;
+  }
+
+  // Check if we have to wait till all data come in a packet
+  if( cPkt->data_pos!= -1 )
+  {
+    // Check if we have pending packet already
+    if( !obj->asPacket[ cPkt->stream_index ] )
+      // !!!!! we are simplifying here. Need better management
+      obj->asPacket[ cPkt->stream_index ]= malloc( cPkt->size* 30 );
+
+    memcpy( obj->asPacket[ cPkt->stream_index ]+ cPkt->data_pos, cPkt->data, cPkt->size );
+    obj->aiStreamLen[ cPkt->stream_index ]+= cPkt->size;
+
+    // Do nothing when buffer is not full
+    return 1;
+  }
+
   /* Add 07/19/2005 by Vadim Grigoriev  to keep DTS*/
   cRes= Py_BuildValue( "[is#iLL]", cPkt->stream_index, (const char*)cPkt->data, cPkt->size, cPkt->size, cPkt->pts ,cPkt->dts );
   PyList_Append( obj->cBuffer, cRes );
@@ -395,25 +428,19 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 			obj->bHasHeader= obj->ic.has_header;
 		}
 	}
-
 	StartStreams( obj );
 	while( iRet>= 0 )
 	{
 		obj->pkt.size= 0;
 		iRet= av_read_packet(&obj->ic,&obj->pkt);
-		if( iRet>= 0 )
-		{
-			if( obj->pkt.size> 0 )
-			  {
-				if( !AppendStreamData( obj, &obj->pkt ) )
-				{
-				  PyErr_Format(g_cErr, "Cannot allocate memory ( %d bytes ) for codec parameters", obj->pkt.size );
-					return NULL;
-				}
-
-
-			  }
-		}
+		if( iRet>= 0 && obj->pkt.size> 0 )
+	  {
+		  if( !AppendStreamData( obj, &obj->pkt ) )
+		  {
+		    PyErr_Format(g_cErr, "Cannot allocate memory ( %d bytes ) for demuxed data", obj->pkt.size );
+			  return NULL;
+		  }
+	  }
 	}
 
 	// In case of error or something
@@ -432,11 +459,7 @@ Demuxer_Parse( PyDemuxerObject* obj, PyObject *args)
 		PyErr_Format(g_cErr, "Unspecified error %d. Cannot find any help text for it.", iRet );
 		return NULL;
 	}
-	//	printf(" Return the result\n");
-//PyErr_SetObject(g_cErr, Py_BuildValue( "(OL)", obj->cBuffer, 123456890999L ));
-//return NULL;
 	Py_INCREF( obj->cBuffer );
-	//printf(" Return the result% i \n");
 	return obj->cBuffer;
 }
 
@@ -728,9 +751,9 @@ initmuxer(void)
 import pymedia.muxer as muxer
 import pymedia.video.vcodec as vcodec
 dm= muxer.Demuxer( 'ts' )
-#f= open( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\demo1\\TTOP7058272542511953.ts', 'rb' )
-f= open( 'c:\\tt.ts', 'rb' )
-s= f.read( 300000 )
+#f= open( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\demo\\VideoOfOriginalSize\\Mommy 480x360.ts', 'rb' )
+f= open( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\TTOP3514170058111785_133371\\TTOP2415478194247319.ts', 'rb' )
+s= f.read( 500000 )
 r= dm.parse( s )
 dm.streams
 v= [ x for x in dm.streams if x[ 'type' ]== muxer.CODEC_TYPE_VIDEO ]

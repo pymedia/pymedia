@@ -167,6 +167,36 @@ static int SetStreamParams(PyObject* cParams,AVCodecContext* cCodec)
 			( cCodec->codec_type== CODEC_TYPE_AUDIO ) ? "audio": "video", s );
 		return 0;
 	}
+
+  // More sanity checks
+  if( cCodec->bit_rate<= 0 )
+	{
+		PyErr_Format( g_cErr, "%s codec: bitrate parameter specified as %d, should be > 0.", 
+			( cCodec->codec_type== CODEC_TYPE_AUDIO ) ? "audio": "video", cCodec->bit_rate );
+		return 0;
+	}
+
+  if( cCodec->frame_rate<= 0 )
+	{
+		PyErr_Format( g_cErr, "%s codec: frame_rate parameter specified as %d, should be > 0.", 
+			( cCodec->codec_type== CODEC_TYPE_AUDIO ) ? "audio": "video", cCodec->frame_rate );
+		return 0;
+	}
+
+  if( cCodec->sample_rate<= 0 && cCodec->codec_type== CODEC_TYPE_AUDIO )
+	{
+		PyErr_Format( g_cErr, "%s codec: sample_rate parameter specified as %d, should be > 0.", 
+			( cCodec->codec_type== CODEC_TYPE_AUDIO ) ? "audio": "video", cCodec->sample_rate );
+		return 0;
+	}
+
+  if( ( cCodec->width<= 0 || cCodec->height<= 0 ) && cCodec->codec_type== CODEC_TYPE_VIDEO )
+	{
+		PyErr_Format( g_cErr, "video codec: width or height should be > 0, specified (%d,%d)", 
+			( cCodec->codec_type== CODEC_TYPE_AUDIO ) ? "audio": "video", cCodec->width, cCodec->height );
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -370,7 +400,9 @@ static PyObject* Muxer_Start( PyMuxerObject* obj)
 		return NULL;
 	}
 	obj->bStarted= 1;
-	return PyString_FromStringAndSize((char*)obj->oc.pb.buffer, obj->oc.pb.buf_ptr- obj->oc.pb.buffer );
+	cRes= PyString_FromStringAndSize((char*)obj->oc.pb.buffer, obj->oc.pb.buf_ptr- obj->oc.pb.buffer );
+  obj->oc.pb.buf_ptr= obj->oc.pb.buffer;
+  return cRes;
 }
 
 // ---------------------------------------------------------------------------------
@@ -430,22 +462,24 @@ static PyObject* Muxer_Write_Frame( PyMuxerObject* obj, PyObject *args)
 	int iLen = 0;
 	PyObject* cRes = NULL;
 	AVPacket cPckt;
+  int64_t pts= AV_NOPTS_VALUE, dts= AV_NOPTS_VALUE;
 
-	if (!PyArg_ParseTuple(args, "is#:", &iStreamID, &sData, &iLen ))
+	if (!PyArg_ParseTuple(args, "is#|LL:", &iStreamID, &sData, &iLen, &pts, &dts ))
 		return NULL;
 
 	// Validate that start() was called 
 	if( !obj->bStarted )
 	{
 		PyErr_Format(g_cErr,  
-			"The format was not initialized. start() needs te be called first before calling any other muxer method");
+			"The format was not initialized. start() needs to be called before calling any other muxer method");
 		return NULL;
 	}
 
 	cPckt.stream_index= iStreamID;
 	cPckt.data= sData;
 	cPckt.size= iLen;
-	cPckt.pts= 0;
+  cPckt.pts= pts;
+  cPckt.dts= dts;
 	if (av_write_frame(&obj->oc, &cPckt ))
 	{
 		PyErr_Format(g_cErr,  "Error while writing frame");

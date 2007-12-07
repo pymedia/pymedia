@@ -1915,7 +1915,7 @@ static int mpeg_decode_slice(AVCodecContext *avctx,
     s->resync_mb_y= s->mb_y = -1;
     start_code = (start_code - 1) & 0xff;
     if (start_code >= s->mb_height){
-        fprintf(stderr, "slice below image (%d >= %d)\n", start_code, s->mb_height);
+        //fprintf(stderr, "slice below image (%d >= %d)\n", start_code, s->mb_height);
         return -1;
     }
     

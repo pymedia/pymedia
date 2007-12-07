@@ -2,10 +2,10 @@
 
 import sys
 
-def playPCM( fname ):
+def playPCM( fname, sampleRate ):
   import pymedia.audio.sound as sound
   import time
-  snd1= sound.Output( 44100, 2, sound.AFMT_S16_LE )
+  snd1= sound.Output( sampleRate, 2, sound.AFMT_S16_LE )
   f= open( fname, 'rb' )
   s= ' '
   while len( s ):
@@ -18,8 +18,11 @@ def playPCM( fname ):
 
 # Test media module 
 if __name__== '__main__':
-  if len( sys.argv )!= 2:
-    print "Usage: play_pcm <file>"
+  if not len( sys.argv ) in ( 2,3 ):
+    print "Usage: play_pcm <file> [sample_rate]"
   else:
-    playPCM( sys.argv[ 1 ] )
+    sampleRate= 44100
+    if len( sys.argv )== 3:
+      sampleRate= int( sys.argv[ 2 ] )
+    playPCM( sys.argv[ 1 ], sampleRate )
 

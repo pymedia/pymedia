@@ -59,7 +59,7 @@ LINK32=link.exe
 TargetPath=.\acodec\Release\acodec.pyd
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to destination
-PostBuild_Cmds=copy $(TargetPath) c:\python23\lib\site-packages\pymedia\audio
+PostBuild_Cmds=copy $(TargetPath) c:\python24\lib\site-packages\pymedia\audio
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "acodec - Win32 Debug"

@@ -1,5 +1,5 @@
 #ifndef PYMEDIA_VERSION_FULL
-#define PYMEDIA_VERSION_FULL "1.3.5.0"
+#define PYMEDIA_VERSION_FULL "1.3.7.5"
 #endif
 
 #ifndef PYMEDIA_VERSION

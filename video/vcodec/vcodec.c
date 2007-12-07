@@ -53,6 +53,7 @@ const char* PYDOC=
 
 #define GET_CODEC_ID_NAME "getCodecID"
 #define FRAME_CONVERT_NAME "convert"
+#define FRAME_COPY_NAME "copy"
 #define CONVERT_NAME "decode"
 #define GET_PARAM_NAME "getParams"
 #define ENCODE_NAME "encode"
@@ -62,6 +63,11 @@ const char* PYDOC=
 #define CONVERT_DOC \
 	  FRAME_CONVERT_NAME"( format {, size } ) -> frame\n \
 		Convert existing video frame into another format with all needed color conversions and scaling.\n"
+
+#define COPY_DOC \
+	  FRAME_COPY_NAME"( dest_frame, (x,y) ) -> None\n \
+		Copy frame data into the destination frame at the specified position.\n \
+    src and dest frame formats should be the same\n"
 
 #define GET_PARAM_DOC \
 	GET_PARAM_NAME"() -> params\n\
@@ -95,6 +101,7 @@ const char* PYDOC=
 #define DATA "data"
 #define SIZE "size"
 #define FRAME_RATE_ATTR "rate"
+#define MAX_BITRATE "max_bitrate"
 #define FRAME_RATE_B_ATTR "rate_base"
 #define ASPECT_RATIO "aspect_ratio"
 #define BITRATE "bitrate"
@@ -660,6 +667,66 @@ int PyVFrame2AVFrame(PyVFrameObject* cFrame, AVFrame *frame, int iFrameData)
 }
 
 // ---------------------------------------------------------------------------------
+static PyObject * Frame_Copy( PyVFrameObject* obj, PyObject *args)
+{
+	PyVFrameObject *cSrc= obj;
+	PyVFrameObject* cDst;
+  char *sDestY, *sSrcY, *sSrcU, *sSrcV, *sDestU, *sDestV;
+	int x, y, i, iSrcLenY, iSrcLenU;
+
+	if (!PyArg_ParseTuple(args, "O!(ii)", &VFrameType, &cDst, &x, &y ))
+		return NULL;
+
+  // Check if formats are the same 
+  if( cDst->pix_fmt!= obj->pix_fmt )
+  {
+    PyErr_Format( g_cErr, "Video frames should have the same format for copy to be called( formats are %d and %d)", obj->pix_fmt, cDst->pix_fmt );
+		return NULL;
+  }
+
+  // Check that src frame is less than dst frame
+  if( cDst->width< x+ obj->width || x< 0 )
+  {
+    PyErr_Format( g_cErr, "Width of the source video frame should be less than width of the destination. X position %d, src width %d, dst width %d", x, x+ obj->width, cDst->width );
+		return NULL;
+  }
+  if( cDst->height< y+ obj->height || y< 0 )
+  {
+    PyErr_Format( g_cErr, "Height of the source video frame should be less than height of the destination. Y position %d, src height %d, dst height %d", y, y+ obj->height, cDst->height );
+		return NULL;
+  }
+
+  PyArg_Parse( (PyObject*)cDst->cData[ 0 ], "s#", &sDestY, &i );
+  PyArg_Parse( (PyObject*)obj->cData[ 0 ], "s#", &sSrcY, &iSrcLenY );
+  sDestY+= y* i/ cDst->height; 
+  PyArg_Parse( (PyObject*)cDst->cData[ 1 ], "s#", &sDestU, &i );
+  PyArg_Parse( (PyObject*)obj->cData[ 1 ], "s#", &sSrcU, &iSrcLenU );
+  PyArg_Parse( (PyObject*)cDst->cData[ 2 ], "s#", &sDestV, &i );
+  PyArg_Parse( (PyObject*)obj->cData[ 2 ], "s#", &sSrcV, &iSrcLenU );
+  sDestU+= y* i/ cDst->height;
+  sDestV+= y* i/ cDst->height;
+  for( i= 0; i< obj->height; i++ )
+  {
+    // Copy Y component
+    memcpy( sDestY+ x, sSrcY, obj->width );
+    sDestY+= cDst->width;
+    sSrcY+= iSrcLenY/ obj->height;
+    // Copy UV components
+    if( !( i & 1 ) )
+    {
+      memcpy( sDestU+ x/2, sSrcU, obj->width/ 2 );
+      sDestU+= cDst->width/2;
+      sSrcU+= ( iSrcLenU* 2 )/ obj->height;
+
+      memcpy( sDestV+ x/2, sSrcV, obj->width/ 2 );
+      sDestV+= cDst->width/2;
+      sSrcV+= ( iSrcLenU* 2 )/ obj->height;
+    }
+  }
+	RETURN_NONE
+}
+
+// ---------------------------------------------------------------------------------
 static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 {
 	PyVFrameObject *cSrc= obj;
@@ -756,7 +823,7 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	cRes->width= cSrc->width;
 	cRes->pix_fmt= iFormat;
 	cRes->pict_type= cSrc->pict_type;
-        cRes->pts= -1;
+  cRes->pts= -1;
 	// Copy string(s)
 	for( i= 0; i< iPlanes; i++ )
 		cRes->cData[ i ]= (PyVCStringObject*)acPlanes[ i ];
@@ -773,6 +840,12 @@ static PyMethodDef frame_methods[] =
 		(PyCFunction)Frame_Convert,
 		METH_VARARGS,
 		CONVERT_DOC
+	},
+	{
+		"copy",
+		(PyCFunction)Frame_Copy,
+		METH_VARARGS,
+		COPY_DOC
 	},
 	{ NULL, NULL },
 };
@@ -1059,6 +1132,7 @@ Codec_GetParams( PyCodecObject* obj, PyObject *args)
 	SetAttribute_i( cRes, ID, obj->cCodec->codec_id );
 	SetAttribute_i( cRes, TYPE, obj->cCodec->codec_type );
 	SetAttribute_i( cRes, BITRATE, obj->cCodec->bit_rate );
+	SetAttribute_i( cRes, MAX_BITRATE, obj->cCodec->rc_max_bitrate );
 	SetAttribute_i( cRes, WIDTH, obj->cCodec->width );
 	SetAttribute_i( cRes, HEIGHT, obj->cCodec->height );
 	SetAttribute_i( cRes, FRAME_RATE, obj->cCodec->frame_rate );
@@ -1208,7 +1282,14 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	PyVFrame2AVFrame(cFrame, &picture, 1 );
 	iLen = avcodec_encode_video(obj->cCodec, sOutbuf, ENCODE_OUTBUF_SIZE,	&picture);
 	if (iLen > 0)
+  {
 		cRes= Frame_New_LAVC_Enc( obj, sOutbuf, iLen );
+    if( cRes )
+    {
+  	  ((PyVFrameObject*)cRes)->pict_type= picture.pict_type;
+      ((PyVFrameObject*)cRes)->pts= picture.pts;
+    }
+  }
 	else
 		PyErr_Format(g_cErr, "Failed to encode frame( error code is %d )", iLen );
 
@@ -1623,39 +1704,37 @@ def recodeVideo( inFile, outFile, outCodec ):
   r= dm.parse( s )
   v= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_VIDEO, dm.streams )
   if len( v )== 0:
-	  raise 'There is no video stream in a file %s' % inFile
+    raise 'There is no video stream in a file %s' % inFile
   
   v_id= v[ 0 ][ 'index' ]
   print 'Assume video stream at %d index: ' % v_id
   c= vcodec.Decoder( dm.streams[ v_id ] )
   e= None
   while len( s )> 0:
-	  for fr in r:
-		  if fr[ 0 ]== v_id:
-			  d= c.decode( fr[ 1 ] )
-			  if d and d.data:
-				  if e== None:
-					  params= c.getParams()
-					  params[ 'id' ]= vcodec.getCodecID( outCodec )
-					  # Just try to achive max quality( 2.7 MB/sec mpeg1 and 9.8 for mpeg2 )
-					  if outCodec== 'mpeg1video':
-						  params[ 'bitrate' ]= 2700000
-					  else:
-						  params[ 'bitrate' ]= 9800000
-					  # It should be some logic to work with frame rates and such.
-					  # I'm not aware of what it would be...
-					  print 'Setting codec to ', params
-					  e= vcodec.Encoder( params )
+    for fr in r:
+      if fr[ 0 ]== v_id:
+        d= c.decode( fr[ 1 ] )
+        if d and d.data:
+          if e== None:
+            params= c.getParams()
+            params[ 'id' ]= vcodec.getCodecID( outCodec )
+            # Just try to achive max quality( 2.7 MB/sec mpeg1 and 9.8 for mpeg2 )
+            if outCodec== 'mpeg1video':
+              params[ 'bitrate' ]= 2700000
+            else:
+              params[ 'bitrate' ]= 9800000
+            print 'Setting codec to ', params
+            e= vcodec.Encoder( params )
 				  
-				  print '------------------'
+          print '------------------'
           dw= e.encode( d )
-				  print '..................'
+          print '..................'
           print 'Format %d, Datasize %d, Rate %d, Rate Base %d, Pict Type %d, Frame Number %d' % ( dw.format, len( dw.data ), dw.rate, dw.rate_base, dw.pict_type, dw.frame_number )
 	  
-	  s= f.read( 400000 )
-	  r= dm.parse( s )
+    s= f.read( 400000 )
+    r= dm.parse( s )
 
-recodeVideo( 'c:\\movies\\Office.Space.1.avi', 'test.mpg', 'mpeg1video' )
+recodeVideo( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\TTOP2595318279758871_122370\\TTOP1206586244906320.ts', 'c:\\test.mpg', 'mpeg1video' )
 
  
 

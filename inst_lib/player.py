@@ -764,8 +764,8 @@ class Player:
                 #print self.seek, self.length, self.fileSize, ( float( self.seek ) / self.length )* self.fileSize
                 f.seek( ( float( self.seek ) / self.length )* self.fileSize, 0 )
               else:
-                f.seek( self.seek* self.getBitRate()/ 8, 0 )
                 #print self.seek, self.getBitRate(), f.tell()
+                f.seek( self.seek* self.getBitRate()/ 8, 0 )
               
               #print 'seek to', self.seek, f.tell()
               seek= self.seek

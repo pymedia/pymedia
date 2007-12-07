@@ -735,19 +735,22 @@ public:
 	}
 
 	// ---------------------------------------------------------------------------------------------------
-	~OSoundStream()
+	void Free()
 	{
 		this->Stop();
 
+		for( int i= 0; i< MAX_HEADERS; i++ )
+    {
+			LPWAVEHDR wh = &this->headers[ i ];
+			waveOutUnprepareHeader( this->dev, wh, sizeof (WAVEHDR) );
+			this->free_buffer( &this->headers[ i ] );
+    }
 		if(this->dev)
 		{
 			 waveOutReset(this->dev);      //reset the device
 			 waveOutClose(this->dev);      //close the device
 			 this->dev=NULL;
 		}
-		for( int i= 0; i< MAX_HEADERS; i++ )
-			this->free_buffer( &this->headers[ i ] );
-
 		DeleteCriticalSection(&this->cs);
 	}
 

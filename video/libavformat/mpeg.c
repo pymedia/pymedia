@@ -288,10 +288,13 @@ static void flush_packet(AVFormatContext *ctx,
         header_len = 5;
     }
     payload_size = s->packet_size - (size + 6 + header_len + last);
-    if (id < 0xc0) {
+    if (id < 0xc0) 
+    {
         startcode = PRIVATE_STREAM_1;
         payload_size -= 4;
-    } else {
+    } 
+    else 
+    {
         startcode = 0x100 + id;
     }
     stuffing_size = payload_size - stream->buffer_ptr;
@@ -536,9 +539,9 @@ static int mpegps_read_vpes_packet(AVFormatContext *s,
 
       /* no stream found: add a new stream */
       if (s->nb_streams == 0){
-	st = av_new_stream(s, 1);
-	st->codec.codec_type = CODEC_TYPE_VIDEO;
-	st->codec.codec_id = CODEC_ID_MPEG1VIDEO;
+	      st = av_new_stream(s, 1);
+	      st->codec.codec_type = CODEC_TYPE_VIDEO;
+	      st->codec.codec_id = CODEC_ID_MPEG1VIDEO;
       }
       av_new_packet(pkt, i-len);
       get_buffer(&s->pb, pkt->data, pkt->size);
@@ -803,7 +806,7 @@ AVOutputFormat mpeg2vob_mux = {
     "vob",
     sizeof(MpegMuxContext),
     CODEC_ID_MP2,
-    CODEC_ID_MPEG1VIDEO,
+    CODEC_ID_MPEG2VIDEO,
     mpeg_mux_init,
     mpeg_mux_write_packet,
     mpeg_mux_end,

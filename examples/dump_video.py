@@ -1,5 +1,5 @@
 #! /bin/env python
-import sys, os
+import sys, os, time
 import pymedia.muxer as muxer
 import pymedia.video.vcodec as vcodec
 import pygame
@@ -17,8 +17,11 @@ def dumpVideo( inFile, outFilePattern, fmt ):
   v_id= v[ 0 ][ 'index' ]
   print 'Assume video stream at %d index: ' % v_id
   c= vcodec.Decoder( dm.streams[ v_id ] )
+  t= time.time()
   while len( s )> 0:
     for fr in r:
+      if ( i % 100 )== 0:
+        print '%d frames in %.2f secs (%.2f fps)' % ( i, time.time()- t, i/ ( time.time()- t ) )
       if fr[ 0 ]== v_id:
         d= c.decode( fr[ 1 ] )
         # Save file as RGB BMP

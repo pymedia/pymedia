@@ -10,6 +10,7 @@ def voiceRecorder( secs, channels, name ):
              'sample_rate': 44100,
              'channels': channels } 
   ac= acodec.Encoder( cparams )
+  print sound.getIDevices()[0]
   snd= sound.Input( 44100, channels, sound.AFMT_S16_LE )
   snd.start()
   

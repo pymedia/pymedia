@@ -38,7 +38,7 @@
 #define MODULE_NAME "pymedia"PYMEDIA_VERSION".audio.acodec"
 
 const int PYBUILD= BUILD_NUM;
-char* PYDOC=
+char* PYDOC= 
 "Audio decoding module:\n"
 "\t- Decode frames of data into the raw PCM format\n"
 "\t- Encodes raw PCM data into any available format( see acodec.formats )\n"
@@ -599,6 +599,12 @@ static PyMethodDef decoder_methods[] =
 		METH_VARARGS,
 		CONVERT_DOC
 	},
+	{
+		GET_PARAMS,
+		(PyCFunction)Codec_GetParams,
+		METH_NOARGS,
+		GET_PARAM_DOC
+	},
 	{ NULL, NULL },
 };
 
@@ -653,6 +659,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 	{
 		// Copy only the rest of the frame to the buffer
 		iPos= GetFrameSize(obj)- obj->iPaddedPos;
+    iPos= ( iPos> iLen ) ? iLen: iPos;
 		memcpy( (char*)obj->pPaddedBuf+ obj->iPaddedPos, sData, iPos );
 	}
 
@@ -660,7 +667,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 	if (!cRes)
 		return NULL;
 
-	while ( iLen- iPos>= GetFrameSize(obj) || obj->iPaddedPos )
+	while ( ( iLen- iPos ) >= GetFrameSize(obj) || obj->iPaddedPos )
 	{
 		int i= avcodec_encode_audio(obj->cCodec,
 				sOutbuf,
@@ -685,7 +692,7 @@ static PyObject* ACodec_Encode( PyACodecObject* obj, PyObject *args)
 	}
 
 	// Copy the rest of the buffer to the temp place in the codec
-	if( iLen- iPos )
+	if( iLen> iPos )
 	{
 		obj->iPaddedPos= iLen- iPos;
 		memcpy( obj->pPaddedBuf, sData+ iPos, obj->iPaddedPos );

@@ -1474,7 +1474,7 @@ static void select_input_picture(MpegEncContext *s){
                 }
 
                 if(b_frames > s->max_b_frames){
-                    fprintf(stderr, "warning, too many bframes in a row\n");
+                    //fprintf(stderr, "warning, too many bframes in a row\n");
                     b_frames = s->max_b_frames;
                 }
             }else if(s->b_frame_strategy==0){
@@ -1594,6 +1594,7 @@ int MPV_encode_picture(AVCodecContext *avctx,
     /* output? */
     if(s->new_picture.data[0]){
 
+
         s->pict_type= s->new_picture.pict_type;
         if (s->fixed_qscale){ /* the ratecontrol needs the last qscale so we dont touch it for CBR */
             s->qscale= (int)(s->new_picture.quality+0.5);
@@ -1629,13 +1630,12 @@ int MPV_encode_picture(AVCodecContext *avctx,
     }
 
     s->input_picture_number++;
-
     flush_put_bits(&s->pb);
     s->frame_bits  = (pbBufPtr(&s->pb) - s->pb.buf) * 8;
 
     s->total_bits += s->frame_bits;
     avctx->frame_bits  = s->frame_bits;
-
+    pic_arg->pict_type= s->pict_type;
     return pbBufPtr(&s->pb) - s->pb.buf;
 }
 

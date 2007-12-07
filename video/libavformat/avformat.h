@@ -46,6 +46,7 @@ typedef struct AVPacket {
     int   duration; /* presentation duration (0 if not available) */
     void  (*destruct)(struct AVPacket *);
     void  *priv;
+    int   data_pos;
 } AVPacket;  
 
 #define PKT_FLAG_KEY   0x0001

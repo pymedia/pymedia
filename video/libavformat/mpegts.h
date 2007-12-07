@@ -39,6 +39,9 @@
 #define PMT_TID   0x02
 #define SDT_TID   0x42
 
+#define PCR_TICKS 358072  /* ratio of 27-MHz clock ticks per ATSC packet */
+#define ATSC_PACKETS 171
+
 /* descriptor ids */
 #define DVB_SUBT_DESCID             0x59
 
@@ -58,11 +61,27 @@
 
 #define STREAM_TYPE_SUBTITLE_DVB    0x100
 
-typedef struct MpegTSContext MpegTSContext;
+enum MpegTSFilterType {
+    MPEGTS_PES,
+    MPEGTS_SECTION,
+};
 
-MpegTSContext *mpegts_parse_open(AVFormatContext *s);
-int mpegts_parse_packet(MpegTSContext *ts, AVPacket *pkt,
-                        const uint8_t *buf, int len);
-void mpegts_parse_close(MpegTSContext *ts);
+typedef void PESCallback(void *opaque, const uint8_t *buf, int len, int is_start);
+
+typedef struct MpegTSPESFilter {
+    PESCallback *pes_cb;
+    void *opaque;
+} MpegTSPESFilter;
+
+typedef void SectionCallback(void *opaque, const uint8_t *buf, int len);
+
+typedef void SetServiceCallback(void *opaque, int ret);
+
+//typedef struct MpegTSContext MpegTSContext;
+
+//MpegTSContext *mpegts_parse_open(AVFormatContext *s);
+//int mpegts_parse_packet(MpegTSContext *ts, AVPacket *pkt,
+//                        const uint8_t *buf, int len);
+//void mpegts_parse_close(MpegTSContext *ts);
 
 #endif /* AVFORMAT_MPEGTS_H */

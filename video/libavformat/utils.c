@@ -180,6 +180,7 @@ int av_new_packet(AVPacket *pkt, int size)
     pkt->pts = AV_NOPTS_VALUE;
     pkt->stream_index = 0;
     pkt->flags = 0;
+    pkt->data_pos= -1;
 
     for(i=0; i<FF_INPUT_BUFFER_PADDING_SIZE; i++)
         pkt->data[size+i]= 0;
@@ -891,9 +892,10 @@ static void truncate_ts(AVStream *st, AVPacket *pkt){
  */
 int av_write_frame(AVFormatContext *s, AVPacket *pkt)
 {
-    compute_pkt_fields2(s->streams[pkt->stream_index], pkt);
+    // BORS: DTP/PTS calcs are disabled
+    //compute_pkt_fields2(s->streams[pkt->stream_index], pkt);
     
-    truncate_ts(s->streams[pkt->stream_index], pkt);
+    //truncate_ts(s->streams[pkt->stream_index], pkt);
 
     return s->oformat->write_packet(s, pkt);
 }

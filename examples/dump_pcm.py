@@ -1,27 +1,37 @@
 #! /bin/env python
 
-import pymedia.audio.acodec as acodec
-import sys, string
+def dumpPCM( name ):
+	import pymedia.audio.acodec as acodec
+	import pymedia.muxer as muxer
+	import time, wave, string, os
+	name1= str.split( name, '.' )
+	name2= string.join( name1[ : len( name1 )- 1 ] )
+	# Open demuxer first
+	dm= muxer.Demuxer( name1[ -1 ].lower() )
+	dec= None
+	f= open( name, 'rb' )
+	snd= None
+	s= " "
+	while len( s ):
+		s= f.read( 20000 )
+		if len( s ):
+			frames= dm.parse( s )
+			for fr in frames:
+				if dec== None:
+					# Open decoder
+					dec= acodec.Decoder( dm.streams[ 0 ] )
+				r= dec.decode( fr[ 1 ] )
+				if r and r.data:
+					if snd== None:
+						snd= open( name2+ '.pcm', 'wb' )
 
-def dumpPCM( fname ):
-  s= fname.split( '.' )
-  dec= acodec.Decoder( s[ -1 ].lower() )
-  f= open( fname, 'rb' )
-  fname1= string.join( s[ : len( s )-1 ], '.' )+ '.pcm'
-  f1= open( fname1, 'wb' )
-  s= f.read( 4096 )
-  while len( s )> 0:
-    res= dec.decode( s )
-    f1.write( res.data )
-    s= f.read( 4096 )
+					snd.write( r.data )
 
-  f.close()
-  f1.close()
-  print 'Dump completed into %s ' % fname1
-
-# Test media module 
-if __name__== '__main__':
-  if len( sys.argv )!= 2:
-    print "Usage: dump_pcm <file_name>"
-  else:
-    dumpPCM( sys.argv[ 1 ] )
+# ----------------------------------------------------------------------------------
+# Save compressed audio file into the PCM file suitable for writing on a regular Audio CD
+# http://pymedia.org/
+import sys
+if len( sys.argv )!= 2:
+	print "Usage: dump_pcm <filename>"
+else:
+	dumpPCM( sys.argv[ 1 ] )

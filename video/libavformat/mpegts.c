@@ -31,22 +31,6 @@
 
 static int add_pes_stream(AVFormatContext *s, int pid);
 
-enum MpegTSFilterType {
-    MPEGTS_PES,
-    MPEGTS_SECTION,
-};
-
-typedef void PESCallback(void *opaque, const uint8_t *buf, int len, int is_start);
-
-typedef struct MpegTSPESFilter {
-    PESCallback *pes_cb;
-    void *opaque;
-} MpegTSPESFilter;
-
-typedef void SectionCallback(void *opaque, const uint8_t *buf, int len);
-
-typedef void SetServiceCallback(void *opaque, int ret);
-
 typedef struct MpegTSSectionFilter {
     int section_index;
     int section_h_size;
@@ -149,7 +133,44 @@ static uint32_t crc_table[256] = {
 	0x933eb0bb, 0x97ffad0c, 0xafb010b1, 0xab710d06, 0xa6322bdf, 0xa2f33668,
 	0xbcb4666d, 0xb8757bda, 0xb5365d03, 0xb1f740b4
 };
- 
+
+/* TS stream handling */
+
+enum MpegTSState {
+    MPEGTS_HEADER = 0,
+    MPEGTS_PESHEADER_FILL,
+    MPEGTS_PAYLOAD,
+    MPEGTS_SKIP,
+};
+
+/* enough for PES header + length */
+#define PES_START_SIZE 9
+#define MAX_PES_HEADER_SIZE (9 + 255)
+
+typedef struct PESContext {
+    int pid;
+    AVFormatContext *stream;
+    AVStream *st;
+    enum MpegTSState state;
+    /* used to get the format */
+    int data_index;
+    int total_size;
+    int pes_header_size;
+    int64_t pts, dts;
+    uint8_t header[MAX_PES_HEADER_SIZE];
+    int data_pos;
+} PESContext;
+
+typedef struct SectionHeader {
+    uint8_t tid;
+    uint16_t id;
+    uint8_t version;
+    uint8_t sec_num;
+    uint8_t last_sec_num;
+} SectionHeader;
+
+// -------------------------------------------------------------------------------------------------------------
+// Code section
 unsigned int mpegts_crc32(const uint8_t *data, int len)
 {
     register int i;
@@ -284,14 +305,6 @@ static int get_packet_size(const uint8_t *buf, int size)
     }
     return TS_FEC_PACKET_SIZE;
 }
-
-typedef struct SectionHeader {
-    uint8_t tid;
-    uint16_t id;
-    uint8_t version;
-    uint8_t sec_num;
-    uint8_t last_sec_num;
-} SectionHeader;
 
 static inline int get8(const uint8_t **pp, const uint8_t *p_end)
 {
@@ -663,32 +676,6 @@ void mpegts_scan_pat(MpegTSContext *ts)
                                                 pat_scan_cb, ts, 1);
 }
 
-/* TS stream handling */
-
-enum MpegTSState {
-    MPEGTS_HEADER = 0,
-    MPEGTS_PESHEADER_FILL,
-    MPEGTS_PAYLOAD,
-    MPEGTS_SKIP,
-};
-
-/* enough for PES header + length */
-#define PES_START_SIZE 9
-#define MAX_PES_HEADER_SIZE (9 + 255)
-
-typedef struct PESContext {
-    int pid;
-    AVFormatContext *stream;
-    AVStream *st;
-    enum MpegTSState state;
-    /* used to get the format */
-    int data_index;
-    int total_size;
-    int pes_header_size;
-    int64_t pts, dts;
-    uint8_t header[MAX_PES_HEADER_SIZE];
-} PESContext;
-
 static int64_t get_pts(const uint8_t *p)
 {
     int64_t pts;
@@ -739,14 +726,14 @@ static void mpegts_push_data(void *opaque,
                     code = pes->header[3] | 0x100;
                     if (!((code >= 0x1c0 && code <= 0x1df) ||
                           (code >= 0x1e0 && code <= 0x1ef) ||
-                          (code == 0x1bd)))
+                          (code == 0x1bd) || (code == 0x1fd) ))
                         goto skip;
                     if (!pes->st) {
                         /* allocate stream */
                         if (code >= 0x1c0 && code <= 0x1df) {
                             codec_type = CODEC_TYPE_AUDIO;
                             codec_id = CODEC_ID_MP2;
-                        } else if (code == 0x1bd) {
+                        } else if (code == 0x1bd || code == 0x1fd) {
                             codec_type = CODEC_TYPE_AUDIO;
                             codec_id = CODEC_ID_AC3;
                         } else {
@@ -766,7 +753,10 @@ static void mpegts_push_data(void *opaque,
                     /* NOTE: a zero total size means the PES size is
                        unbounded */
                     if (pes->total_size)
+                    {
                         pes->total_size += 6;
+                        pes->data_pos= 0;
+                    }
                     pes->pes_header_size = pes->header[8] + 9;
                 } else {
                     /* otherwise, it should be a table */
@@ -798,30 +788,47 @@ static void mpegts_push_data(void *opaque,
                 if ((flags & 0xc0) == 0x80) {
                     pes->pts = get_pts(r);
                     r += 5;
-                } else if ((flags & 0xc0) == 0xc0) {
+                } 
+                else if ((flags & 0xc0) == 0xc0) 
+                {
                     pes->pts = get_pts(r);
                     r += 5;
                     pes->dts = get_pts(r);
                     r += 5;
                 }
+                
                 /* we got the full header. We parse it and get the payload */
                 pes->state = MPEGTS_PAYLOAD;
             }
             break;
         case MPEGTS_PAYLOAD:
-            if (pes->total_size) {
+if( pes->st->index )
+pes->st->index= pes->st->index;
+            if (pes->total_size) 
+            {
                 len = pes->total_size - pes->data_index;
                 if (len > buf_size)
                     len = buf_size;
             } else {
                 len = buf_size;
             }
-            if (len > 0) {
-                AVPacket *pkt = ts->pkt;
-                if (pes->st && av_new_packet(pkt, len) == 0) {
+            if (len > 0) 
+            {
+                AVPacket *pkt = ts->pkt; 
+                if (pes->st && av_new_packet(pkt, len) == 0) 
+                {                
                     memcpy(pkt->data, p, len);
                     pkt->stream_index = pes->st->index;
+                    
+                    // Only set for defined PES length
+                    if( pes->total_size )
+                    {
+                      pkt->data_pos= pes->data_pos;
+                      pes->data_pos+= len;
+                    }
+
                     pkt->pts = pes->pts;
+                    pkt->dts = pes->dts;
                     /* reset pts values */
                     pes->pts = AV_NOPTS_VALUE;
                     pes->dts = AV_NOPTS_VALUE;
@@ -962,8 +969,9 @@ static int handle_packets(AVFormatContext *s, int nb_packets)
         if (nb_packets != 0 && packet_num >= nb_packets)
             break;
         pos = url_ftell(pb);
-		if( get_mem_buffer_size( pb )< ts->raw_packet_size )
-			return AVILIB_NEED_DATA;
+
+		    if( get_mem_buffer_size( pb )< ts->raw_packet_size )
+			    return AVILIB_NEED_DATA;
 		
         len = get_buffer(pb, packet, ts->raw_packet_size);
         if (len != ts->raw_packet_size)

@@ -637,6 +637,7 @@ static void
 SoundClose( PyOSoundObject *sound )
 {
   Py_BEGIN_ALLOW_THREADS
+  sound->cObj->Free();
 	delete sound->cObj;
   Py_END_ALLOW_THREADS
 

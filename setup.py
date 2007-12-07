@@ -1,6 +1,6 @@
 #!/bin/env python
 
-import sys, config, os
+import sys, config, os, glob
 try:
   from distutils.core import setup, Extension
 except:
@@ -8,7 +8,7 @@ except:
   raise
 
 MODULE_NAME= 'pymedia'
-VERSION= '1.3.7.0'
+VERSION= '1.3.7.5'
 
 def disable_fPIC():
   """Disable -fPIC in the c compiler command line.
@@ -103,6 +103,7 @@ FILES={
 		(
 			'integer.c',
 			'utils.c',
+			'crc.c',
 			'cutils.c',
 			'mov.c',
 			'avienc.c',
@@ -110,6 +111,7 @@ FILES={
 			'asf.c',
 			'aviobuf.c',
 			'mpegts.c',
+			'mpegtsenc.c',
 			'mpeg.c',
 			'raw.c',
 			'ogg.c',
@@ -251,7 +253,7 @@ DEPS = [
 		dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
 		dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
 		dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
-		dep('ALSA', 'libasound','alsa/asoundlib.h','libasound', 'CONFIG_ALSA').configure(inc_hunt,lib_hunt),
+		#dep('ALSA', 'libasound','alsa/asoundlib.h','libasound', 'CONFIG_ALSA').configure(inc_hunt,lib_hunt),
 ]
 
 DEPS= filter( lambda x: x.found, DEPS )
@@ -281,7 +283,8 @@ PACKAGEDATA = {
 				"packages":    [MODULE,MODULE+'.audio',MODULE+'.video', MODULE+'.video.ext_codecs', MODULE+'.removable', 'pymedia'],
 				"package_dir": 
 					{MODULE: 'inst_lib',MODULE+'.audio': 'inst_lib/audio',MODULE+'.video.ext_codecs': 'inst_lib/video/ext_codecs',MODULE+'.video': 'inst_lib/video',MODULE+'.removable': 'inst_lib/removable'},
-				"ext_modules": config.extensions( MODULE, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS )
+				"ext_modules": config.extensions( MODULE, FILES, INC_DIRS, LIB_DIRS, DEFINES, LIBS ),
+				"py_modules": ['config'],
 }
 
 PACKAGEDATA.update(METADATA)
