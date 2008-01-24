@@ -677,6 +677,9 @@ static PyObject * Frame_Copy( PyVFrameObject* obj, PyObject *args)
 	if (!PyArg_ParseTuple(args, "O!(ii)", &VFrameType, &cDst, &x, &y ))
 		return NULL;
 
+  x&= 0xFFFFFFFE;
+  y&= 0xFFFFFFFE;
+
   // Check if formats are the same 
   if( cDst->pix_fmt!= obj->pix_fmt )
   {
@@ -730,7 +733,7 @@ static PyObject * Frame_Copy( PyVFrameObject* obj, PyObject *args)
 static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 {
 	PyVFrameObject *cSrc= obj;
-	int iFormat, iWidth, iHeight, iDepth= 1, iPlanes= 3, i;
+	int iFormat, iWidth, iHeight, iDepth= 1, iPlanes= 3, i, w, h;
 	PyObject *acPlanes[ 3 ]= { NULL, NULL, NULL };
 	PyVFrameObject* cRes;
 
@@ -745,7 +748,10 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	PyVFrame2AVFrame( obj, (AVFrame*)&cSrcPict, 0 );
 	memset( &cDstPict.data[ 0 ], 0, sizeof( cDstPict.data ) );
 
-	// Create new VFrame
+  w= cSrc->width & 0xfffffe;
+  h= cSrc->height & 0xfffffe;
+
+  // Create new VFrame
 	cRes= (PyVFrameObject*)PyObject_New( PyVFrameObject, &VFrameType );
 	if( !cRes )
 		return NULL;
@@ -765,11 +771,11 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 		case PIX_FMT_YUVJ422P:
 		case PIX_FMT_YUVJ444P:
 			// 3 planes
-			acPlanes[ 1 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
-			acPlanes[ 2 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height/ 4 );
+			acPlanes[ 1 ]= PyString_FromStringAndSize( NULL, w * h/ 4 );
+			acPlanes[ 2 ]= PyString_FromStringAndSize( NULL, w* h/ 4 );
 			cDstPict.data[ 1 ]= PyString_AsString( acPlanes[ 1 ] );
 			cDstPict.data[ 2 ]= PyString_AsString( acPlanes[ 2 ] );
-			cDstPict.linesize[ 1 ]= cDstPict.linesize[ 2 ]= cSrc->width/ 2;
+			cDstPict.linesize[ 1 ]= cDstPict.linesize[ 2 ]= w/ 2;
 			break;
 		case PIX_FMT_RGBA32:
 			iDepth++;
@@ -792,12 +798,12 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 			return NULL;
 	}
 	// 1 plane
-	acPlanes[ 0 ]= PyString_FromStringAndSize( NULL, cSrc->width* cSrc->height* iDepth );
-	cDstPict.linesize[ 0 ]= cSrc->width* iDepth;
+	acPlanes[ 0 ]= PyString_FromStringAndSize( NULL, w* h* iDepth );
+	cDstPict.linesize[ 0 ]= w* iDepth;
 	cDstPict.data[ 0 ]= PyString_AsString( acPlanes[ 0 ] );
 
 	// Convert images
-	if( img_convert( &cDstPict, iFormat, &cSrcPict, cSrc->pix_fmt, cSrc->width, cSrc->height )== -1 )
+	if( img_convert( &cDstPict, iFormat, &cSrcPict, cSrc->pix_fmt, w, h )== -1 )
 	{
 		PyErr_Format( g_cErr, "Video frame with format %d cannot be converted to %d", cSrc->pix_fmt, iFormat );
 		if( acPlanes[ 0 ] )
@@ -819,8 +825,8 @@ static PyObject * Frame_Convert( PyVFrameObject* obj, PyObject *args)
 	cRes->aspect_ratio= cSrc->aspect_ratio;
 	cRes->frame_rate= cSrc->frame_rate;
 	cRes->frame_rate_base= cSrc->frame_rate_base;
-	cRes->height= cSrc->height;
-	cRes->width= cSrc->width;
+	cRes->height= h;
+	cRes->width= w;
 	cRes->pix_fmt= iFormat;
 	cRes->pict_type= cSrc->pict_type;
   cRes->pts= -1;
@@ -1132,7 +1138,7 @@ Codec_GetParams( PyCodecObject* obj, PyObject *args)
 	SetAttribute_i( cRes, ID, obj->cCodec->codec_id );
 	SetAttribute_i( cRes, TYPE, obj->cCodec->codec_type );
 	SetAttribute_i( cRes, BITRATE, obj->cCodec->bit_rate );
-	SetAttribute_i( cRes, MAX_BITRATE, obj->cCodec->rc_max_bitrate );
+	//SetAttribute_i( cRes, MAX_BITRATE, obj->cCodec->rc_max_bitrate );
 	SetAttribute_i( cRes, WIDTH, obj->cCodec->width );
 	SetAttribute_i( cRes, HEIGHT, obj->cCodec->height );
 	SetAttribute_i( cRes, FRAME_RATE, obj->cCodec->frame_rate );
