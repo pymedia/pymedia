@@ -1515,6 +1515,7 @@ static void select_input_picture(MpegEncContext *s){
             else
                 s->reordered_input_picture[0]->pict_type= P_TYPE;
             s->reordered_input_picture[0]->coded_picture_number= coded_pic_num;
+printf( "make b frame %d\n" );
             for(i=0; i<b_frames; i++){
                 coded_pic_num++;
                 s->reordered_input_picture[i+1]= s->input_picture[i];
@@ -1577,6 +1578,9 @@ int MPV_encode_picture(AVCodecContext *avctx,
     MpegEncContext *s = avctx->priv_data;
     AVFrame *pic_arg = data;
     int i;
+
+    // BORS added to have bitrate dynamically adjusted
+    s->bit_rate = avctx->bit_rate;
 
     if(avctx->pix_fmt != PIX_FMT_YUV420P){
         fprintf(stderr, "this codec supports only YUV420P\n");
