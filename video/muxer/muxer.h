@@ -2,7 +2,7 @@
 #define _PYMUXER_H_
 
 #include <Python.h>
-#include "libavcodec/avcodec.h"
+//#include "libavformat/avcodec.h"
 #include "libavformat/avformat.h"
 
 extern PyObject *g_cErr;

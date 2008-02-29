@@ -1,4 +1,8 @@
 
+#if defined( _MSC_VER ) && !defined( PRId64 )
+#        define PRId64 "I64d"
+#endif
+
 #if defined( _STDINT_H ) && !defined( _SYS_TYPES_H_ )
 
 #define _SYS_TYPES_H_
@@ -11,14 +15,8 @@
 	typedef signed int INT32;
 
 #if defined( WIN32 ) && !defined( SYS_CYGWIN )
-		typedef signed __int64 INT64;
-		typedef unsigned __int64 UINT64;
-#	else
-		typedef signed long long INT64;
-		typedef unsigned long long UINT64;
-#	endif
-
-#if defined( WIN32 ) && !defined( SYS_CYGWIN )
+	typedef signed __int64 INT64;
+	typedef unsigned __int64 UINT64;
 #        define int64_t_C(c)     (c ## i64)
 #        define uint64_t_C(c)    (c ## i64)
 
@@ -26,6 +24,8 @@
 #        define snprintf _snprintf
 
 #    else
+	typedef signed long long INT64;
+	typedef unsigned long long UINT64;
 #        define int64_t_C(c)     (c ## LL)
 #        define uint64_t_C(c)    (c ## ULL)
 #    endif /* __MINGW32__ */

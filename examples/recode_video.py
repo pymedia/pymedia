@@ -92,7 +92,7 @@ def recodeVideo( inFile, outFile, outCodec ):
 			if fr[ 0 ]== a_id:
 				# --------- Just a test !
 				ss= mx.write( aId, fr[ 1 ], fr[ 3 ], fr[ 4 ] )
-				print len(fr[ 1 ]), fr[ 3 ]
+				#print len(fr[ 1 ]), fr[ 3 ]
 				# --------- End of test
 				#d= ac.decode( fr[ 1 ] )
 				#if d and d.data:

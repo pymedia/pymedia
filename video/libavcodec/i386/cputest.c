@@ -19,7 +19,13 @@ int mm_support(void)
 {
     int rval;
     int eax, ebx, ecx, edx;
-    
+// Made up by BORS to get rid of SSE2 fails
+#if ENABLE_MMX== 1
+  return MM_MMX;
+#else
+  return 0;
+#endif
+
     __asm__ __volatile__ (
                           /* See if CPUID instruction is supported ... */
                           /* ... Get copies of EFLAGS into eax and ecx */

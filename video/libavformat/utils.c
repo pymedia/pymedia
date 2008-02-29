@@ -28,7 +28,7 @@
 #include <sys/timeb.h>
 #endif
 #include <time.h>
-#include <libavcodec/integer.h>
+#include "integer.h"
 
 AVInputFormat *first_iformat;
 AVOutputFormat *first_oformat;

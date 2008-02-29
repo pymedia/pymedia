@@ -36,7 +36,9 @@ def videoDecodeBenchmark( inFile, opt ):
     for fr in r:
       if fr[ 0 ]== v_id:
         d= vc.decode( fr[ 1 ] )
-        if d:
+        if fr[ 3 ]> 0:
+          print 'Video PTS', fr[ 3 ]
+        if d and d.data:
           frames+= 1
           #ff= open( 'c:\\test', 'wb' )
           #ff.write( d.data[ 0 ] )

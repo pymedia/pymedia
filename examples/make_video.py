@@ -37,9 +37,11 @@ def makeVideo( inPattern, outFile, outCodec ):
         t= time.time()
       
       # Create VFrame
-      ss= pygame.image.tostring(s, "RGB")
-      bmpFrame= vcodec.VFrame( vcodec.formats.PIX_FMT_RGB24, s.get_size(), (ss,None,None))
-      yuvFrame= bmpFrame.convert( vcodec.formats.PIX_FMT_YUV420P )
+      if inPattern.index( '.bmp' )> 0:
+        ss= pygame.image.tostring(s, "RGB")
+        bmpFrame= vcodec.VFrame( vcodec.formats.PIX_FMT_RGB24, s.get_size(), (ss,None,None))
+        yuvFrame= bmpFrame.convert( vcodec.formats.PIX_FMT_YUV420P )
+
       d= e.encode( yuvFrame )
       fw.write( d.data )
       i+= 1

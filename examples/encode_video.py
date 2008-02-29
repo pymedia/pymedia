@@ -33,7 +33,7 @@ def encodeVideo( fName, fOutFile, codecName ):
 	vc = vcodec.Decoder( ss[ 0 ] )
 	
 	#create muxer
-	mux= muxer.Muxer( 'mpg' )
+	mux= muxer.Muxer( 'ts' )
 	header= a_id1= v_id1= None
 	m_data= []
 	while len(s):

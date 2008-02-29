@@ -15,8 +15,9 @@ def dumpVideo( inFile, outFilePattern, fmt ):
     raise 'There is no video stream in a file %s' % inFile
   
   v_id= v[ 0 ][ 'index' ]
-  print 'Assume video stream at %d index: ' % v_id
+  print 'Assume video stream at %d index: ' % v_id, dm.streams[ v_id ]
   c= vcodec.Decoder( dm.streams[ v_id ] )
+  print 'Decoder created'
   t= time.time()
   while len( s )> 0:
     for fr in r:
@@ -24,11 +25,19 @@ def dumpVideo( inFile, outFilePattern, fmt ):
         print '%d frames in %.2f secs (%.2f fps)' % ( i, time.time()- t, i/ ( time.time()- t ) )
       if fr[ 0 ]== v_id:
         d= c.decode( fr[ 1 ] )
-        # Save file as RGB BMP
+        # Save file as RGB BMP or YUV
         if d and d.data:
-          dd= d.convert( fmt )
-          img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
-          pygame.image.save( img, outFilePattern % i )
+          if fmt== 2:
+            dd= d.convert( fmt )
+            img= pygame.image.fromstring( dd.data, dd.size, "RGB" )
+            pygame.image.save( img, outFilePattern % i )
+          elif fmt== 0:
+            f= open( outFilePattern % i, 'wb' )
+            f.write( d.data[ 0 ] )
+            f.write( d.data[ 1 ] )
+            f.write( d.data[ 2 ] )
+            f.close()
+
           i+= 1
     
     s= f.read( 400000 )

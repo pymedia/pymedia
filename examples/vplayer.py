@@ -121,6 +121,7 @@ class VPlayer:
       self.vDelay= videoPTS- self.seekADelta- self.getPTS()
       frRate= float( vfr.rate_base )/ vfr.rate
       res= self.decodeVideoFrame()
+      print res, frRate, vfr.rate_base, vfr.rate
       if res== -1 or ( res== -2 and self.vDelay> 0 ) or ( self.snd and self.snd.getLeft()< frRate ):
         return
       
@@ -169,7 +170,7 @@ class VPlayer:
     
     if len( self.decodedFrames )> vcodec.MAX_BUFFERS- 4:
       return 0
-    
+
     while len( self.rawFrames ):
       d= self.rawFrames.pop( 0 )
       vfr= self.vc.decode( d[ 1 ] )
@@ -188,14 +189,14 @@ class VPlayer:
           
         # Handle the PTS
         rate= float( vfr.rate_base )/ vfr.rate
-        if d[ 3 ]> 0 and self.lastPTS< d[3]:
-          # Get the first lowest PTS( we do not have DTS :( )
-          self.lastPTS= d[3]
-          self.videoPTS= float( d[ 3 ] ) / 90000
-          #print 'VPTS:', self.videoPTS, vfr.pict_type
-        else:
-          # We cannot accept PTS, just calculate it
-          self.videoPTS+= rate
+        #if d[ 3 ]> 0 and self.lastPTS< d[3]:
+        #  # Get the first lowest PTS( we do not have DTS :( )
+        #  self.lastPTS= d[3]
+        #  self.videoPTS= float( d[ 3 ] ) / 90000
+        #  print 'VPTS:', d[ 3 ], self.videoPTS
+        #else:
+        # We cannot accept PTS, just calculate it
+        self.videoPTS+= rate
         
         return 0
     
@@ -365,6 +366,8 @@ class VPlayer:
                 #print 'V',
                 # Process video frame
                 self.processVideoFrame( d )
+                if  d[ 3 ]> 0:
+                  print d[ 3 ]
               elif d[ 0 ]== aindex and self.seek!= SEEK_IN_PROGRESS:
                 #print 'A',
                 # Decode and play audio frame

@@ -24,7 +24,7 @@
  * common internal api.
  */
 
-#include "libavcodec/avcodec.h"
+#include "avcodec.h"
 
 const uint8_t ff_sqrt_tab[128]={
         0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5,

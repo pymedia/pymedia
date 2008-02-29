@@ -9,11 +9,11 @@ extern "C" {
 #define LIBAVFORMAT_VERSION     "0.4.6"
 #define LIBAVFORMAT_BUILD       4606
 
-#include <libavcodec/avcodec.h>
+#include "avcodec.h"
 #include "common.h"
 #include "mem.h"
 #include "avio.h"
-#include <libavcodec/rational.h>
+#include "rational.h"
 
 /* packet functions */
 
@@ -29,7 +29,8 @@ extern "C" {
 #define MAXINT 0x7fffffff
 #endif
 
-#define AV_NOPTS_VALUE MININT64
+//#define AV_NOPTS_VALUE MININT64
+
 #define AV_TIME_BASE 1000000
 #define MKTAG(a,b,c,d) (a | (b << 8) | (c << 16) | (d << 24))
 #define EDGE_WIDTH 16

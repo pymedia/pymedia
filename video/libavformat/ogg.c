@@ -11,7 +11,7 @@
 #include <vorbis/vorbisenc.h>
 
 #include "avformat.h"
-#include <libavcodec/oggvorbis.h>
+#include "oggvorbis.h"
 
 #define DECODER_BUFFER_SIZE 4096
 

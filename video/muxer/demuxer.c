@@ -101,7 +101,7 @@ stream type. Once demuxer is created the following methods are available:\n"\
 PyObject *g_cErr;
 
 // Max number of streams in muxed sourced
-#define MAX_STREAMS 10
+//#define MAX_STREAMS 10
 
 // ---------------------------------------------------------------------------------
 typedef struct

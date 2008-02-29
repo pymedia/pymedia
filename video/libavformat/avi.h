@@ -1,7 +1,7 @@
 #ifndef FFMPEG_AVI_H
 #define FFMPEG_AVI_H
 
-#include <libavcodec/avcodec.h>
+#include "avcodec.h"
 
 #define AVIF_HASINDEX		0x00000010	// Index at end of file?
 #define AVIF_MUSTUSEINDEX	0x00000020
