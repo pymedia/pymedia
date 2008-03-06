@@ -1,0 +1,13 @@
+include setup.py
+include config.py
+include version.h
+include COPYING
+include CHANGELOG
+include README
+include *.sln
+recursive-include inst_lib *.py
+recursive-include audio *.c *.cpp *.h *.vcproj
+recursive-include removable *.c *.cpp *.h *.vcproj
+recursive-include video *.c *.cpp *.h *.vcproj
+recursive-include sound *.c *.cpp *.h *.vcproj
+
