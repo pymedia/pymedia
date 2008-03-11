@@ -22,7 +22,7 @@
 #ifndef VP3DSP_SSE2_H
 #define VP3DSP_SSE2_H
 
-#include "dsputil.h"
+#include "../dsputil.h"
 
 void ff_vp3_idct_sse2(int16_t *input_data);
 void ff_vp3_idct_put_sse2(uint8_t *dest, int line_size, DCTELEM *block);

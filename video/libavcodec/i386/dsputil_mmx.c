@@ -22,14 +22,14 @@
  * MMX optimization by Nick Kurshev <nickols_k@mail.ru>
  */
 
-#include "dsputil.h"
-#include "simple_idct.h"
-#include "mpegvideo.h"
-#include "x86_cpu.h"
+#include "../dsputil.h"
+#include "../simple_idct.h"
+#include "../mpegvideo.h"
+#include "../x86_cpu.h"
 #include "mmx.h"
 #include "vp3dsp_mmx.h"
 #include "vp3dsp_sse2.h"
-#include "h263.h"
+#include "../h263.h"
 
 //#undef NDEBUG
 //#include <assert.h>
@@ -215,7 +215,7 @@ static const double ff_pd_2[2] attribute_used __attribute__ ((aligned(16))) = { 
 /***********************************/
 /* standard MMX */
 
-void emms() 
+void emms()
 {
   EMMS();
 }

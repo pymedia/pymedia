@@ -770,8 +770,8 @@ if len( v ):
 # wav testing
 import pymedia
 import pymedia.muxer as muxer
-dm= muxer.Demuxer( 'wav' )
-f= open( "c:\\bors\\hmedia\\Partners\\Scala\\code\\data\\ClipArt\\Music\\Wav\\3jazzy-loop.wav", 'rb' )
+dm= muxer.Demuxer( 'avi' )
+f= open( "c:\\bors\\TellyTopia\\Victor\\bad good avi\\test.avi", 'rb' )
 s= f.read( 300000 )
 r= dm.parse( s )
 

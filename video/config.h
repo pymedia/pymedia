@@ -63,6 +63,8 @@
 #define CONFIG_WMV2_DECODER 1
 #define CONFIG_WMV2_ENCODER 1
 
+//#define HAVE_MKSTEMP 1 
+
 #undef  HAVE_MEMALIGN
 #ifndef M_PI
  #define M_PI 3.14159265358979323846

@@ -46,6 +46,7 @@ MMX_FILES= [
 			'i386/idct_mmx_xvid.c',
 			'imgconvert.c',
 			'imgresample.c',
+      'resample2.c',
 			'i386/motion_est_mmx.c',
 			'i386/mpegvideo_mmx.c',
 			'i386/simple_idct_mmx.c',
@@ -100,8 +101,6 @@ FILES={
 		(
 			'muxer/demuxer.c',
 			'muxer/muxer.c',
-			'mem.c',
-			'common.c'
 		),
 		'libavformat':
 		(
@@ -112,7 +111,7 @@ FILES={
 			'common.c',
 			'crc.c',
 			'cutils.c',
-			'flvdec.c',
+			#'flvdec.c',
 			'integer.c',
 			'mem.c',
 			'mov.c',
@@ -131,8 +130,6 @@ FILES={
 		'':
 		(
 			'vcodec/vcodec.c',
-			'mem.c',
-			'common.c'
 		),
 		'libavcodec':
 		[
@@ -144,7 +141,7 @@ FILES={
 			'eval.c',
 			'golomb.c',
 			'h263.c',
-			'h263parser.c',
+			'h263_parser.c',
 			'h263dec.c',
 			'h264.c',
 			'h264_parser.c',
@@ -173,7 +170,7 @@ FILES={
 			'rv10.c',
 			'simple_idct.c',
 			'svq1.c',
-			'svqldec.c',
+			'svq1dec.c',
 			'utils.c',
 
 		],
@@ -270,11 +267,11 @@ else:
 		FILES[ 'video.vcodec' ][ 'libavcodec' ]+= MMX_FILES
 
 DEPS = [
-		dep('OGG', 'libogg-[1-9].*', 'ogg/ogg.h', 'libogg', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
-		dep('VORBIS', 'libvorbis-[1-9].*', 'vorbis/codec.h', 'libvorbis', 'CONFIG_VORBIS' ).configure(inc_hunt,lib_hunt),
-		dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
-		dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
-		dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
+		#dep('OGG', 'libogg-[1-9].*', 'ogg/ogg.h', 'libogg', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
+		#dep('VORBIS', 'libvorbis-[1-9].*', 'vorbis/codec.h', 'libvorbis', 'CONFIG_VORBIS' ).configure(inc_hunt,lib_hunt),
+		#dep('FAAD', 'libfaad2', 'faad.h', 'libfaad', 'CONFIG_FAAD').configure(inc_hunt,lib_hunt),
+		#dep('MP3LAME', 'lame-3.95.*', 'lame.h', 'libmp3lame', 'CONFIG_MP3LAME').configure(inc_hunt,lib_hunt),
+		#dep('VORBISENC', 'libvorbis-[1-9].*','vorbis/vorbisenc.h','libvorbisenc', 'CONFIG_VORBIS').configure(inc_hunt,lib_hunt),
 		#dep('ALSA', 'libasound','alsa/asoundlib.h','libasound', 'CONFIG_ALSA').configure(inc_hunt,lib_hunt),
 ]
 

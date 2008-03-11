@@ -343,14 +343,14 @@ int SetAttribute_o( PyObject* cDict, char* sKey, PyObject* cVal )
 // ---------------------------------------------------------------------------------
 int SetCodecParams( PyCodecObject* obj, PyObject* cObj )
 {
-		int i= 1; 
+		int i= 1;
     // Some default params
-    obj->cCodec->frame_skip_cmp = FF_CMP_DCTMAX; 
-    obj->cCodec->me_method= ME_EPZS; 
+    obj->cCodec->frame_skip_cmp = FF_CMP_DCTMAX;
+    obj->cCodec->me_method= ME_EPZS;
     obj->cCodec->rc_eq = "tex^qComp";
     obj->cCodec->i_quant_factor = -0.8;
     obj->cCodec->b_quant_factor = 1.25;
-    obj->cCodec->b_quant_offset = 1.25; 
+    obj->cCodec->b_quant_offset = 1.25;
     PARAM_CHECK( obj->cCodec->bit_rate, BITRATE )
 		PARAM_CHECK( obj->cCodec->height, HEIGHT )
 		PARAM_CHECK( obj->cCodec->width, WIDTH )
@@ -444,7 +444,7 @@ vcstring_str(PyVCStringObject *self)
 {
 	return PyString_FromStringAndSize(self->pData, self->iLen);
 }
- 
+
 // ----------------------------------------------------------------
 static PySequenceMethods vcstring_as_sequence = {
 	(inquiry)vcstring_length, /*sq_length*/
@@ -573,7 +573,7 @@ FormatsRepr(PyFormatsObject *cFormats)
 		if( strlen( s )> 2 && ( s[ 0 ]== s[ 1 ] ) && ( s[ 1 ]== '_' ) )
 			continue;
 		if( i )
-			strcat( sBuf, ",");
+			strcat( sBuf, "," );
 		strcat( sBuf, s);
 	}
 	return PyString_FromString( sBuf );
@@ -737,7 +737,7 @@ static PyObject * Frame_Copy( PyVFrameObject* obj, PyObject *args)
   x&= 0xFFFFFFFE;
   y&= 0xFFFFFFFE;
 
-  // Check if formats are the same 
+  // Check if formats are the same
   if( cDst->pix_fmt!= obj->pix_fmt )
   {
     PyErr_Format( g_cErr, "Video frames should have the same format for copy to be called( formats are %d and %d)", obj->pix_fmt, cDst->pix_fmt );
@@ -758,7 +758,7 @@ static PyObject * Frame_Copy( PyVFrameObject* obj, PyObject *args)
 
   PyArg_Parse( (PyObject*)cDst->cData[ 0 ], "s#", &sDestY, &i );
   PyArg_Parse( (PyObject*)obj->cData[ 0 ], "s#", &sSrcY, &iSrcLenY );
-  sDestY+= y* i/ cDst->height; 
+  sDestY+= y* i/ cDst->height;
   PyArg_Parse( (PyObject*)cDst->cData[ 1 ], "s#", &sDestU, &i );
   PyArg_Parse( (PyObject*)obj->cData[ 1 ], "s#", &sSrcU, &iSrcLenU );
   PyArg_Parse( (PyObject*)cDst->cData[ 2 ], "s#", &sDestV, &i );
@@ -1215,7 +1215,7 @@ static PyObject * Codec_Reset( PyCodecObject* obj)
 	//	obj->cCodec->codec->resync( obj->cCodec );
 
 	RETURN_NONE
-} 
+}
 
 // ---------------------------------------------------------------------------------
 int Codec_AdjustPadBuffer( PyCodecObject* obj, int iLen )
@@ -1352,7 +1352,7 @@ static PyObject* Codec_Encode( PyCodecObject* obj, PyObject *args)
 	}
 
 	/* check codec params */
-	PyVFrame2AVFrame(cFrame, &picture, 1 ); 
+	PyVFrame2AVFrame(cFrame, &picture, 1 );
 	iLen = avcodec_encode_video(obj->cCodec, sOutbuf, ENCODE_OUTBUF_SIZE,	&picture);
 	if (iLen > 0)
   {
@@ -1752,7 +1752,7 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 	v= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_VIDEO, dm.streams )
 	if len( v )== 0:
 		raise 'There is no video stream in a file %s' % inFile
-  
+
 	v_id= v[ 0 ][ 'index' ]
 	print 'Assume video stream at %d index( %d ): ' % ( v_id, dm.streams[ v_id ][ 'id' ] )
 	c= vcodec.Decoder( dm.streams[ v_id ] )
@@ -1773,12 +1773,12 @@ def dumpVideo( inFile, outFilePattern, fmt, dummy= 1 ):
 							pygame.image.save( img, outFilePattern % i )
 					else:
 						print 'Empty frame'
-          
+
 					i+= 1
-    
+
 		s= f.read( 400000 )
 		r= dm.parse( s )
-   
+
 	f.close()
 	return frames
 
@@ -1808,12 +1808,12 @@ def recodeVideo( inFile, outFile, outCodec ):
   if len( v )== 0:
     raise 'There is no video stream in a file %s' % inFile
   v_id= v[ 0 ][ 'index' ]
-  
+
   a= filter( lambda x: x[ 'type' ]== muxer.CODEC_TYPE_AUDIO, dm.streams )
   if len( a )== 0:
     raise 'There is no audio stream in a file %s' % inFile
   a_id= a[ 0 ][ 'index' ]
-  
+
   print 'Assume video stream at %d index: ' % v_id
   c= vcodec.Decoder( dm.streams[ v_id ] )
   e= None
@@ -1835,18 +1835,18 @@ def recodeVideo( inFile, outFile, outCodec ):
             params[ 'max_b_frames' ]= 2
             print 'Setting codec to ', params
             e= vcodec.Encoder( params )
-				  
+
           dw= e.encode( d )
           if dw and dw.data:
             print 'Format %d, Datasize %d, Rate %d, Rate Base %d, Pict Type %d, Frame Number %d' % ( dw.format, len( dw.data ), dw.rate, dw.rate_base, dw.pict_type, dw.frame_number )
             fw.write( dw.data )
-	  
+
     s= f.read( 400000 )
     r= dm.parse( s )
 
 recodeVideo( 'c:\\bors\\TellyTopia\\SMIL\\code\\data\\swest_demo\\TTOP6026748823127268.ts', 'c:\\test.ts', 'mpeg2video' )
 
- 
+
 
 */
 

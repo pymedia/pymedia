@@ -1,6 +1,10 @@
 
-#if defined( _MSC_VER ) && !defined( PRId64 )
-#        define PRId64 "I64d"
+#if !defined( PRId64 )
+	#if defined( _MSC_VER )
+	#        define PRId64 "I64d"
+	#else
+	#        define PRId64 "ll"
+	#endif
 #endif
 
 #if defined( _STDINT_H ) && !defined( _SYS_TYPES_H_ )
@@ -35,7 +39,7 @@
 
 #define _STDINT_H
 
-#if !defined( _SYS_TYPES_H_ ) 
+#if !defined( _SYS_TYPES_H_ )
 #define _SYS_TYPES_H_
 
 	typedef unsigned short UINT16;

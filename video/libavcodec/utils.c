@@ -35,7 +35,7 @@
 #include <limits.h>
 #include <float.h>
 #if !defined(HAVE_MKSTEMP)
-#include <fcntl.h>
+#	include <fcntl.h>
 #endif
 
 const uint8_t ff_reverse[256]={
@@ -59,7 +59,7 @@ const uint8_t ff_reverse[256]={
 
 static int volatile entangled_thread_counter=0;
 
-#ifndef HAVE_LRINTF
+#if !defined( HAVE_LRINTF ) && defined( WIN32 )
 /* XXX: add ISOC specific test to avoid specific BSD testing. */
 /* better than nothing implementation. */
 /* btw, rintf() is existing on fbsd too -- alex */
