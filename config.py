@@ -34,16 +34,16 @@ class Dependency_win:
 
     def choosepath(self):
         if not self.paths:
-            print 'Path for ', self.name, 'not found.'
+            print( 'Path for ', self.name, 'not found.' )
         elif len(self.paths) == 1:
             self.path = self.paths[0]
-            print 'Path for '+self.name+':', self.path
+            print( 'Path for '+self.name+':', self.path )
         else:
-            print 'Select path for '+self.name+':'
+            print( 'Select path for '+self.name+':' )
             for i in range(len(self.paths)):
-                print '  ', i+1, '=', self.paths[i]
-            print '  ', 0, '= <Nothing>'
-            choice = raw_input('Select 0-'+`len(self.paths)`+' (1=default):')
+                print( '  ', i+1, '=', self.paths[i] )
+            print( '  ', 0, '= <Nothing>' )
+            choice = input('Select 0-%s (1=default):' % len(self.paths) )
             if not choice: choice = 1
             else: choice = int(choice)
             if(choice):
@@ -53,8 +53,8 @@ class Dependency_win:
         for h in paths:
             hh = os.path.join(base, h)
             if os.path.isdir(hh):
-            		if os.path.isfile( os.path.join( hh, file )):
-                		return hh.replace('\\', '/')
+              if os.path.isfile( os.path.join( hh, file )):
+                return hh.replace('\\', '/')
         return base.replace('\\', '/')
 
     def configure(self, inc_hunt, lib_hunt):
@@ -89,24 +89,24 @@ class Dependency_unix:
                 break
         for dir in libdirs:
             path1 = os.path.join(dir, libname+ '.a')
-	    path2 = os.path.join(dir, libname+ '.so')
+            path2 = os.path.join(dir, libname+ '.so')
             if os.path.isfile(path1):
                 self.lib_dir = dir
                 self.lib= self.lib[ 3: ]
                 break
-	    if os.path.isfile(path2):
+            if os.path.isfile(path2):
                 self.lib_dir = dir
                 self.lib= self.lib[ 3: ]
                 break
-		
+
                 
         if self.lib_dir and self.inc_dir:
-            print self.name + '             '[len(self.name):] + ': found'
+            print( self.name + '             '[len(self.name):] + ': found' )
             if self.inc_dir in ( '/usr/include', '/usr/local/include' ):
-			    self.inc_dir= None
+              self.inc_dir= None
             self.found = 1
         else:
-            print self.name + '             '[len(self.name):] + ': not found'
+            print( self.name + '             '[len(self.name):] + ': not found' )
         
         return self
  
